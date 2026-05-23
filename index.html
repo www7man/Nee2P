@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#06060a" />
+<title>hush. — anonymous paired messenger</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+
+  :root {
+    --bg-deep:     #06060a;
+    --bg-base:     #0a0a10;
+
+    --tx-100: #ffffff;
+    --tx-80:  rgba(255,255,255,0.82);
+    --tx-60:  rgba(255,255,255,0.62);
+    --tx-40:  rgba(255,255,255,0.42);
+    --tx-25:  rgba(255,255,255,0.25);
+
+    --glass-fill-strong: rgba(255,255,255,0.08);
+    --glass-fill-base:   rgba(255,255,255,0.05);
+    --glass-fill-soft:   rgba(255,255,255,0.03);
+    --glass-hairline:    rgba(255,255,255,0.12);
+    --glass-highlight:   rgba(255,255,255,0.18);
+
+    --ff-ui:    'Geist', system-ui, -apple-system, sans-serif;
+    --ff-mono:  'Geist Mono', ui-monospace, monospace;
+    --ff-serif: 'Instrument Serif', 'Times New Roman', serif;
+  }
+
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg-deep);
+    color: var(--tx-100);
+    font-family: var(--ff-ui);
+    font-feature-settings: 'ss01', 'cv11';
+    font-synthesis: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+    overflow: hidden;
+    overscroll-behavior: none;
+    /* App-like behaviour: no pinch-zoom, no iOS text-size adjust, no
+       double-tap-to-zoom, no pull-to-refresh, no rubber-band scroll. */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  input, textarea { -webkit-user-select: text; user-select: text; }
+
+  #stage {
+    position: fixed; inset: 0;
+    display: flex; align-items: stretch; justify-content: center;
+  }
+
+  /* on phones — fill the screen */
+  .app-frame {
+    position: relative;
+    width: 100%;
+    height: 100dvh;
+    overflow: hidden;
+    background: var(--bg-deep);
+  }
+
+  /* on desktop / tablets — center a tall, phone-sized window with chrome */
+  @media (min-width: 540px) {
+    body { background: #03030a; }
+    #stage::before {
+      content: '';
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(60% 40% at 20% 20%, rgba(80,100,140,0.10), transparent 70%),
+        radial-gradient(50% 40% at 80% 80%, rgba(80,100,140,0.08), transparent 70%);
+      pointer-events: none;
+    }
+    .app-frame {
+      max-width: 460px;
+      max-height: 920px;
+      margin: auto;
+      align-self: center;
+      border-radius: 38px;
+      box-shadow:
+        0 30px 80px rgba(0,0,0,0.55),
+        0 0 0 1px rgba(255,255,255,0.06),
+        inset 0 0 0 0.5px rgba(255,255,255,0.04);
+    }
+  }
+
+  /* ── orb / background animations ───────────────────────── */
+  @keyframes float1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(40px, 60px) scale(1.08); } }
+  @keyframes float2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-60px, 40px) scale(0.92); } }
+  @keyframes float3 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(50px, -50px) scale(1.1); } }
+  @keyframes float4 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-30px, -40px) scale(0.95); } }
+
+  @keyframes svg-orbit { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes ring-expand {
+    0%   { transform: scale(0.2); opacity: 0; border-color: rgba(255,255,255,0.6); }
+    15%  { opacity: 0.85; }
+    100% { transform: scale(1.35); opacity: 0; border-color: rgba(255,255,255,0); }
+  }
+  @keyframes particle-trace {
+    0%   { left: calc(50% - 44px); opacity: 0; }
+    12%  { opacity: 1; }
+    88%  { opacity: 1; }
+    100% { left: calc(50% + 44px); opacity: 0; }
+  }
+  @keyframes particle-trace-rev {
+    0%   { left: calc(50% + 44px); opacity: 0; }
+    12%  { opacity: 1; }
+    88%  { opacity: 1; }
+    100% { left: calc(50% - 44px); opacity: 0; }
+  }
+  @keyframes welcome-rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes glyph-cycle {
+    0%, 28%   { opacity: 1; transform: translateY(0); filter: blur(0); }
+    33%, 95%  { opacity: 0; transform: translateY(-6px); filter: blur(4px); }
+    100%      { opacity: 1; transform: translateY(0); filter: blur(0); }
+  }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(1.4); }
+  }
+  @keyframes scan {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+  }
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes shine-sweep {
+    0% { transform: translateX(-100%) skewX(-20deg); }
+    100% { transform: translateX(250%) skewX(-20deg); }
+  }
+  @keyframes caret {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+  }
+  @keyframes drift-slow {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(360deg); }
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; }
+
+  .typing-caret {
+    display: inline-block; width: 2px; height: 1em;
+    background: currentColor; vertical-align: text-bottom;
+    margin-left: 2px;
+    animation: caret 1s steps(1) infinite;
+  }
+
+  input::placeholder, textarea::placeholder { color: var(--tx-40); }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="boot-loader" style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#06060a;color:#fff;font-family:'Instrument Serif',serif;font-style:italic">
+    <div style="font-size:48px">hush.</div>
+    <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.45);font-family:system-ui,-apple-system,sans-serif;font-style:normal">loading…</div>
+  </div>
+</div>
+
+<noscript><div style="padding:24px;color:#fff;font-family:sans-serif">JavaScript нужен для работы.</div></noscript>
+
+<script>
+window.addEventListener('error', function (e) {
+  var stage = document.getElementById('stage');
+  if (!stage) return;
+  if (stage.dataset.hadError === '1') return;
+  stage.dataset.hadError = '1';
+  var msg = (e && (e.message || (e.error && e.error.message))) || 'unknown error';
+  var src = (e && (e.filename || (e.error && e.error.fileName))) || '';
+  stage.innerHTML =
+    '<div style="position:fixed;inset:0;padding:24px;background:#06060a;color:#fff;' +
+    'font:14px/1.5 system-ui,-apple-system,sans-serif;overflow:auto">' +
+      '<div style="font-weight:600;margin-bottom:8px">hush. — ошибка загрузки</div>' +
+      '<div style="color:rgba(255,255,255,0.7);white-space:pre-wrap;word-break:break-word">' +
+        msg.replace(/[<>&]/g, function (c) { return ({'<':'&lt;','>':'&gt;','&':'&amp;'})[c]; }) +
+        (src ? '\n\n@ ' + src : '') +
+      '</div>' +
+      '<div style="margin-top:18px;color:rgba(255,255,255,0.4);font-size:12px">' +
+        'Жёсткая перезагрузка: Cmd/Ctrl + Shift + R' +
+      '</div>' +
+    '</div>';
+}, true);
+</script>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+
+<script src="md5.js"></script>
+<script src="crypto.js"></script>
+<!--
+  http-client.js exposes window.HushWS using POST + long-poll (Yandex CDN
+  doesn't forward WebSocket upgrade). ws-client.js is the legacy WS
+  transport — kept in the repo for direct/dev use.
+-->
+<script src="http-client.js"></script>
+
+<script type="text/babel" src="hush-ui.jsx"></script>
+<script type="text/babel" src="hush-screens.jsx"></script>
+<script type="text/babel" src="hush-app.jsx"></script>
+</body>
+</html>

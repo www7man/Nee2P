@@ -1,0 +1,15 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "hush-prod",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["/Users/ttt/sites/2Pee/server.js"],
+      "port": 9787,
+      "env": {
+        "PORT": "9787",
+        "HOST": "127.0.0.1"
+      }
+    }
+  ]
+}
