@@ -672,6 +672,8 @@ const server = http.createServer((req, res) => {
   if (isWrite && p === '/r/blob') return handleBlobPut(req, res, url);
   if (req.method === 'GET' && p.startsWith('/r/blob/')) return handleBlobGet(req, res, url, p);
   if (req.method === 'GET' && p === '/r/admin/stats') return handleAdminStats(req, res);
+  if (req.method === 'OPTIONS' && p.startsWith('/r/admin/')) return handleAdminCors(req, res);
+  if (req.method === 'DELETE' && p.startsWith('/r/admin/room/')) return handleAdminDeleteRoom(req, res, p);
 
   // static
   if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -1243,6 +1245,36 @@ function handleAdminStats(req, res) {
     'Access-Control-Allow-Origin': '*',
   });
   res.end(JSON.stringify({ ok: true, data }));
+}
+
+function handleAdminCors(req, res) {
+  res.writeHead(204, {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'x-admin-key',
+    'Access-Control-Max-Age': '86400',
+  });
+  res.end();
+}
+
+function handleAdminDeleteRoom(req, res, p) {
+  const adminKey = process.env.ADMIN_KEY || 'nee2p-admin-local';
+  const headers = {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Access-Control-Allow-Origin': '*',
+  };
+  if (req.headers['x-admin-key'] !== adminKey) {
+    res.writeHead(403, headers);
+    return res.end(JSON.stringify({ ok: false, error: 'forbidden' }));
+  }
+  const id = p.slice('/r/admin/room/'.length);
+  if (!rooms.has(id)) {
+    res.writeHead(404, headers);
+    return res.end(JSON.stringify({ ok: false, error: 'not-found' }));
+  }
+  destroyRoom(id);
+  res.writeHead(200, headers);
+  res.end(JSON.stringify({ ok: true }));
 }
 
 function handleVapidPubkey(req, res) {
