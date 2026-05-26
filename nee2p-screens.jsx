@@ -738,127 +738,38 @@ function RememberMeToggle({ palette, checked, onChange }) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Live "is this room real?" badge shown under the phrase input on JoinScreen.
-// Renders one of four states from the /r/peek probe:
-//   • loading  — soft "проверяем…" while the debounced fetch is in flight
-//   • exists   — green dot + "онлайн N / макс M · истекает через …"
-//   • missing  — neutral "сессии с такой фразой нет — она будет создана"
-//   • error    — quiet network hint
-// Nothing renders when peek === null (no input yet).
-function PeekBadge({ peek, palette }) {
-  const p = usePalette(palette);
-  if (!peek) return null;
-
-  const wrap = (children, tone) => (
-    <div style={{ marginTop: 10, display: 'flex', justifyContent: 'center' }}>
-      <Glass radius={9999} padding="6px 12px">
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          fontSize: 11, fontWeight: 600, letterSpacing: 0.3,
-          textTransform: 'uppercase', color: tone || 'var(--tx-80)',
-          fontFamily: 'inherit',
-        }}>
-          {children}
-        </div>
-      </Glass>
-    </div>
-  );
-
-  if (peek.state === 'loading') {
-    return wrap(<><Dot color="var(--tx-40)" />проверяем…</>, 'var(--tx-60)');
-  }
-  if (peek.state === 'error') {
-    return wrap(<><Dot color="var(--tx-40)" />проверить не вышло</>, 'var(--tx-60)');
-  }
-  if (peek.state === 'missing') {
-    return wrap(<><Dot color="var(--tx-40)" />новой сессии нет · будет создана</>, 'var(--tx-60)');
-  }
-  // exists
-  const ttlLeftMs = Math.max(0, (peek.expiresAt || 0) - Date.now());
-  const ttlLabel = formatTtlShort(ttlLeftMs);
-  const full = peek.groupMax > 0 && peek.claimed >= peek.groupMax;
-  return wrap(
-    <>
-      <Dot color={full ? '#ff8a8a' : (p.a || '#7be0b1')} />
-      онлайн {peek.online}/{peek.groupMax}
-      <span style={{ color: 'var(--tx-40)' }}>·</span>
-      {full ? 'мест нет' : `мест ${peek.groupMax - peek.claimed}`}
-      {ttlLabel && (<><span style={{ color: 'var(--tx-40)' }}>·</span>{ttlLabel}</>)}
-    </>,
-    full ? '#ff8a8a' : 'var(--tx-80)'
-  );
-}
-
-function Dot({ color }) {
-  return <span style={{
-    width: 6, height: 6, borderRadius: 9999, background: color,
-    boxShadow: '0 0 8px ' + color, display: 'inline-block',
-  }} />;
-}
-
-function formatTtlShort(ms) {
-  if (!ms || ms <= 0) return '';
+// ─── JoinScreen helpers ──────────────────────────────────────
+function fmtAgo(ms) {
   const s = Math.floor(ms / 1000);
-  if (s < 60)      return s + 'с';
+  if (s < 60)  return s + 'с назад';
   const m = Math.floor(s / 60);
-  if (m < 60)      return m + ' мин';
+  if (m < 60)  return m + 'м назад';
   const h = Math.floor(m / 60);
-  if (h < 24)      return h + ' ч';
-  const d = Math.floor(h / 24);
-  return d + ' дн';
+  if (h < 24)  return h + 'ч назад';
+  return Math.floor(h / 24) + 'д назад';
+}
+function fmtLeft(ms) {
+  const m = Math.floor(ms / 60000);
+  if (m < 60)  return m + ' мин';
+  const h = Math.floor(m / 60);
+  if (h < 24)  return h + 'ч ' + (m % 60) + 'м';
+  return Math.floor(h / 24) + 'д ' + (h % 24) + 'ч';
 }
 
-function JoinScreen({ palette, value, setValue, password, setPassword,
-                      rememberMe, setRememberMe,
-                      onBack, onContinue, onCreateInstead, busy, error }) {
+// Step 1 — phrase input only (clean, no distractions)
+function JoinStep1({ palette, value, setValue, onBack, onNext }) {
   const p = usePalette(palette);
-  const [showPwd, setShowPwd] = React.useState(false);
   const trimmed = (value || '').trim();
+  const validInput = trimmed.length > 0;
   const hashRegex = /^[a-f0-9]{32}$/i;
   const isHash = hashRegex.test(trimmed);
   const finalHash = trimmed ? (isHash ? trimmed.toLowerCase() : md5(trimmed)) : '';
-  const validInput = trimmed.length > 0;
-  const valid = validInput && password.length >= 4 && !busy;
-
-  // Probe the relay so the user sees, before entering a password, whether the
-  // room is alive — and if so, how many slots are filled / online. Debounced
-  // 350ms so a fast typist doesn't fire one peek per keystroke. We ignore
-  // any peek result that lands after the input has changed (cancelled flag),
-  // so the badge never flickers with stale state.
-  const [peek, setPeek] = React.useState(null);
-  React.useEffect(() => {
-    if (!finalHash) { setPeek(null); return; }
-    let cancelled = false;
-    setPeek({ state: 'loading' });
-    const timer = setTimeout(async () => {
-      if (cancelled) return;
-      const r = (window.Nee2PPeek && window.Nee2PPeek.peekRoom)
-        ? await window.Nee2PPeek.peekRoom(finalHash)
-        : { ok: false };
-      if (cancelled) return;
-      if (!r || !r.ok)      { setPeek({ state: 'error' }); return; }
-      if (!r.exists)        { setPeek({ state: 'missing' }); return; }
-      setPeek({ state: 'exists',
-        online: r.online | 0, claimed: r.claimed | 0,
-        groupMax: r.groupMax | 0, expiresAt: r.expiresAt || 0,
-        paired: !!r.paired });
-    }, 350);
-    return () => { cancelled = true; clearTimeout(timer); };
-  }, [finalHash]);
-
-  // When the live probe says "no such room", we flip the screen into a
-  // create-offer: password / remember-me are hidden (CreatedScreen will collect
-  // them) and the primary CTA pivots to "Создать сессию с этой фразой". Until
-  // we have a confirmed missing state we keep the join UI exactly as-is so a
-  // brief loading / network-error doesn't ping-pong the layout.
-  const isMissing = !!(peek && peek.state === 'missing'
-                       && validInput
-                       && typeof onCreateInstead === 'function');
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column',
-      padding: '24px 18px 24px', position: 'relative' }}>
+      padding: '24px 18px', position: 'relative' }}>
 
+      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div onClick={onBack} style={{
           width: 44, height: 44, borderRadius: 14,
@@ -873,18 +784,18 @@ function JoinScreen({ palette, value, setValue, password, setPassword,
         <div style={{ width: 44 }} />
       </div>
 
-      <div style={{ textAlign: 'center', marginTop: 26 }}>
-        <div style={{ fontFamily: "'Instrument Serif', serif", fontStyle: 'italic',
-          fontSize: 32, lineHeight: 1.0, fontWeight: 400, letterSpacing: -0.6 }}>
+      {/* Title */}
+      <div style={{ textAlign: 'center', marginTop: 36, animation: 'welcome-rise 0.5s ease both' }}>
+        <div style={{ fontSize: 28, fontWeight: 300, letterSpacing: -1, color: '#fff', lineHeight: 1.1 }}>
           Подключиться
         </div>
-        <div style={{ marginTop: 6, fontSize: 12, color: 'var(--tx-60)',
-          letterSpacing: -0.05, maxWidth: 280, margin: '6px auto 0' }}>
-          Введите секретную фразу или вставьте MD5-хеш — мы сами поймём что это.
+        <div style={{ marginTop: 8, fontSize: 13, color: 'var(--tx-60)', lineHeight: 1.55 }}>
+          Введите секретную фразу сессии
         </div>
       </div>
 
-      <div style={{ marginTop: 22 }}>
+      {/* Input */}
+      <div style={{ marginTop: 28, animation: 'welcome-rise 0.5s 0.1s ease both' }}>
         <Glass radius={20} padding="14px 16px" strong>
           <textarea
             value={value}
@@ -893,66 +804,323 @@ function JoinScreen({ palette, value, setValue, password, setPassword,
             rows={3}
             inputMode="text"
             enterKeyHint="next"
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="none"
-            spellCheck={false}
+            autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false}
             style={{
               width: '100%', background: 'transparent', border: 'none', outline: 'none',
               color: 'var(--tx-100)', fontSize: 16, fontWeight: 500,
               letterSpacing: -0.1, fontFamily: 'inherit',
-              resize: 'none', minHeight: 64,
+              resize: 'none', minHeight: 72,
             }}
           />
         </Glass>
 
-        {/* — live room status: exists? how many online of how many? — */}
-        <PeekBadge peek={peek} palette={palette} />
-
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10, gap: 8 }}>
-          {value && (
-            <button onClick={() => setValue('')}
-              style={{
-                height: 32, padding: '0 12px', border: 'none', cursor: 'pointer',
-                borderRadius: 12, background: 'rgba(255,255,255,0.06)',
-                color: 'var(--tx-60)', fontSize: 11, fontWeight: 500,
-                fontFamily: 'inherit', letterSpacing: 0.3, textTransform: 'uppercase',
+        {/* Mini hash hint */}
+        {validInput && (
+          <div style={{ marginTop: 10, display: 'flex', justifyContent: 'center' }}>
+            <Glass radius={9999} padding="5px 12px">
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                fontSize: 10, color: 'var(--tx-60)', letterSpacing: 1.4,
+                textTransform: 'uppercase', fontFamily: 'var(--ff-mono)',
               }}>
-              стереть
-            </button>
-          )}
-        </div>
+                {isHash
+                  ? <Icon.Check size={10} color={p.a} />
+                  : <Icon.Key size={10} color="var(--tx-60)" />}
+                {finalHash.slice(0, 8)}…{finalHash.slice(-4)}
+              </div>
+            </Glass>
+          </div>
+        )}
+
+        {/* Clear */}
+        {value && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
+            <button onClick={() => setValue('')} style={{
+              height: 30, padding: '0 12px', border: 'none', cursor: 'pointer',
+              borderRadius: 10, background: 'rgba(255,255,255,0.05)',
+              color: 'var(--tx-60)', fontSize: 11, fontFamily: 'inherit', letterSpacing: 0.3,
+            }}>стереть</button>
+          </div>
+        )}
       </div>
 
-      {validInput && (
-        <div style={{ marginTop: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            fontSize: 10, color: 'var(--tx-60)', letterSpacing: 1.4, textTransform: 'uppercase',
-            marginBottom: 8 }}>
-            {isHash ? (
-              <>
-                <Icon.Check size={11} color={p.a} />
-                md5-хеш
-              </>
-            ) : (
-              <>
-                <Icon.Key size={11} color="var(--tx-60)" />
-                фраза → md5
-              </>
-            )}
-          </div>
-          <Glass radius={14} padding="10px 8px">
-            <HashDisplay hash={finalHash} palette={palette} />
-          </Glass>
-        </div>
-      )}
+      <div style={{ flex: 1, minHeight: 24 }} />
 
-      {/* — password field — hidden when we're pivoting to create-offer — */}
-      {!isMissing && (
-        <div style={{ marginTop: 14 }}>
+      <GlassButton primary={validInput} palette={palette} disabled={!validInput}
+        icon={<Icon.Arrow size={16} color={validInput ? p.text : 'var(--tx-40)'} />}
+        onClick={() => validInput && onNext()}>
+        {validInput ? 'Найти сессию' : 'введите фразу'}
+      </GlassButton>
+    </div>
+  );
+}
+
+// Step 2 — peek results: loading / missing / exists
+function JoinStep2({ palette, value, password, setPassword,
+                     rememberMe, setRememberMe,
+                     onBack, onContinue, onCreateInstead, busy, error }) {
+  const p = usePalette(palette);
+  const [showPwd, setShowPwd] = React.useState(false);
+  const trimmed = (value || '').trim();
+  const hashRegex = /^[a-f0-9]{32}$/i;
+  const isHash = hashRegex.test(trimmed);
+  const finalHash = trimmed ? (isHash ? trimmed.toLowerCase() : md5(trimmed)) : '';
+  const valid = trimmed.length > 0 && password.length >= 4 && !busy;
+
+  const [peek, setPeek] = React.useState({ state: 'loading' });
+  React.useEffect(() => {
+    if (!finalHash) return;
+    let cancelled = false;
+    setPeek({ state: 'loading' });
+    const timer = setTimeout(async () => {
+      if (cancelled) return;
+      const r = (window.Nee2PPeek && window.Nee2PPeek.peekRoom)
+        ? await window.Nee2PPeek.peekRoom(finalHash)
+        : { ok: false };
+      if (cancelled) return;
+      if (!r || !r.ok)   { setPeek({ state: 'error' }); return; }
+      if (!r.exists)     { setPeek({ state: 'missing' }); return; }
+      setPeek({
+        state:    'exists',
+        online:   r.online   | 0,
+        claimed:  r.claimed  | 0,
+        groupMax: r.groupMax | 0,
+        expiresAt: r.expiresAt  || 0,
+        createdAt: r.createdAt  || 0,
+        paired:   !!r.paired,
+      });
+    }, 300);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [finalHash]);
+
+  const Header = () => (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div onClick={onBack} style={{
+        width: 44, height: 44, borderRadius: 14,
+        background: 'rgba(255,255,255,0.06)',
+        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+        border: '0.5px solid rgba(255,255,255,0.12)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+      }}>
+        <Icon.Arrow size={16} color="#fff" dir="left" />
+      </div>
+      <Logo size={9} palette={palette} />
+      <div style={{ width: 44 }} />
+    </div>
+  );
+
+  // ── loading ──
+  if (peek.state === 'loading') return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '24px 18px' }}>
+      <Header />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+        <div style={{
+          width: 42, height: 42, borderRadius: '50%',
+          border: '2px solid rgba(255,255,255,0.08)',
+          borderTopColor: p.a, animation: 'spin 0.8s linear infinite',
+        }} />
+        <div style={{ fontSize: 13, color: 'var(--tx-60)' }}>Проверяем сессию…</div>
+      </div>
+    </div>
+  );
+
+  // ── error ──
+  if (peek.state === 'error') return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '24px 18px' }}>
+      <Header />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: 14 }}>
+        <div style={{ fontSize: 36 }}>📡</div>
+        <div style={{ fontSize: 15, fontWeight: 500, color: '#fff' }}>Нет соединения</div>
+        <div style={{ fontSize: 12, color: 'var(--tx-60)', textAlign: 'center', lineHeight: 1.55 }}>
+          Проверьте сеть и попробуйте снова
+        </div>
+      </div>
+      <GlassButton palette={palette} onClick={onBack}>← Назад</GlassButton>
+    </div>
+  );
+
+  // ── missing ──
+  if (peek.state === 'missing') return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '24px 18px' }}>
+      <Header />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: 18,
+        animation: 'welcome-rise 0.4s ease both' }}>
+
+        <div style={{
+          width: 68, height: 68, borderRadius: '50%',
+          background: 'rgba(255,255,255,0.04)',
+          border: '0.5px solid rgba(255,255,255,0.10)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28,
+        }}>🔍</div>
+
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 22, fontWeight: 500, letterSpacing: -0.5, color: '#fff' }}>
+            Сессия не найдена
+          </div>
+          <div style={{ marginTop: 8, fontSize: 13, color: 'var(--tx-60)', lineHeight: 1.6,
+            maxWidth: 260, margin: '8px auto 0' }}>
+            Нет активной сессии с этой фразой.<br/>Можно создать новую и поделиться ссылкой.
+          </div>
+        </div>
+
+        {/* Phrase hint */}
+        <div style={{
+          padding: '8px 16px', borderRadius: 12,
+          background: 'rgba(255,255,255,0.04)', border: '0.5px solid rgba(255,255,255,0.08)',
+          fontFamily: 'var(--ff-mono)', fontSize: 11, color: 'var(--tx-60)',
+          maxWidth: '100%', wordBreak: 'break-all', textAlign: 'center',
+        }}>
+          {finalHash.slice(0, 8)}…{finalHash.slice(-8)}
+        </div>
+
+        <GlassButton primary palette={palette}
+          icon={<Icon.Plus size={16} color={p.text} />}
+          onClick={() => onCreateInstead && onCreateInstead(value)}>
+          Создать с этой фразой
+        </GlassButton>
+
+        <button onClick={onBack} style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          fontSize: 12, color: 'var(--tx-60)', fontFamily: 'inherit', padding: '8px 16px',
+        }}>← Изменить фразу</button>
+      </div>
+    </div>
+  );
+
+  // ── exists ──
+  const now = Date.now();
+  const ttlLeft   = Math.max(0, (peek.expiresAt || 0) - now);
+  const ageSince  = peek.createdAt ? now - peek.createdAt : 0;
+  const lowTime   = ttlLeft < 3_600_000;
+  const full      = peek.claimed >= peek.groupMax;
+  const freeSlots = peek.groupMax - peek.claimed;
+
+  return (
+    <div className="no-scrollbar" style={{ height: '100%', display: 'flex', flexDirection: 'column',
+      padding: '24px 18px', overflowY: 'auto' }}>
+      <Header />
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 20,
+        animation: 'welcome-rise 0.4s ease both' }}>
+
+        {/* Status header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
+            background: full ? 'rgba(255,100,100,0.12)' : 'rgba(80,180,140,0.14)',
+            border: `0.5px solid ${full ? 'rgba(255,120,120,0.3)' : 'rgba(123,224,177,0.3)'}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Icon.Check size={17} color={full ? '#ff9a9a' : '#7be0b1'} />
+          </div>
+          <div>
+            <div style={{ fontSize: 17, fontWeight: 600, color: '#fff', letterSpacing: -0.3 }}>
+              Сессия найдена
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--tx-60)', marginTop: 2 }}>
+              {peek.paired
+                ? 'все участники вошли'
+                : full
+                  ? 'все слоты заняты'
+                  : 'ждёт участников'}
+            </div>
+          </div>
+        </div>
+
+        {/* Info card */}
+        <Glass radius={18} padding="0">
+          {[
+            {
+              label: 'участников',
+              value: (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 5 }}>
+                    {Array.from({ length: peek.groupMax }).map((_, i) => {
+                      const claimed = i < peek.claimed;
+                      const online  = i < peek.online;
+                      return (
+                        <div key={i} style={{
+                          width: 10, height: 10, borderRadius: '50%',
+                          background: online
+                            ? p.a
+                            : claimed ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.10)',
+                          boxShadow: online ? `0 0 7px ${p.a}` : 'none',
+                        }} />
+                      );
+                    })}
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#fff' }}>
+                    {peek.claimed} / {peek.groupMax}
+                  </span>
+                </div>
+              ),
+            },
+            {
+              label: 'онлайн сейчас',
+              value: (
+                <span style={{ fontSize: 12, fontWeight: 600,
+                  color: peek.online > 0 ? '#3dff9a' : 'var(--tx-60)' }}>
+                  {peek.online > 0 ? `${peek.online} из ${peek.groupMax}` : 'никого'}
+                </span>
+              ),
+            },
+            !full && {
+              label: 'свободно мест',
+              value: (
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#fff' }}>
+                  {freeSlots}
+                </span>
+              ),
+            },
+            ageSince > 0 && {
+              label: 'создана',
+              value: (
+                <span style={{ fontSize: 12, color: 'var(--tx-80)' }}>
+                  {fmtAgo(ageSince)}
+                </span>
+              ),
+            },
+            {
+              label: 'истекает через',
+              value: (
+                <span style={{ fontSize: 12, fontWeight: lowTime ? 600 : 400,
+                  color: lowTime ? '#ff8a8a' : 'var(--tx-80)' }}>
+                  {fmtLeft(ttlLeft)}{lowTime ? ' ⚠' : ''}
+                </span>
+              ),
+            },
+          ].filter(Boolean).map((row, idx, arr) => (
+            <div key={idx} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '11px 16px',
+              borderBottom: idx < arr.length - 1 ? '0.5px solid rgba(255,255,255,0.06)' : 'none',
+            }}>
+              <span style={{ fontSize: 12, color: 'var(--tx-60)' }}>{row.label}</span>
+              {row.value}
+            </div>
+          ))}
+        </Glass>
+
+        {/* Full warning */}
+        {full && (
+          <div style={{
+            padding: '10px 14px', borderRadius: 12,
+            background: 'rgba(255,90,90,0.07)', border: '0.5px solid rgba(255,100,100,0.18)',
+            fontSize: 12, color: '#ff9a9a', textAlign: 'center', lineHeight: 1.55,
+          }}>
+            Все слоты заняты — войти не получится.<br/>
+            <span style={{ opacity: 0.7 }}>Попробуйте другую фразу или создайте новую сессию.</span>
+          </div>
+        )}
+
+        {/* Password — only when there's room */}
+        {!full && (
           <Glass radius={18} padding="12px 14px" strong>
             <div style={{ fontSize: 10, color: 'var(--tx-40)', letterSpacing: 1.4,
-              textTransform: 'uppercase', marginBottom: 6, fontFamily: "'Geist Mono', monospace" }}>
+              textTransform: 'uppercase', marginBottom: 6, fontFamily: 'var(--ff-mono)' }}>
               твой пароль · мин 4 символа
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -962,73 +1130,82 @@ function JoinScreen({ palette, value, setValue, password, setPassword,
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && valid && onContinue()}
-                placeholder="твой / новый, если ты первый"
+                placeholder="твой секрет"
                 enterKeyHint="go"
                 autoComplete="current-password"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
+                autoCapitalize="none" autoCorrect="off" spellCheck={false}
                 style={{
                   flex: 1, background: 'transparent', border: 'none', outline: 'none',
                   color: '#fff', fontSize: 18, fontWeight: 600,
-                  fontFamily: showPwd ? 'Geist Mono, ui-monospace, monospace' : 'inherit',
-                  letterSpacing: showPwd ? 0.5 : 4,
-                  padding: '4px 0',
+                  fontFamily: showPwd ? 'var(--ff-mono)' : 'inherit',
+                  letterSpacing: showPwd ? 0.5 : 4, padding: '4px 0',
                 }}
               />
-              <button onClick={() => setShowPwd(!showPwd)} style={{
-                background: 'none', border: 'none', cursor: 'pointer', padding: 4,
+              <button onClick={() => setShowPwd(v => !v)} style={{
+                background: 'none', border: 'none', cursor: 'pointer', padding: 8, flexShrink: 0,
               }}>
                 <Icon.Eye closed={!showPwd} size={16} color="rgba(255,255,255,0.7)" />
               </button>
             </div>
           </Glass>
-        </div>
-      )}
+        )}
 
-      {!isMissing && (
-        <RememberMeToggle palette={palette}
-          checked={!!rememberMe}
-          onChange={(v) => setRememberMe && setRememberMe(v)} />
-      )}
+        {!full && (
+          <RememberMeToggle palette={palette}
+            checked={!!rememberMe}
+            onChange={(v) => setRememberMe && setRememberMe(v)} />
+        )}
 
-      {error && (
-        <div style={{ marginTop: 12 }}>
+        {error && (
           <Glass radius={14} padding="10px 14px">
-            <div style={{ fontSize: 12, color: '#ff8a8a', textAlign: 'center', letterSpacing: -0.05 }}>
-              {error}
-            </div>
+            <div style={{ fontSize: 12, color: '#ff8a8a', textAlign: 'center' }}>{error}</div>
           </Glass>
-        </div>
-      )}
+        )}
 
-      <div style={{ flex: 1, minHeight: 12 }} />
-
-      {isMissing ? (
-        <>
-          <div style={{
-            marginBottom: 12, padding: '10px 14px', borderRadius: 14,
-            background: 'rgba(255,255,255,0.04)',
-            boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.08)',
-            fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5, textAlign: 'center',
-          }}>
-            Сессии с такой фразой не существует.<br/>
-            <span style={{ color: 'rgba(255,255,255,0.75)', fontWeight: 500 }}>Проверьте фразу или создайте новую.</span>
-          </div>
-          <GlassButton primary palette={palette}
-            icon={<Icon.Plus size={16} color={p.text} />}
-            onClick={() => onCreateInstead(value)}>
-            Создать сессию с этой фразой
+        {full ? (
+          <GlassButton palette={palette} onClick={onBack}>← Изменить фразу</GlassButton>
+        ) : (
+          <GlassButton primary={valid} palette={palette} disabled={!valid}
+            icon={valid
+              ? <Icon.Arrow size={16} color={p.text} />
+              : <Icon.Lock size={14} color="var(--tx-40)" />}
+            onClick={onContinue}>
+            {busy ? 'подключение…' : valid ? 'Подключиться' : 'нужен пароль'}
           </GlassButton>
-        </>
-      ) : (
-        <GlassButton primary={valid} palette={palette} disabled={!valid}
-          icon={valid ? <Icon.Arrow size={16} color={p.text} /> : <Icon.Lock size={14} color="var(--tx-40)" />}
-          onClick={onContinue}>
-          {busy ? 'подключение…' : (valid ? 'Подключиться' : 'фраза и пароль нужны оба')}
-        </GlassButton>
-      )}
+        )}
+      </div>
     </div>
+  );
+}
+
+// JoinScreen — orchestrates step1 / step2
+function JoinScreen({ palette, value, setValue, password, setPassword,
+                      rememberMe, setRememberMe,
+                      onBack, onContinue, onCreateInstead, busy, error }) {
+  const [step, setStep] = React.useState(value ? 2 : 1);
+  // If a deep-link pre-filled value, start on step 2
+  React.useEffect(() => {
+    if (value && step === 1) setStep(2);
+  }, []);
+
+  if (step === 1) return (
+    <JoinStep1
+      palette={palette}
+      value={value} setValue={(v) => { setValue(v); }}
+      onBack={onBack}
+      onNext={() => setStep(2)}
+    />
+  );
+  return (
+    <JoinStep2
+      palette={palette}
+      value={value} password={password} setPassword={setPassword}
+      rememberMe={rememberMe} setRememberMe={setRememberMe}
+      busy={busy} error={error}
+      onBack={() => setStep(1)}
+      onContinue={onContinue}
+      onCreateInstead={onCreateInstead}
+    />
   );
 }
 
