@@ -396,9 +396,12 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
   // Back: step 1 exits, steps 2-3 go to previous step
   const handleBack = () => step === 1 ? onCancel() : setStep(s => s - 1);
 
-  // Step 1 → 2: auto-generate phrase if empty, then advance
+  // Step 1 → 2: if phrase is empty, generate and STAY so user reads it; advance on second tap
   const handleNext1 = () => {
-    if (!(phrase || '').trim()) onGenerateSeed && onGenerateSeed();
+    if (!(phrase || '').trim()) {
+      onGenerateSeed && onGenerateSeed();
+      return; // stay on step 1 — user sees the generated phrase before continuing
+    }
     setStep(2);
   };
 
@@ -408,7 +411,7 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
   const NavRow = () => (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
       <div onClick={handleBack} style={{
-        width: 38, height: 38, borderRadius: 12,
+        width: 44, height: 44, borderRadius: 14,
         background: 'rgba(255,255,255,0.06)',
         backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
         border: '0.5px solid rgba(255,255,255,0.12)',
@@ -417,7 +420,7 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
         <Icon.Arrow size={16} color="#fff" dir="left" />
       </div>
       <Logo size={9} palette={palette} />
-      <div style={{ width: 38 }} />
+      <div style={{ width: 44 }} />
     </div>
   );
 
@@ -858,7 +861,7 @@ function JoinScreen({ palette, value, setValue, password, setPassword,
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div onClick={onBack} style={{
-          width: 38, height: 38, borderRadius: 12,
+          width: 44, height: 44, borderRadius: 14,
           background: 'rgba(255,255,255,0.06)',
           backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
           border: '0.5px solid rgba(255,255,255,0.12)',
@@ -867,7 +870,7 @@ function JoinScreen({ palette, value, setValue, password, setPassword,
           <Icon.Arrow size={16} color="#fff" dir="left" />
         </div>
         <Logo size={9} palette={palette} />
-        <div style={{ width: 38 }} />
+        <div style={{ width: 44 }} />
       </div>
 
       <div style={{ textAlign: 'center', marginTop: 26 }}>
@@ -1002,11 +1005,22 @@ function JoinScreen({ palette, value, setValue, password, setPassword,
       <div style={{ flex: 1, minHeight: 12 }} />
 
       {isMissing ? (
-        <GlassButton primary palette={palette}
-          icon={<Icon.Plus size={16} color={p.text} />}
-          onClick={() => onCreateInstead(value)}>
-          Создать сессию с этой фразой
-        </GlassButton>
+        <>
+          <div style={{
+            marginBottom: 12, padding: '10px 14px', borderRadius: 14,
+            background: 'rgba(255,255,255,0.04)',
+            boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.08)',
+            fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5, textAlign: 'center',
+          }}>
+            Сессии с такой фразой не существует.<br/>
+            <span style={{ color: 'rgba(255,255,255,0.75)', fontWeight: 500 }}>Проверьте фразу или создайте новую.</span>
+          </div>
+          <GlassButton primary palette={palette}
+            icon={<Icon.Plus size={16} color={p.text} />}
+            onClick={() => onCreateInstead(value)}>
+            Создать сессию с этой фразой
+          </GlassButton>
+        </>
       ) : (
         <GlassButton primary={valid} palette={palette} disabled={!valid}
           icon={valid ? <Icon.Arrow size={16} color={p.text} /> : <Icon.Lock size={14} color="var(--tx-40)" />}
@@ -1023,7 +1037,7 @@ function PasswordScreen({ palette, perspective, password, setPassword, onBack, o
   const p = usePalette(palette);
   const [show, setShow] = React.useState(false);
   const strength = Math.min(4, Math.floor(password.length / 3));
-  const strengthLabel = ['too short', 'weak', 'okay', 'good', 'strong'][strength];
+  const strengthLabel = ['слишком короткий', 'слабый', 'нормально', 'хорошо', 'надёжный'][strength];
   const valid = password.length >= 4;
 
   return (
@@ -1032,7 +1046,7 @@ function PasswordScreen({ palette, perspective, password, setPassword, onBack, o
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div onClick={onBack} style={{
-          width: 38, height: 38, borderRadius: 12,
+          width: 44, height: 44, borderRadius: 14,
           background: 'rgba(255,255,255,0.06)',
           backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
           border: '0.5px solid rgba(255,255,255,0.12)',
@@ -1041,14 +1055,14 @@ function PasswordScreen({ palette, perspective, password, setPassword, onBack, o
           <Icon.Arrow size={16} color="#fff" dir="left" />
         </div>
         <Logo size={9} palette={palette} />
-        <div style={{ width: 38 }} />
+        <div style={{ width: 44 }} />
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'center', marginTop: 22 }}>
         <Glass radius={9999} padding="6px 12px">
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', letterSpacing: 0.6,
             textTransform: 'uppercase' }}>
-            step 2 of 2 · your secret
+            шаг 2 из 2 · ваш секрет
           </span>
         </Glass>
       </div>
@@ -1056,15 +1070,15 @@ function PasswordScreen({ palette, perspective, password, setPassword, onBack, o
       <div style={{ textAlign: 'center', marginTop: 18 }}>
         <div style={{ fontFamily: "'Instrument Serif', serif", fontStyle: 'italic',
           fontSize: 36, lineHeight: 1.05, fontWeight: 400, letterSpacing: -0.6 }}>
-          Choose your<br/>
+          Придумайте<br/>
           <span style={{ background: p.accent, WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-            secret word
+            секретный ключ
           </span>
         </div>
         <div style={{ marginTop: 10, fontSize: 13, color: 'rgba(255,255,255,0.55)',
           maxWidth: 260, margin: '10px auto 0', lineHeight: 1.45 }}>
-          Only you will ever know this.<br/>If you forget it, the session is gone.
+          Только вы это знаете.<br/>Если забудете — сессия исчезнет.
         </div>
       </div>
 
@@ -1072,7 +1086,7 @@ function PasswordScreen({ palette, perspective, password, setPassword, onBack, o
         <Glass radius={22} padding="16px 18px" strong>
           <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', letterSpacing: 0.6,
             textTransform: 'uppercase', marginBottom: 6 }}>
-            you are {perspective === 'A' ? '⬤ side A' : '○ side B'}
+            вы — {perspective === 'A' ? '⬤ сторона A' : '○ сторона B'}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Icon.Lock size={18} color="rgba(255,255,255,0.7)" />
@@ -1081,7 +1095,7 @@ function PasswordScreen({ palette, perspective, password, setPassword, onBack, o
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && valid && onContinue()}
-              placeholder="type your secret"
+              placeholder="ваш секрет"
               autoFocus
               style={{
                 flex: 1, background: 'transparent', border: 'none', outline: 'none',
@@ -1128,7 +1142,7 @@ function PasswordScreen({ palette, perspective, password, setPassword, onBack, o
               <Icon.Flame size={14} color="#ff9a4d" />
             </div>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', lineHeight: 1.5 }}>
-              <b style={{ color: '#fff', fontWeight: 600 }}>Nothing is stored.</b> Both secrets unlock the session. If either is lost, the conversation is gone forever.
+              <b style={{ color: '#fff', fontWeight: 600 }}>Ничего не хранится.</b> Оба секрета открывают сессию. Потеряете любой — переписка исчезнет навсегда.
             </div>
           </div>
         </Glass>
@@ -1138,7 +1152,7 @@ function PasswordScreen({ palette, perspective, password, setPassword, onBack, o
 
       <GlassButton primary={valid} palette={palette} disabled={!valid} onClick={onContinue}
         icon={valid ? <Icon.Arrow size={16} color={p.text} /> : <Icon.Lock size={16} color="rgba(255,255,255,0.5)" />}>
-        {valid ? 'Seal & continue' : 'min 4 characters'}
+        {valid ? 'Запечатать и продолжить' : 'мин. 4 символа'}
       </GlassButton>
     </div>
   );
@@ -1233,15 +1247,15 @@ function WaitingScreen({ palette, perspective, peerSealed }) {
         <div style={{ fontFamily: "'Instrument Serif', serif", fontStyle: 'italic',
           fontSize: 28, lineHeight: 1.1, fontWeight: 400, letterSpacing: -0.4,
           textAlign: 'center' }}>
-          Your secret is sealed.<br/>
+          Ваш секрет запечатан.<br/>
           <span style={{ color: 'rgba(255,255,255,0.55)' }}>
-            {peerSealed ? 'Opening the session…' : 'Waiting on the other side…'}
+            {peerSealed ? 'Открываем сессию…' : 'Ждём собеседника…'}
           </span>
         </div>
 
         <div style={{ marginTop: 16, fontSize: 13, color: 'rgba(255,255,255,0.5)',
           textAlign: 'center', maxWidth: 280, lineHeight: 1.5 }}>
-          The session opens only when both passwords are set. We can't unlock it. They can't lose it.
+          Сессия откроется, когда оба введут пароль. Мы не можем её открыть — только вы.
         </div>
       </div>
 
@@ -1555,6 +1569,17 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
   const [menuMsg, setMenuMsg] = React.useState(null);
   // safety-numbers modal
   const [safetyOpen, setSafetyOpen] = React.useState(false);
+  // one-time fingerprint nudge — shown once per session when keys are ready
+  const [fpNudge, setFpNudge] = React.useState(false);
+  const fpNudgeShownKey = `nee2p.fp.nudge.${sessionHash || 'x'}`;
+  React.useEffect(() => {
+    if (!safetyFingerprint) return;
+    if (sessionStorage.getItem(fpNudgeShownKey)) return;
+    sessionStorage.setItem(fpNudgeShownKey, '1');
+    setFpNudge(true);
+    const t = setTimeout(() => setFpNudge(false), 8000);
+    return () => clearTimeout(t);
+  }, [safetyFingerprint]);
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [searchQ, setSearchQ] = React.useState('');
   const searchInputRef = React.useRef(null);
@@ -1568,6 +1593,9 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
   const [replyingTo, setReplyingTo] = React.useState(null);  // msg or null
   // burn-after-read TTL (per-msg). null = no auto-burn. One of 10|60|3600.
   const [burnTtl, setBurnTtl] = React.useState(null);
+  const [burnPanelOpen, setBurnPanelOpen] = React.useState(false);
+  // invite modal — shows ShareCodeCard as overlay (accessible any time, not just before pairing)
+  const [inviteOpen, setInviteOpen] = React.useState(false);
   // virtualization: render only the last N messages. At 1000+ msgs a typing
   // indicator state change would re-render every bubble; this caps the cost.
   // User can expand via the "Загрузить ещё" button at the top.
@@ -1916,9 +1944,9 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
           <div style={{ position: 'relative', padding: '12px 14px', display: 'flex',
             alignItems: 'center', gap: 12 }}>
 
-            <div onClick={onBack} style={{ width: 32, height: 32, borderRadius: 10,
+            <div onClick={onBack} style={{ width: 40, height: 40, borderRadius: 12,
               background: 'rgba(255,255,255,0.06)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
               <Icon.Arrow size={14} color="#fff" dir="left" />
             </div>
 
@@ -2011,6 +2039,21 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
             )}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {/* Invite button — always visible, opens ShareCodeCard as overlay */}
+              <button onClick={() => setInviteOpen(true)}
+                title="Пригласить участника"
+                aria-label="Пригласить"
+                style={{
+                  width: 40, height: 40, borderRadius: 12, padding: 0, border: 'none',
+                  background: 'rgba(255,255,255,0.06)',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <circle cx="9" cy="7" r="4" stroke="rgba(255,255,255,0.8)" strokeWidth="1.8"/>
+                  <path d="M2 21c0-4 3-6 7-6" stroke="rgba(255,255,255,0.8)" strokeWidth="1.8" strokeLinecap="round"/>
+                  <path d="M19 13v6M16 16h6" stroke="rgba(255,255,255,0.8)" strokeWidth="1.8" strokeLinecap="round"/>
+                </svg>
+              </button>
               {/*
                 Safety-numbers button. Opens a modal with the 12-word
                 fingerprint computed in app.jsx from both sides' ECDH + KEM
@@ -2018,12 +2061,27 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                 fingerprint isn't ready yet so the user can see we're
                 computing.
               */}
+              {/* Safety fingerprint nudge — shown once when keys are ready */}
+              {fpNudge && (
+                <button onClick={() => { setSafetyOpen(true); setFpNudge(false); }} style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '6px 10px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                  background: 'rgba(80,180,140,0.18)',
+                  boxShadow: 'inset 0 0 0 0.5px rgba(123,224,177,0.35), 0 0 12px rgba(123,224,177,0.15)',
+                  animation: 'welcome-rise 0.4s ease both',
+                }}>
+                  <Icon.Shield size={13} color="#7be0b1" />
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#7be0b1', letterSpacing: 0.2, whiteSpace: 'nowrap' }}>
+                    Проверьте ключи
+                  </span>
+                </button>
+              )}
               <button
                 onClick={() => setSafetyOpen(true)}
                 title="Безопасность сессии"
                 aria-label="Безопасность сессии"
                 style={{
-                  width: 32, height: 32, borderRadius: 10, padding: 0,
+                  width: 40, height: 40, borderRadius: 12, padding: 0,
                   border: '0.5px solid rgba(255,255,255,0.12)',
                   background: safetyFingerprint
                     ? 'rgba(80,180,140,0.18)'
@@ -2043,7 +2101,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                 title="Поиск по сообщениям"
                 aria-label="Поиск"
                 style={{
-                  width: 32, height: 32, borderRadius: 10, padding: 0,
+                  width: 40, height: 40, borderRadius: 12, padding: 0,
                   border: '0.5px solid rgba(255,255,255,0.12)',
                   background: searchOpen ? 'rgba(122,154,223,0.22)' : 'rgba(255,255,255,0.06)',
                   cursor: 'pointer',
@@ -2102,17 +2160,23 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
           <div style={{ padding: '4px 16px 0' }}>
             <div style={{
               borderRadius: 12,
-              padding: '6px 12px',
-              textAlign: 'center',
-              fontSize: 11,
-              letterSpacing: 0.2,
-              color: '#fff',
+              padding: '7px 12px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              fontSize: 11, letterSpacing: 0.2, color: '#fff',
               background: connStatus === 'lost' ? 'rgba(210, 70, 70, 0.65)' : 'rgba(210, 140, 60, 0.55)',
               boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.18)',
             }}>
-              {connStatus === 'lost'
-                ? 'соединение потеряно — пробуем переподключиться…'
+              <span>{connStatus === 'lost'
+                ? 'соединение потеряно — переподключаемся…'
                 : 'соединение нестабильно — переподключаемся…'}
+              </span>
+              {connStatus === 'lost' && (
+                <button onClick={() => window.location.reload()} style={{
+                  flexShrink: 0, padding: '3px 10px', border: 'none', cursor: 'pointer',
+                  borderRadius: 8, background: 'rgba(255,255,255,0.2)',
+                  color: '#fff', fontSize: 11, fontWeight: 600, fontFamily: 'inherit',
+                }}>Перезагрузить</button>
+              )}
             </div>
           </div>
         )}
@@ -2512,45 +2576,44 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
       </div>
 
       <div style={{ padding: '8px 12px 30px', position: 'relative', zIndex: 5 }}>
-        {/* Burn-after-read chip row — sticky selector. Tap an option to arm
-            burnTtl for subsequent sends; "выкл" disables. The send button
-            shows a flame overlay when armed. */}
-        <div style={{
-          margin: '0 4px 6px',
-          display: 'flex', alignItems: 'center', gap: 6,
-          fontSize: 11, fontFamily: "'Geist Mono', monospace",
-          color: 'var(--tx-60)', letterSpacing: 0.3,
-          flexWrap: 'wrap',
-        }}>
-          <span style={{ opacity: 0.8 }}>{burnTtl ? '🔥 после прочтения:' : '🔥 авто-удаление:'}</span>
-          {[
-            { id: null,  label: 'выкл' },
-            { id: 10,    label: '10с' },
-            { id: 60,    label: '1м' },
-            { id: 3600,  label: '1ч' },
-          ].map(opt => {
-            const active = burnTtl === opt.id;
-            return (
-              <button key={String(opt.id)}
-                onClick={() => setBurnTtl(opt.id)}
-                style={{
-                  padding: '3px 9px', border: 'none', cursor: 'pointer',
-                  borderRadius: 999,
-                  background: active
-                    ? 'rgba(255,140,80,0.20)'
-                    : 'rgba(255,255,255,0.05)',
-                  boxShadow: active
-                    ? 'inset 0 0 0 0.5px rgba(255,170,110,0.55), 0 0 8px rgba(255,140,80,0.18)'
-                    : 'inset 0 0 0 0.5px rgba(255,255,255,0.08)',
-                  color: active ? '#ffb178' : 'var(--tx-80)',
-                  fontFamily: 'inherit', fontSize: 11, letterSpacing: 0.3,
-                  transition: 'all 0.15s ease',
-                }}>
-                {opt.label}
-              </button>
-            );
-          })}
-        </div>
+        {/* Burn-after-read — icon toggle; panel expands on tap or when armed */}
+        {(burnPanelOpen || burnTtl) && (
+          <div style={{
+            margin: '0 4px 6px',
+            display: 'flex', alignItems: 'center', gap: 6,
+            fontSize: 11, fontFamily: "'Geist Mono', monospace",
+            color: 'var(--tx-60)', letterSpacing: 0.3,
+            flexWrap: 'wrap',
+            animation: 'fade-up 0.15s ease',
+          }}>
+            <span style={{ opacity: 0.8 }}>{burnTtl ? '🔥 после прочтения:' : '🔥 авто-удаление:'}</span>
+            {[
+              { id: null,  label: 'выкл' },
+              { id: 10,    label: '10с' },
+              { id: 60,    label: '1м' },
+              { id: 3600,  label: '1ч' },
+            ].map(opt => {
+              const active = burnTtl === opt.id;
+              return (
+                <button key={String(opt.id)}
+                  onClick={() => { setBurnTtl(opt.id); if (!opt.id) setBurnPanelOpen(false); }}
+                  style={{
+                    padding: '3px 9px', border: 'none', cursor: 'pointer',
+                    borderRadius: 999,
+                    background: active ? 'rgba(255,140,80,0.20)' : 'rgba(255,255,255,0.05)',
+                    boxShadow: active
+                      ? 'inset 0 0 0 0.5px rgba(255,170,110,0.55), 0 0 8px rgba(255,140,80,0.18)'
+                      : 'inset 0 0 0 0.5px rgba(255,255,255,0.08)',
+                    color: active ? '#ffb178' : 'var(--tx-80)',
+                    fontFamily: 'inherit', fontSize: 11, letterSpacing: 0.3,
+                    transition: 'all 0.15s ease',
+                  }}>
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
         {replyingTo && (
           <div style={{
             margin: '0 4px 6px', padding: '8px 12px',
@@ -2616,6 +2679,25 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
               }}>
               <PaperclipIcon size={18} color="#fff" />
+            </button>
+
+            {/* Burn-after-read toggle button */}
+            <button
+              type="button"
+              onClick={() => setBurnPanelOpen(v => !v)}
+              aria-label="Авто-удаление"
+              title="Авто-удаление после прочтения"
+              style={{
+                width: 40, height: 40, borderRadius: 14, border: 'none', cursor: 'pointer',
+                background: burnTtl ? 'rgba(255,140,80,0.18)' : 'rgba(255,255,255,0.06)',
+                boxShadow: burnTtl
+                  ? 'inset 0 0 0 0.5px rgba(255,170,110,0.4)'
+                  : 'inset 0 1px 0 rgba(255,255,255,0.12)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                fontSize: 17, lineHeight: 1,
+                transition: 'background 0.2s',
+              }}>
+              🔥
             </button>
 
             {/* When recording, the text input is replaced by a recording HUD */}
@@ -2792,6 +2874,37 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
           fingerprint={safetyFingerprint}
           onClose={() => setSafetyOpen(false)}
         />
+      )}
+
+      {/* Invite overlay — accessible at any time from header */}
+      {inviteOpen && (
+        <div onClick={() => setInviteOpen(false)} style={{
+          position: 'fixed', inset: 0, zIndex: 200,
+          background: 'rgba(0,0,0,0.55)',
+          backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          padding: '0 12px 28px',
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            width: '100%', maxWidth: 420,
+            background: '#0f0f15',
+            boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.1), 0 32px 80px rgba(0,0,0,0.7)',
+            borderRadius: 24, padding: '8px 0 4px', overflowY: 'auto', maxHeight: '80vh',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '8px 16px 4px' }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>
+                Пригласить в сессию
+              </span>
+              <button onClick={() => setInviteOpen(false)} style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'rgba(255,255,255,0.3)', fontSize: 18, padding: '2px 6px',
+              }}>✕</button>
+            </div>
+            <ShareCodeCard palette={palette} hash={sessionHash} phrase={sharePhrase}
+              partnerClaimed={partnerClaimed} />
+          </div>
+        </div>
       )}
 
       {fullscreenUrl && (
