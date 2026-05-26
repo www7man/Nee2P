@@ -84,6 +84,7 @@
     width: 100%;
     height: 100vh;        /* legacy fallback for iOS Safari <15.4 */
     height: 100dvh;       /* dynamic viewport height where supported */
+    height: var(--vvh, 100dvh); /* JS-updated: shrinks when soft keyboard appears */
     overflow: hidden;
     background: var(--bg-deep);
   }
@@ -203,6 +204,26 @@
 </div>
 
 <noscript><div style="padding:24px;color:#fff;font-family:sans-serif">JavaScript нужен для работы.</div></noscript>
+
+<script>
+// --vvh (visual viewport height): keeps .app-frame height in sync with the
+// soft keyboard. When the keyboard slides up, visualViewport.height shrinks —
+// we write that value into --vvh so child screens with height:100% follow.
+// Falls back to window.innerHeight when visualViewport isn't available.
+(function () {
+  function updateVvh() {
+    var h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    document.documentElement.style.setProperty('--vvh', h + 'px');
+  }
+  updateVvh();
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', updateVvh);
+    window.visualViewport.addEventListener('scroll', updateVvh);
+  } else {
+    window.addEventListener('resize', updateVvh);
+  }
+})();
+</script>
 
 <script>
 // Screen-privacy: toggle body.is-blurred whenever the tab loses focus
