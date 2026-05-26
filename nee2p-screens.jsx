@@ -2873,6 +2873,11 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
           palette={palette}
           fingerprint={safetyFingerprint}
           onClose={() => setSafetyOpen(false)}
+          expiresAt={expiresAt}
+          totalSeconds={totalSeconds}
+          sessionHash={sessionHash}
+          groupMax={groupMax}
+          participants={participants}
         />
       )}
 
@@ -3362,12 +3367,12 @@ function QuoteIcon({ size = 16, color = '#fff' }) {
 // Also surfaces the actual library posture for this session — KDF that fired
 // for phrase derivation, X25519 source, and whether ML-KEM-768 is available —
 // so the user can spot when something fell back to a weaker fallback.
-function SafetyNumbersModal({ palette, fingerprint, onClose }) {
+function SafetyNumbersModal({ palette, fingerprint, onClose,
+                               expiresAt, totalSeconds, sessionHash, groupMax, participants }) {
   const p = usePalette(palette);
-  // The fingerprint prop is either:
-  //   • Array<{slot, label, words, hex, hasKem}>  — group (>=2 peers)
-  //   • {words, hex, hasKem}                       — legacy 2-party shape
-  //   • null                                       — handshake pending
+  const now = useNow(true);
+
+  // fingerprint is Array<{slot,label,friendly,words,hex,hasKem}> | legacy obj | null
   const list = Array.isArray(fingerprint)
     ? fingerprint
     : (fingerprint ? [fingerprint] : []);
@@ -3375,177 +3380,302 @@ function SafetyNumbersModal({ palette, fingerprint, onClose }) {
   const active = list[Math.min(activeIdx, list.length - 1)] || null;
   const words = active && Array.isArray(active.words) ? active.words : null;
 
-  // Read the actual library posture from window.Nee2PCrypto (set lazily by
-  // crypto.js as deriveKey / generateEphemeralKeypair / generateKemKeypair
-  // fire). Wrapped in safe accessors so the modal still renders if crypto.js
-  // hasn't run yet (e.g. in a smoke test).
+  // copy-to-clipboard helper with transient label
+  const [copiedKey, setCopiedKey] = React.useState(null);
+  const copyText = (key, text) => {
+    navigator.clipboard.writeText(text).catch(() => {});
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(k => k === key ? null : k), 1800);
+  };
+
+  // Crypto library posture (lazily stamped by crypto.js)
   const HC = (typeof window !== 'undefined' && window.Nee2PCrypto) || {};
-  const kdfMode = HC.kdfMode || null;            // 'argon2id' | 'pbkdf2' | null
-  const x25519Source = HC.x25519Source || null;  // 'subtle' | 'noble' | 'stablelib' | 'unavailable' | null
-  const kemAvailable = HC.kemAvailable;          // true | false | null
-  const kdfLabel = kdfMode === 'argon2id'
-    ? 'Argon2id ✓'
-    : kdfMode === 'pbkdf2'
-      ? 'PBKDF2 (fallback)'
-      : '…';
-  const kdfBad = kdfMode === 'pbkdf2';
-  const x25519Label = x25519Source === 'subtle'
-    ? 'WebCrypto ✓'
-    : x25519Source === 'noble'
-      ? 'vendor noble (fallback)'
-      : x25519Source === 'stablelib'
-        ? 'stablelib (fallback)'
-        : x25519Source === 'unavailable'
-          ? 'недоступно'
-          : '…';
-  const x25519Bad = x25519Source && x25519Source !== 'subtle';
-  const kemLabel = kemAvailable === true
-    ? 'vendor ✓'
-    : kemAvailable === false
-      ? 'недоступно (только pre-quantum)'
-      : '…';
-  const kemBad = kemAvailable === false;
+  const kdfMode      = HC.kdfMode      || null;
+  const x25519Source = HC.x25519Source || null;
+  const kemAvailable = HC.kemAvailable;
+
+  const kdfBad     = kdfMode === 'pbkdf2';
+  const x25519Bad  = x25519Source && x25519Source !== 'subtle';
+  const kemBad     = kemAvailable === false;
+
+  const kdfLabel = kdfMode === 'argon2id' ? 'Argon2id ✓'
+    : kdfMode === 'pbkdf2' ? 'PBKDF2 (запасной)' : '…';
+  const x25519Label = x25519Source === 'subtle' ? 'WebCrypto ✓'
+    : x25519Source === 'noble' ? 'noble (запасной)'
+    : x25519Source === 'stablelib' ? 'stablelib (запасной)'
+    : x25519Source === 'unavailable' ? 'недоступно' : '…';
+  const kemLabel = kemAvailable === true ? 'доступен ✓'
+    : kemAvailable === false ? 'недоступен (только pre-quantum)' : '…';
+
+  // Session expiry
+  const expirySeconds = expiresAt ? Math.max(0, Math.floor((expiresAt - now) / 1000)) : 0;
+  const fmtExpiry = (() => {
+    if (!expiresAt) return '—';
+    const h = Math.floor(expirySeconds / 3600);
+    const m = Math.floor((expirySeconds % 3600) / 60);
+    if (h > 0) return `${h} ч ${m} мин`;
+    if (m > 0) return `${m} мин`;
+    return `${expirySeconds} с`;
+  })();
+
+  // Participant count
+  const ppl = Array.isArray(participants) ? participants : [];
+  const onlineCount = ppl.filter(x => x.online).length || (groupMax === 2 ? 1 : 0);
+  const participantStr = groupMax ? `${onlineCount} из ${groupMax}` : '—';
+
+  // Section label style
+  const sectionLabel = {
+    fontSize: 9.5, fontWeight: 600, letterSpacing: 1.6, textTransform: 'uppercase',
+    color: 'rgba(255,255,255,0.28)', fontFamily: 'var(--ff-mono)', marginBottom: 8,
+  };
+  const divider = { height: 0.5, background: 'rgba(255,255,255,0.07)', margin: '14px 0' };
+
   return (
     <div onPointerDown={onClose} style={{
-      position: 'absolute', inset: 0, zIndex: 60,
-      background: 'rgba(6,6,10,0.62)', backdropFilter: 'blur(8px)',
+      position: 'fixed', inset: 0, zIndex: 200,
+      background: 'rgba(6,6,10,0.65)', backdropFilter: 'blur(8px)',
       WebkitBackdropFilter: 'blur(8px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+      padding: '0 10px 20px',
       animation: 'fade-up 0.16s ease',
     }}>
       <div onPointerDown={(e) => e.stopPropagation()} style={{
-        width: 'calc(100% - 24px)', maxWidth: 380,
-        borderRadius: 22, overflow: 'hidden',
-        background: 'rgba(20,20,28,0.94)',
+        width: '100%', maxWidth: 420,
+        borderRadius: 22,
+        background: 'rgba(14,14,20,0.97)',
         backdropFilter: 'blur(40px) saturate(180%)',
         WebkitBackdropFilter: 'blur(40px) saturate(180%)',
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14), 0 -2px 40px rgba(0,0,0,0.6), 0 0 0 0.5px rgba(255,255,255,0.10)',
+        overflowY: 'auto', maxHeight: '88vh',
       }}>
-        <div style={{ padding: '18px 18px 6px', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            width: 30, height: 30, borderRadius: 9, display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
-            background: 'rgba(80,180,140,0.18)',
-            border: '0.5px solid rgba(255,255,255,0.12)',
-          }}>
-            <Icon.Shield size={14} color="#7be0b1" />
+
+        {/* ── Header ── */}
+        <div style={{ padding: '18px 18px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: 10, display: 'flex',
+              alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(80,180,140,0.18)',
+              boxShadow: 'inset 0 0 0 0.5px rgba(123,224,177,0.25)',
+            }}>
+              <Icon.Shield size={15} color="#7be0b1" />
+            </div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', letterSpacing: -0.2 }}>
+              Безопасность сессии
+            </div>
           </div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>
-            Безопасность сессии
-          </div>
+          <button onClick={onClose} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: 'rgba(255,255,255,0.3)', fontSize: 18, padding: '2px 6px',
+          }}>✕</button>
         </div>
 
-        <div style={{ padding: '10px 18px 4px', fontSize: 12, color: 'var(--tx-60)', lineHeight: 1.45 }}>
+        <div style={{ padding: '8px 18px 0', fontSize: 12, color: 'var(--tx-60)', lineHeight: 1.45 }}>
           {list.length > 1
-            ? 'У каждого участника свой отпечаток. Сверяйте по одному — по голосу.'
-            : 'Сравните эти 12 слов с партнёром по голосу. Если совпадают — никто не подменил ключи.'}
+            ? 'У каждого участника свой отпечаток. Переключайтесь между вкладками и сверяйте каждого голосом.'
+            : 'Ваш отпечаток соединения. Сверьте с партнёром — по голосу, не через этот чат.'}
         </div>
 
-        {list.length > 1 && (
-          <div style={{
-            display: 'flex', gap: 6, padding: '8px 14px 0',
-            overflowX: 'auto',
-          }} className="no-scrollbar">
-            {list.map((fp, idx) => {
-              // Show "friendly · участник N" when we have a friendly name;
-              // fall back to the bare label otherwise. The verbose form is
-              // what makes the tab unambiguous when several participants are
-              // showing similar word-lists.
-              const slotN = (fp.slot ?? 0) + 1;
-              const bareLabel = fp.label || ('Участник ' + slotN);
-              const display = fp.friendly
-                ? (fp.friendly + ' · участник ' + slotN)
-                : bareLabel;
-              return (
-                <button key={fp.slot}
-                  onClick={() => setActiveIdx(idx)}
-                  title={display}
-                  style={{
-                    padding: '6px 10px', borderRadius: 999, border: 'none', cursor: 'pointer',
-                    background: idx === activeIdx
-                      ? 'rgba(120,180,255,0.18)'
-                      : 'rgba(255,255,255,0.05)',
-                    color: idx === activeIdx ? '#cfe3ff' : 'var(--tx-80)',
-                    fontSize: 11, fontFamily: "'Geist Mono', monospace",
-                    letterSpacing: 0.3, fontWeight: 600,
-                    flexShrink: 0,
-                    boxShadow: idx === activeIdx
-                      ? 'inset 0 0 0 0.5px rgba(150,200,255,0.45)'
-                      : 'inset 0 0 0 0.5px rgba(255,255,255,0.08)',
-                  }}>{display}</button>
-              );
-            })}
-          </div>
-        )}
+        <div style={{ padding: '14px 16px' }}>
 
-        {words ? (
-          <div style={{ padding: '12px 14px 6px' }}>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
-              gap: 6,
-              fontFamily: 'var(--ff-mono)',
-            }}>
-              {words.map((w, i) => (
-                <div key={i} style={{
-                  padding: '8px 6px',
-                  borderRadius: 9,
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '0.5px solid rgba(255,255,255,0.08)',
-                  fontSize: 11, color: '#fff',
-                  textAlign: 'center',
-                  letterSpacing: 0.2,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }} title={`${i + 1}. ${w}`}>
-                  <span style={{ color: 'var(--tx-40)', marginRight: 4 }}>{i + 1}.</span>{w}
-                </div>
-              ))}
+          {/* ── Participant tabs (group) ── */}
+          {list.length > 1 && (
+            <div style={{ display: 'flex', gap: 6, marginBottom: 12, overflowX: 'auto' }}
+              className="no-scrollbar">
+              {list.map((fp, idx) => {
+                const slotN = (fp.slot ?? 0) + 1;
+                const display = fp.friendly ? (fp.friendly + ' · ' + slotN) : (fp.label || ('Участник ' + slotN));
+                return (
+                  <button key={fp.slot} onClick={() => setActiveIdx(idx)} title={display}
+                    style={{
+                      padding: '6px 10px', borderRadius: 999, border: 'none', cursor: 'pointer',
+                      background: idx === activeIdx ? 'rgba(120,180,255,0.18)' : 'rgba(255,255,255,0.05)',
+                      color: idx === activeIdx ? '#cfe3ff' : 'var(--tx-80)',
+                      fontSize: 11, fontFamily: 'var(--ff-mono)', letterSpacing: 0.3, fontWeight: 600, flexShrink: 0,
+                      boxShadow: idx === activeIdx ? 'inset 0 0 0 0.5px rgba(150,200,255,0.45)' : 'inset 0 0 0 0.5px rgba(255,255,255,0.08)',
+                    }}>{display}</button>
+                );
+              })}
             </div>
-            <div style={{
-              padding: '12px 6px 4px', fontFamily: 'var(--ff-mono)',
-              fontSize: 9, color: 'var(--tx-40)', letterSpacing: 0.4,
-              wordBreak: 'break-all', textAlign: 'center',
-            }}>
-              {active.hex}
-            </div>
-            {/* Library posture: KDF + X25519 + ML-KEM-768. Each line shows the
-                actual primitive that fired for this session so the user can
-                spot when something fell back to a weaker fallback. */}
-            <div style={{
-              margin: '8px 0 4px', padding: '8px 10px', borderRadius: 9,
-              background: 'rgba(255,255,255,0.03)',
-              border: '0.5px solid rgba(255,255,255,0.08)',
-              fontSize: 11, color: 'var(--tx-80)', lineHeight: 1.5,
-              fontFamily: 'var(--ff-mono)', letterSpacing: 0.2,
-            }}>
-              <div style={{ color: kdfBad ? '#ffd29a' : 'var(--tx-80)' }}>
-                Деривация ключа: {kdfLabel}
-              </div>
-              <div style={{ color: x25519Bad ? '#ffd29a' : 'var(--tx-80)' }}>
-                X25519: {x25519Label}
-              </div>
-              <div style={{ color: kemBad ? '#ffd29a' : 'var(--tx-80)' }}>
-                ML-KEM-768: {kemLabel}
-              </div>
-            </div>
-            {!active.hasKem && (
+          )}
+
+          {/* ── 12 words ── */}
+          {words ? (
+            <>
+              <div style={sectionLabel}>Отпечаток · 12 слов</div>
               <div style={{
-                margin: '4px 0 8px', padding: '8px 10px', borderRadius: 9,
-                background: 'rgba(255,180,80,0.10)',
-                border: '0.5px solid rgba(255,180,80,0.25)',
-                fontSize: 11, color: '#ffd29a', lineHeight: 1.4,
+                display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5,
+                fontFamily: 'var(--ff-mono)',
               }}>
-                Постквантовая верификация недоступна — отпечаток построен только на X25519.
+                {words.map((w, i) => (
+                  <div key={i} style={{
+                    padding: '7px 5px', borderRadius: 9,
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '0.5px solid rgba(255,255,255,0.08)',
+                    fontSize: 11, color: '#fff', textAlign: 'center',
+                    letterSpacing: 0.2, overflow: 'hidden',
+                    textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }} title={`${i + 1}. ${w}`}>
+                    <span style={{ color: 'var(--tx-30)', marginRight: 3 }}>{i + 1}.</span>{w}
+                  </div>
+                ))}
               </div>
-            )}
+
+              {/* hex — click to copy */}
+              <div onClick={() => copyText('hex', active.hex)}
+                style={{
+                  marginTop: 8, padding: '7px 10px', borderRadius: 9, cursor: 'pointer',
+                  background: copiedKey === 'hex' ? 'rgba(123,224,177,0.08)' : 'rgba(255,255,255,0.03)',
+                  border: `0.5px solid ${copiedKey === 'hex' ? 'rgba(123,224,177,0.25)' : 'rgba(255,255,255,0.07)'}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                }}>
+                <span style={{ fontFamily: 'var(--ff-mono)', fontSize: 9.5, color: 'var(--tx-40)',
+                  letterSpacing: 0.4, wordBreak: 'break-all', flex: 1 }}>{active.hex}</span>
+                <span style={{ fontSize: 10, color: copiedKey === 'hex' ? '#7be0b1' : 'var(--tx-30)',
+                  flexShrink: 0, fontWeight: 600 }}>{copiedKey === 'hex' ? '✓' : 'копировать'}</span>
+              </div>
+            </>
+          ) : (
+            <div style={{ padding: '16px 0', fontSize: 12, color: 'var(--tx-60)', textAlign: 'center' }}>
+              Отпечаток считается… Дождитесь рукопожатия с партнёром.
+            </div>
+          )}
+
+          <div style={divider} />
+
+          {/* ── Как проверить ── */}
+          <div style={sectionLabel}>Как проверить</div>
+          {[
+            'Позвоните партнёру по голосу или встретьтесь лично.',
+            'По очереди прочитайте слова вслух — начиная с первого.',
+            'Все 12 совпали? Соединение чистое, подмены ключей не было.',
+          ].map((step, i) => (
+            <div key={i} style={{
+              display: 'flex', gap: 10, marginBottom: 8, alignItems: 'flex-start',
+            }}>
+              <div style={{
+                flexShrink: 0, width: 20, height: 20, borderRadius: 6, marginTop: 1,
+                background: 'rgba(123,224,177,0.1)', boxShadow: 'inset 0 0 0 0.5px rgba(123,224,177,0.2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 10, fontWeight: 700, color: '#7be0b1', fontFamily: 'var(--ff-mono)',
+              }}>{i + 1}</div>
+              <div style={{ fontSize: 12, color: 'var(--tx-80)', lineHeight: 1.5, fontWeight: 300 }}>{step}</div>
+            </div>
+          ))}
+          <div style={{
+            marginTop: 4, padding: '8px 10px', borderRadius: 9,
+            background: 'rgba(255,180,80,0.10)', border: '0.5px solid rgba(255,180,80,0.25)',
+            fontSize: 11, color: '#ffd29a', lineHeight: 1.45,
+          }}>
+            ⚠ Не сверяйте отпечаток через этот же чат — атакующий может подменить и слова.
           </div>
-        ) : (
-          <div style={{ padding: '20px 18px', fontSize: 12, color: 'var(--tx-60)', textAlign: 'center' }}>
-            Отпечаток считается… Дождитесь рукопожатия с партнёром.
+
+          <div style={divider} />
+
+          {/* ── Сессия ── */}
+          <div style={sectionLabel}>Сессия</div>
+          <div style={{
+            borderRadius: 10, overflow: 'hidden',
+            border: '0.5px solid rgba(255,255,255,0.08)',
+          }}>
+            {[
+              { label: 'Истекает',    value: fmtExpiry,       key: null },
+              { label: 'Участников',  value: participantStr,  key: null },
+              { label: 'Идентификатор', value: sessionHash
+                ? `${sessionHash.slice(0,6)}…${sessionHash.slice(-6)}`
+                : '—',                                         key: 'hash' },
+            ].map(({ label, value, key }, i, arr) => (
+              <div key={label}
+                onClick={key === 'hash' && sessionHash ? () => copyText('hash', sessionHash) : undefined}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '9px 12px',
+                  background: i % 2 === 0 ? 'rgba(255,255,255,0.025)' : 'rgba(255,255,255,0.01)',
+                  borderBottom: i < arr.length - 1 ? '0.5px solid rgba(255,255,255,0.06)' : 'none',
+                  cursor: key === 'hash' ? 'pointer' : 'default',
+                }}>
+                <span style={{ fontSize: 11, color: 'var(--tx-50)', fontFamily: 'var(--ff-mono)', letterSpacing: 0.2 }}>{label}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 11.5, color: '#fff', fontFamily: 'var(--ff-mono)', fontWeight: 500 }}>{value}</span>
+                  {key === 'hash' && (
+                    <span style={{ fontSize: 10, color: copiedKey === 'hash' ? '#7be0b1' : 'var(--tx-30)', fontWeight: 600 }}>
+                      {copiedKey === 'hash' ? '✓' : 'копировать'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
-        )}
+
+          <div style={divider} />
+
+          {/* ── Стек шифрования ── */}
+          <div style={sectionLabel}>Стек шифрования</div>
+          <div style={{
+            borderRadius: 10, overflow: 'hidden',
+            border: '0.5px solid rgba(255,255,255,0.08)',
+          }}>
+            {[
+              { name: 'Argon2id',     desc: 'Превращает пароль в ключ — перебор занял бы годы', bad: kdfBad, note: kdfBad ? 'PBKDF2 (запасной)' : null },
+              { name: 'X25519',       desc: 'Обмен ключами без передачи самих ключей по сети',   bad: x25519Bad, note: x25519Bad ? x25519Label : null },
+              { name: 'ML-KEM-768',   desc: 'Защищает от будущих квантовых компьютеров',         bad: kemBad, note: kemBad ? 'недоступен' : null },
+              { name: 'AES-256-GCM',  desc: 'Шифрует каждое сообщение и проверяет целостность',  bad: false, note: null },
+            ].map(({ name, desc, bad, note }, i, arr) => (
+              <div key={name} style={{
+                display: 'flex', alignItems: 'flex-start', gap: 10, padding: '9px 12px',
+                background: i % 2 === 0 ? 'rgba(255,255,255,0.025)' : 'rgba(255,255,255,0.01)',
+                borderBottom: i < arr.length - 1 ? '0.5px solid rgba(255,255,255,0.06)' : 'none',
+              }}>
+                <span style={{
+                  flexShrink: 0, fontFamily: 'var(--ff-mono)', fontSize: 10.5, fontWeight: 700,
+                  color: bad ? '#ffd29a' : '#7be0b1', minWidth: 88, paddingTop: 1,
+                }}>{name}</span>
+                <div>
+                  <div style={{ fontSize: 11, color: bad ? '#ffd29a' : 'var(--tx-70)', lineHeight: 1.4, fontWeight: 300 }}>
+                    {note ? `${note} — ` : ''}{desc}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {active && !active.hasKem && (
+            <div style={{
+              marginTop: 8, padding: '8px 10px', borderRadius: 9,
+              background: 'rgba(255,180,80,0.10)', border: '0.5px solid rgba(255,180,80,0.25)',
+              fontSize: 11, color: '#ffd29a', lineHeight: 1.4,
+            }}>
+              ⚠ Постквантовая защита недоступна — отпечаток построен только на X25519.
+            </div>
+          )}
+
+          <div style={divider} />
+
+          {/* ── Открытый код ── */}
+          <div style={sectionLabel}>Открытый код</div>
+          <div style={{ fontSize: 12, color: 'var(--tx-50)', lineHeight: 1.5, marginBottom: 10, fontWeight: 300 }}>
+            Код открыт — убедитесь сами, что сервер не видит сообщения.
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[
+              { label: 'GitHub', href: 'https://github.com/www7man/Nee2P' },
+              { label: 'Страница безопасности', href: './trust.html' },
+            ].map(({ label, href }) => (
+              <a key={label} href={href} target="_blank" rel="noopener noreferrer"
+                style={{
+                  flex: 1, padding: '9px 10px', borderRadius: 10, textDecoration: 'none',
+                  background: 'rgba(255,255,255,0.04)',
+                  boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.09)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                  fontSize: 11.5, fontWeight: 500, color: 'rgba(255,255,255,0.65)',
+                }}>
+                {label}
+                <Icon.Arrow size={10} color="rgba(255,255,255,0.3)" />
+              </a>
+            ))}
+          </div>
+
+        </div>
 
         <button onClick={onClose} style={{
           width: '100%', padding: '14px 16px', border: 'none', cursor: 'pointer',
