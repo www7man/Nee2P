@@ -20,6 +20,15 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
     return () => clearInterval(id);
   }, []);
 
+  const [showCloneModal, setShowCloneModal] = React.useState(false);
+  const [cloneCopied, setCloneCopied] = React.useState(false);
+  const CLONE_CMD = 'git clone https://github.com/www7man/Nee2P.git';
+  const handleCopy = () => {
+    navigator.clipboard.writeText(CLONE_CMD).catch(() => {});
+    setCloneCopied(true);
+    setTimeout(() => setCloneCopied(false), 2200);
+  };
+
   // Friendly-name helper for the saved-rooms card. Mirrors nee2p-app.jsx's
   // friendlyName(roomId, slot) via window.Nee2PSlotUtil — we don't import it
   // statically because nee2p-app.jsx loads AFTER this file.
@@ -88,10 +97,10 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
           для безопасных переписок и передачи данных.
         </p>
 
-        {/* open-source badge */}
-        <a href="https://github.com/www7man/Nee2P" target="_blank" rel="noopener noreferrer"
+        {/* open-source badge — opens clone modal */}
+        <button onClick={() => setShowCloneModal(true)}
           style={{
-            marginTop: 12, textDecoration: 'none',
+            marginTop: 12, cursor: 'pointer', border: 'none', background: 'none', padding: 0,
             display: 'inline-flex', alignItems: 'center', gap: 7,
             padding: '6px 14px', borderRadius: 9999,
             background: 'rgba(255,255,255,0.04)',
@@ -106,7 +115,7 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
             color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase',
           }}>Открытый исходный код</span>
           <Icon.Arrow size={10} color="rgba(255,255,255,0.35)" />
-        </a>
+        </button>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9,
@@ -157,6 +166,98 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
           <span>Argon2id</span>
         </div>
       </div>
+
+      {/* ── Clone modal (bottom sheet) ── */}
+      {showCloneModal && (
+        <div onClick={() => setShowCloneModal(false)} style={{
+          position: 'fixed', inset: 0, zIndex: 2000,
+          background: 'rgba(0,0,0,0.6)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          padding: '0 10px 28px',
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            width: '100%', maxWidth: 420,
+            background: '#0f0f15',
+            boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.1), 0 32px 80px rgba(0,0,0,0.7)',
+            borderRadius: 22,
+            padding: '20px 18px 22px',
+          }}>
+            {/* header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.49.5.09.68-.22.68-.48v-1.7C6.73 19.91 6.14 18 6.14 18c-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.58 9.58 0 0 1 12 7.8c.85 0 1.71.11 2.51.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.94.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10.01 10.01 0 0 0 22 12c0-5.52-4.48-10-10-10z" fill="rgba(255,255,255,0.7)"/>
+                </svg>
+                <span style={{ fontSize: 15, fontWeight: 600, color: 'rgba(255,255,255,0.9)', letterSpacing: -0.3 }}>
+                  Открытый исходный код
+                </span>
+              </div>
+              <button onClick={() => setShowCloneModal(false)} style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'rgba(255,255,255,0.35)', fontSize: 18, lineHeight: 1,
+                padding: '2px 4px',
+              }}>✕</button>
+            </div>
+
+            {/* description */}
+            <p style={{
+              margin: '0 0 16px', fontSize: 13, fontWeight: 300,
+              color: 'rgba(255,255,255,0.5)', lineHeight: 1.6,
+            }}>
+              Nee2P. полностью открыт — изучите код, разверните свой сервер или убедитесь что нет бэкдоров.
+            </p>
+
+            {/* label */}
+            <div style={{
+              fontSize: 9.5, fontWeight: 600, letterSpacing: 1.6, textTransform: 'uppercase',
+              color: 'rgba(255,255,255,0.3)', fontFamily: 'var(--ff-mono)', marginBottom: 7,
+            }}>Клонировать репозиторий</div>
+
+            {/* clone row */}
+            <div style={{
+              display: 'flex', alignItems: 'stretch',
+              background: 'rgba(255,255,255,0.05)',
+              boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.1)',
+              borderRadius: 12, overflow: 'hidden',
+            }}>
+              <code style={{
+                flex: 1, padding: '11px 13px',
+                fontSize: 11.5, color: 'rgba(255,255,255,0.75)',
+                fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                display: 'block',
+              }}>{CLONE_CMD}</code>
+              <button onClick={handleCopy} style={{
+                flexShrink: 0,
+                padding: '11px 14px',
+                background: cloneCopied ? 'rgba(123,224,177,0.12)' : 'rgba(255,255,255,0.07)',
+                border: 'none',
+                borderLeft: '0.5px solid rgba(255,255,255,0.1)',
+                color: cloneCopied ? '#7be0b1' : 'rgba(255,255,255,0.55)',
+                fontSize: 11.5, fontWeight: 600, cursor: 'pointer',
+                whiteSpace: 'nowrap', transition: 'color 0.2s, background 0.2s',
+              }}>{cloneCopied ? '✓ Скопировано' : 'Копировать'}</button>
+            </div>
+
+            {/* github link */}
+            <a href="https://github.com/www7man/Nee2P" target="_blank" rel="noopener noreferrer"
+              style={{
+                marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                padding: '11px', borderRadius: 12,
+                background: 'rgba(255,255,255,0.04)',
+                boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.08)',
+                textDecoration: 'none',
+                fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.65)',
+                letterSpacing: -0.1,
+              }}>
+              Открыть на GitHub
+              <Icon.Arrow size={12} color="rgba(255,255,255,0.35)" />
+            </a>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
