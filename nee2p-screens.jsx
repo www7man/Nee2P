@@ -127,7 +127,7 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
         <GlassButton palette={palette} onClick={onJoin}
           icon={<Icon.Key size={16} color="rgba(255,255,255,0.85)" />}
           style={{ height: 54, borderRadius: 18 }}>
-          Войти по коду
+          Подключиться к сессии
         </GlassButton>
         <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
           {[
