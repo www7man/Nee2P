@@ -45,5 +45,5 @@
     return { send, close, isOpen: () => open, _ws: ws };
   }
 
-  g.HushWS = { createClient };
+  g.Nee2PWS = { createClient };
 })(typeof window !== 'undefined' ? window : globalThis);

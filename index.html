@@ -4,11 +4,26 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover" />
 <meta name="theme-color" content="#06060a" />
-<title>hush. — anonymous paired messenger</title>
+<title>Nee2P. — anonymous paired messenger</title>
 
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Nee2P." />
+<meta name="mobile-web-app-capable" content="yes" />
+
+<!--
+  No external font CDN: Tor / censorship-resistant deployments must not hit
+  fonts.googleapis.com. We fall back to system fonts via --ff-ui / --ff-mono
+  / --ff-serif below. To restore Geist / Geist Mono / Instrument Serif from
+  Google Fonts, uncomment the original lines:
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+-->
 
 <style>
   *, *::before, *::after { box-sizing: border-box; }
@@ -29,9 +44,11 @@
     --glass-hairline:    rgba(255,255,255,0.12);
     --glass-highlight:   rgba(255,255,255,0.18);
 
-    --ff-ui:    'Geist', system-ui, -apple-system, sans-serif;
-    --ff-mono:  'Geist Mono', ui-monospace, monospace;
-    --ff-serif: 'Instrument Serif', 'Times New Roman', serif;
+    /* Self-hosted: no Google Fonts dependency. System stack first so a Tor
+       user (or anyone behind a font-CDN block) gets a clean fallback. */
+    --ff-ui:    -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, sans-serif;
+    --ff-mono:  ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --ff-serif: Georgia, 'Times New Roman', serif;
   }
 
   html, body {
@@ -65,7 +82,8 @@
   .app-frame {
     position: relative;
     width: 100%;
-    height: 100dvh;
+    height: 100vh;        /* legacy fallback for iOS Safari <15.4 */
+    height: 100dvh;       /* dynamic viewport height where supported */
     overflow: hidden;
     background: var(--bg-deep);
   }
@@ -123,9 +141,9 @@
     to   { opacity: 1; transform: translateY(0); }
   }
   @keyframes glyph-cycle {
-    0%, 28%   { opacity: 1; transform: translateY(0); filter: blur(0); }
-    33%, 95%  { opacity: 0; transform: translateY(-6px); filter: blur(4px); }
-    100%      { opacity: 1; transform: translateY(0); filter: blur(0); }
+    0%        { opacity: 0; transform: translateY(6px); filter: blur(4px); }
+    15%, 82%  { opacity: 1; transform: translateY(0);  filter: blur(0); }
+    100%      { opacity: 0; transform: translateY(-6px); filter: blur(4px); }
   }
   @keyframes pulse-dot {
     0%, 100% { opacity: 1; transform: scale(1); }
@@ -164,17 +182,43 @@
   }
 
   input::placeholder, textarea::placeholder { color: var(--tx-40); }
+
+  /* Screen-privacy: when the tab loses focus, blur chat message bubbles +
+     the share-code card. Reveals nothing readable to an over-the-shoulder
+     glance or to an OS app-switcher preview. Inputs and timer stay readable. */
+  body.is-blurred [data-mid],
+  body.is-blurred [data-mid] *,
+  body.is-blurred [data-share-card] {
+    filter: blur(14px) saturate(0.4);
+  }
+  [data-mid], [data-share-card] { transition: filter 0.18s ease; }
 </style>
 </head>
 <body>
 <div id="stage">
   <div id="boot-loader" style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#06060a;color:#fff;font-family:'Instrument Serif',serif;font-style:italic">
-    <div style="font-size:48px">hush.</div>
+    <div style="font-size:48px">Nee2P.</div>
     <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.45);font-family:system-ui,-apple-system,sans-serif;font-style:normal">loading…</div>
   </div>
 </div>
 
 <noscript><div style="padding:24px;color:#fff;font-family:sans-serif">JavaScript нужен для работы.</div></noscript>
+
+<script>
+// Screen-privacy: toggle body.is-blurred whenever the tab loses focus
+// or visibility (e.g. switching apps on mobile — iOS will snapshot the
+// blurred state for the app-switcher preview).
+(function () {
+  function setBlur(on) {
+    document.body.classList.toggle('is-blurred', !!on);
+  }
+  document.addEventListener('visibilitychange', function () {
+    setBlur(document.visibilityState !== 'visible');
+  });
+  window.addEventListener('blur',  function () { setBlur(true); });
+  window.addEventListener('focus', function () { setBlur(false); });
+})();
+</script>
 
 <script>
 window.addEventListener('error', function (e) {
@@ -187,7 +231,7 @@ window.addEventListener('error', function (e) {
   stage.innerHTML =
     '<div style="position:fixed;inset:0;padding:24px;background:#06060a;color:#fff;' +
     'font:14px/1.5 system-ui,-apple-system,sans-serif;overflow:auto">' +
-      '<div style="font-weight:600;margin-bottom:8px">hush. — ошибка загрузки</div>' +
+      '<div style="font-weight:600;margin-bottom:8px">Nee2P. — ошибка загрузки</div>' +
       '<div style="color:rgba(255,255,255,0.7);white-space:pre-wrap;word-break:break-word">' +
         msg.replace(/[<>&]/g, function (c) { return ({'<':'&lt;','>':'&gt;','&':'&amp;'})[c]; }) +
         (src ? '\n\n@ ' + src : '') +
@@ -199,21 +243,81 @@ window.addEventListener('error', function (e) {
 }, true);
 </script>
 
-<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+<script>
+  // Register service worker for PWA install + Web Push. Best-effort: do NOT
+  // block boot if registration fails (e.g. http://, private mode, etc.).
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function (e) {
+        try { console.warn('sw register failed', e); } catch (_) {}
+      });
+    });
+    // Auto-reload once a new SW takes control. Without this, after a deploy
+    // users on an old SW keep seeing stale code until they hard-reload. The
+    // `refreshing` guard prevents reload loops when several SWs claim in
+    // succession (Chrome fires controllerchange more than once on update).
+    var refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (refreshing) return;
+      refreshing = true;
+      location.reload();
+    });
+  }
+</script>
+
+<script src="push.js"></script>
+
+<!--
+  Vendored React + Babel. Original CDN URLs (kept for one-line rollback):
+    <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+-->
+<script src="vendor/react.production.min.js"></script>
+<script src="vendor/react-dom.production.min.js"></script>
+<script src="vendor/babel.min.js"></script>
 
 <script src="md5.js"></script>
+<!--
+  Crypto deps loaded BEFORE crypto.js so it can see the argon2 global.
+  argon2-browser bundles the WASM inline (~200KB). If the file is missing
+  for some reason, crypto.js falls back to PBKDF2-SHA256-200k.
+
+  X25519 fallback: WebCrypto Subtle X25519 is the primary path (Chrome 133+,
+  Safari 18.4+, Firefox 130+). If Subtle X25519 isn't available, crypto.js
+  lazily ESM-imports vendor/noble-ed25519.bundle.mjs (which re-exports x25519)
+  at ephemeral-keypair time. Same for ML-KEM-768 via vendor/mlkem.bundle.mjs.
+  Both ESM bundles are self-contained — no further network fetches.
+
+  Original CDN URL kept for one-line rollback:
+    <script src="https://cdn.jsdelivr.net/npm/argon2-browser@1.18.0/dist/argon2-bundled.min.js" crossorigin="anonymous"></script>
+-->
+<script src="vendor/argon2-bundled.min.js"></script>
+<!--
+  BIP-39 English wordlist (2048 words) — used by Nee2PCrypto.safetyNumber()
+  to render the 12-word session fingerprint shown in the "Безопасность
+  сессии" modal. Loaded BEFORE crypto.js so the helper can find it.
+-->
+<script src="vendor/bip39-en.js"></script>
+<!-- QR code generator (qrcode-generator@1.4.4) for share-via-QR. -->
+<script src="vendor/qrcode.min.js"></script>
 <script src="crypto.js"></script>
 <!--
-  http-client.js exposes window.HushWS using POST + long-poll (Yandex CDN
+  Opt-in "Remember me on this device" persistence layer. Loaded AFTER crypto.js
+  because it depends on Nee2PCrypto.generateDeviceKey / wrapWithDeviceKey /
+  unwrapWithDeviceKey. Exposes window.Nee2PPersist. Default-disabled: no IDB
+  writes happen until the user ticks the checkbox and we call enable().
+-->
+<script src="persistence.js"></script>
+<!--
+  http-client.js exposes window.Nee2PWS using POST + long-poll (Yandex CDN
   doesn't forward WebSocket upgrade). ws-client.js is the legacy WS
   transport — kept in the repo for direct/dev use.
 -->
 <script src="http-client.js"></script>
 
-<script type="text/babel" src="hush-ui.jsx"></script>
-<script type="text/babel" src="hush-screens.jsx"></script>
-<script type="text/babel" src="hush-app.jsx"></script>
+<script type="text/babel" src="nee2p-ui.jsx"></script>
+<script type="text/babel" src="nee2p-screens.jsx"></script>
+<script type="text/babel" src="nee2p-app.jsx"></script>
 </body>
 </html>

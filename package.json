@@ -1,5 +1,5 @@
 {
-  "name": "hush",
+  "name": "nee2p",
   "private": true,
   "version": "0.1.0",
   "description": "Anonymous paired messenger. Pair by secret phrase, e2e-encrypted.",
@@ -12,6 +12,7 @@
     "node": ">=18"
   },
   "dependencies": {
+    "web-push": "^3.6.7",
     "ws": "^8.18.0"
   }
 }

@@ -1,4 +1,4 @@
-// hush-ui.jsx — primitives, palette, background, glass components.
+// nee2p-ui.jsx — primitives, palette, background, glass components.
 // Lifted verbatim from the design prototype; visuals unchanged.
 
 const PALETTES = {
@@ -164,7 +164,7 @@ function Logo({ size = 18, palette = 'mono' }) {
         fontFamily: "'Instrument Serif', serif", fontStyle: 'italic',
         fontSize: size * 2.2, lineHeight: 1, fontWeight: 400,
         color: '#fff', letterSpacing: -1,
-      }}>hush</span>
+      }}>Nee2P</span>
       <span style={{
         display: 'inline-block', width: size * 0.34, height: size * 0.34,
         borderRadius: '50%', background: p.a,
