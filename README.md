@@ -1,6 +1,6 @@
 # Nee2P.
 
-**🌐 [nee2p.com](https://nee2p.com)**
+**🌐 [Nee2P.com](https://nee2p.com)**
 
 > Anonymous end-to-end encrypted messenger. No accounts, no database, no plaintext on the server — ever.
 
