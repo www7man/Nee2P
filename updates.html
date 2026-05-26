@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<meta name="color-scheme" content="dark" />
+<title>Nee2P. — журнал изменений</title>
+<style>
+  :root {
+    --bg:       #06060a;
+    --fg:       rgba(255,255,255,0.82);
+    --fg-dim:   rgba(255,255,255,0.62);
+    --fg-mute:  rgba(255,255,255,0.42);
+    --accent:   #7be0b1;
+    --rule:     rgba(255,255,255,0.08);
+    --code-bg:  rgba(255,255,255,0.06);
+    --sans:   system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --mono:   ui-monospace, Menlo, Consolas, "SF Mono", monospace;
+    --serif:  ui-serif, Georgia, "Times New Roman", serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); }
+  body {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--fg);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .wrap {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 28px 22px 96px;
+  }
+
+  /* ── Header ── */
+  header.top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 56px;
+  }
+  .logo {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 22px;
+    color: var(--fg);
+    text-decoration: none;
+    letter-spacing: -0.5px;
+    border-bottom: 0;
+  }
+  .back {
+    font-size: 13px;
+    color: var(--fg-mute);
+    text-decoration: none;
+    border-bottom: 0;
+  }
+  .back:hover { color: var(--accent); border-bottom: 0; }
+
+  /* ── Hero ── */
+  .hero {
+    margin: 40px 0 56px;
+  }
+  .hero h1 {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 38px;
+    line-height: 1.15;
+    letter-spacing: -0.8px;
+    margin: 0 0 18px;
+    color: var(--fg);
+  }
+  .hero p {
+    color: var(--fg-dim);
+    font-size: 16px;
+    margin: 0;
+    max-width: 540px;
+  }
+
+  /* ── Shared ── */
+  hr {
+    border: 0;
+    border-top: 1px solid var(--rule);
+    margin: 48px 0;
+  }
+  section { margin: 0; }
+
+  p { margin: 0 0 14px; color: var(--fg); }
+  p.mute { color: var(--fg-mute); font-size: 13px; margin: 0; }
+
+  ul, ol {
+    padding-left: 20px;
+    margin: 0 0 14px;
+  }
+  li { margin: 4px 0; color: var(--fg-dim); }
+  li::marker { color: var(--fg-mute); }
+  li strong { color: var(--fg); font-weight: 600; }
+
+  a { color: var(--accent); text-decoration: none; border-bottom: 1px solid rgba(123,224,177,0.3); }
+  a:hover { border-bottom-color: var(--accent); }
+
+  code {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--code-bg);
+    border-radius: 4px;
+    padding: 1px 5px;
+    color: var(--fg);
+  }
+
+  /* ── Section label ── */
+  .section-num {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--fg-mute);
+    font-family: var(--mono);
+    margin-bottom: 10px;
+  }
+
+  h2.section-heading {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 26px;
+    line-height: 1.2;
+    color: var(--fg);
+    margin: 0 0 32px;
+    letter-spacing: -0.4px;
+  }
+
+  /* ── Release block ── */
+  .release {
+    margin-bottom: 40px;
+  }
+  .release-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .release-version {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .release-date {
+    font-size: 12px;
+    color: var(--fg-mute);
+  }
+  .release-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    font-family: var(--mono);
+    background: rgba(123,224,177,0.12);
+    color: var(--accent);
+    border: 0.5px solid rgba(123,224,177,0.25);
+  }
+  .release-title {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 1.25;
+    color: var(--fg);
+    margin: 0 0 12px;
+    letter-spacing: -0.2px;
+  }
+  .release ul {
+    margin: 0;
+  }
+
+  /* Sub-heading within a release */
+  .release-subhead {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--fg);
+    margin: 16px 0 6px;
+  }
+
+  /* Table (wizard steps) */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0 14px;
+    font-size: 13.5px;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 12px;
+    vertical-align: top;
+    border: 0;
+  }
+  th {
+    color: var(--fg-mute);
+    font-weight: 500;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--rule);
+  }
+  tbody tr:nth-child(even) { background: rgba(255,255,255,0.03); }
+  tbody td { color: var(--fg-dim); }
+  tbody td:first-child { color: var(--fg-mute); font-family: var(--mono); font-size: 12.5px; font-weight: 500; }
+  tbody td:nth-child(2) { color: var(--fg); font-weight: 500; }
+
+  /* ── CTA ── */
+  .cta-wrap {
+    margin: 56px 0 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .btn-deal {
+    display: inline-flex;
+    align-items: center;
+    gap: 11px;
+    padding: 15px 28px;
+    background: rgba(123,224,177,0.10);
+    border: 1px solid rgba(123,224,177,0.28);
+    border-radius: 16px;
+    color: var(--accent);
+    font-size: 16px;
+    font-family: var(--sans);
+    font-weight: 600;
+    letter-spacing: -0.2px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .btn-deal:hover {
+    background: rgba(123,224,177,0.17);
+    border-color: rgba(123,224,177,0.50);
+    box-shadow: 0 0 24px rgba(123,224,177,0.12);
+    border-bottom: 1px solid rgba(123,224,177,0.50);
+  }
+
+  @keyframes arrow-nudge {
+    0%         { transform: translateX(0); }
+    12%        { transform: translateX(7px); }
+    24%        { transform: translateX(1px); }
+    36%        { transform: translateX(6px); }
+    50%, 100%  { transform: translateX(0); }
+  }
+  .btn-deal .arr {
+    display: inline-block;
+    font-style: normal;
+    animation: arrow-nudge 2.4s ease-in-out infinite;
+    will-change: transform;
+  }
+
+  /* ── Footer ── */
+  footer {
+    margin-top: 72px;
+    padding-top: 28px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 12.5px;
+    color: var(--fg-mute);
+  }
+  footer .links a {
+    margin-right: 16px;
+    border-bottom: 0;
+    color: var(--fg-dim);
+  }
+  footer .links a:hover { color: var(--accent); }
+  footer .sig { font-family: var(--serif); font-style: italic; }
+
+  @media (max-width: 520px) {
+    .hero h1 { font-size: 30px; }
+    h2.section-heading { font-size: 22px; }
+    .release-title { font-size: 18px; }
+    .btn-deal { font-size: 15px; padding: 13px 22px; }
+    table { font-size: 12.5px; }
+    th, td { padding: 8px 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <a href="./" class="logo">Nee2P.</a>
+    <a href="./" class="back">← назад</a>
+  </header>
+
+  <div class="hero">
+    <h1>Журнал изменений.</h1>
+    <p>Что нового в каждой версии.</p>
+  </div>
+
+  <!-- 01 — Последнее обновление -->
+  <section>
+    <div class="section-num">01 — Последнее обновление</div>
+    <h2 class="section-heading">v0.7.1 — Фиксы после ребрендинга</h2>
+
+    <div class="release">
+      <div class="release-meta">
+        <span class="release-version">v0.7.1</span>
+        <span class="release-date">май 2026</span>
+        <span class="release-tag">исправления</span>
+      </div>
+      <h3 class="release-title">Фиксы</h3>
+      <ul>
+        <li><strong>QR-модал</strong>: переведён на <code>position: fixed</code> + <code>z-index: 9999</code> — уведомления больше не перекрывают QR-код на мобильных</li>
+        <li><strong>Имена глобальных переменных</strong>: <code>HushCrypto</code> → <code>Nee2PCrypto</code>, <code>HushPersist</code> → <code>Nee2PPersist</code>, <code>HushPush</code> → <code>Nee2PPush</code> — устранено зависание «создаём…» после ребрендинга</li>
+        <li>Все продакшн-файлы синхронизированы с dev</li>
+      </ul>
+    </div>
+  </section>
+
+  <hr />
+
+  <!-- 02 — История версий -->
+  <section>
+    <div class="section-num">02 — История версий</div>
+    <h2 class="section-heading">Полная история</h2>
+
+    <!-- v0.7.0 -->
+    <div class="release">
+      <div class="release-meta">
+        <span class="release-version">v0.7.0</span>
+        <span class="release-date">май 2026</span>
+        <span class="release-tag">UX</span>
+      </div>
+      <h3 class="release-title">3-шаговый визард создания сессии</h3>
+      <table>
+        <thead>
+          <tr><th>Шаг</th><th>Экран</th><th>Что объясняется</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>Секретная фраза</td>
+            <td>Обрабатывается в браузере через Argon2id; на сервер уходит только MD5-хеш — восстановить фразу невозможно</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>Параметры сессии</td>
+            <td>Срок жизни (1 ч — 7 дней) и число участников (2–8) задаются один раз</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td>Пароль входа</td>
+            <td>Только на устройстве, не передаётся по сети, не участвует в шифровании сообщений</td>
+          </tr>
+        </tbody>
+      </table>
+      <ul>
+        <li>Индикатор прогресса — анимированные пилюли между экранами</li>
+        <li>Кнопка назад возвращает на предыдущий шаг</li>
+        <li>Кнопка «Далее» без фразы → автоматически генерирует безопасный код</li>
+      </ul>
+    </div>
+
+    <hr />
+
+    <!-- v0.6.0 -->
+    <div class="release">
+      <div class="release-meta">
+        <span class="release-version">v0.6.0</span>
+        <span class="release-date">май 2026</span>
+        <span class="release-tag">доверие</span>
+        <span class="release-tag">прозрачность</span>
+      </div>
+      <h3 class="release-title">Страница проверки честности</h3>
+      <ul>
+        <li>Добавлена страница <code>trust.html</code> — пошаговые инструкции, как убедиться, что у нас нет бэкдоров</li>
+        <li>Объяснение архитектуры: сервер физически не может прочитать сообщения</li>
+        <li>Описание криптостека: Argon2id, X25519, ML-KEM-768, AES-256-GCM</li>
+        <li>Инструкции для самостоятельной проверки через DevTools, SRI, исходный код</li>
+        <li>CTA-кнопка «Безопасность сделки» с анимированной стрелкой</li>
+      </ul>
+    </div>
+
+    <hr />
+
+    <!-- v0.5.0 -->
+    <div class="release">
+      <div class="release-meta">
+        <span class="release-version">v0.5.0</span>
+        <span class="release-date">май 2026</span>
+        <span class="release-tag">PWA</span>
+        <span class="release-tag">офлайн</span>
+      </div>
+      <h3 class="release-title">PWA: установка и офлайн-режим</h3>
+      <ul>
+        <li>Service Worker (<code>sw.js</code>): network-first для навигации, cache-first для ассетов</li>
+        <li><code>manifest.json</code>: приложение устанавливается на домашний экран</li>
+        <li>Web Push уведомления (<code>push.js</code>) — опционально, с явным разрешением</li>
+        <li>IndexedDB persistence (<code>persistence.js</code>): сессия переживает перезагрузку страницы с опцией «Запомнить на этом устройстве»</li>
+        <li>Иконки 192×192 и 512×512</li>
+      </ul>
+    </div>
+
+    <hr />
+
+    <!-- v0.4.0 -->
+    <div class="release">
+      <div class="release-meta">
+        <span class="release-version">v0.4.0</span>
+        <span class="release-date">май 2026</span>
+        <span class="release-tag">UX</span>
+        <span class="release-tag">безопасность</span>
+      </div>
+      <h3 class="release-title">UX: создание и вход</h3>
+      <div class="release-subhead">Создание сессии</div>
+      <ul>
+        <li>Упрощён экран создания: фраза на первом месте, кнопка «случайный код»</li>
+        <li>Ввод фразы всегда переводится в нижний регистр — исключены ошибки при подключении из-за регистра</li>
+      </ul>
+      <div class="release-subhead">Экран входа (JoinScreen)</div>
+      <ul>
+        <li>Живой бейдж <code>/r/peek</code>: пока пользователь вводит фразу, показывается сколько участников онлайн и сколько мест осталось</li>
+        <li>Если сессии с такой фразой нет — предлагается её создать без повторного ввода</li>
+      </ul>
+    </div>
+
+    <hr />
+
+    <!-- v0.3.0 -->
+    <div class="release">
+      <div class="release-meta">
+        <span class="release-version">v0.3.0</span>
+        <span class="release-date">май 2026</span>
+        <span class="release-tag">API</span>
+      </div>
+      <h3 class="release-title">/r/peek probe</h3>
+      <ul>
+        <li>Новый endpoint <code>/r/peek</code> — read-only проверка существования сессии</li>
+        <li>Возвращает <code>{exists, groupMax, claimed, online, expiresAt}</code> без занятия слота</li>
+        <li>Безопасен для неаутентифицированных запросов (не создаёт и не меняет данные)</li>
+        <li>Фронтенд: хелпер <code>window.Nee2PPeek.peekRoom(hash)</code> в <code>http-client.js</code></li>
+      </ul>
+    </div>
+
+    <hr />
+
+    <!-- v0.2.0 -->
+    <div class="release">
+      <div class="release-meta">
+        <span class="release-version">v0.2.0</span>
+        <span class="release-date">май 2026</span>
+        <span class="release-tag">ребрендинг</span>
+      </div>
+      <h3 class="release-title">Nee2P. rebrand</h3>
+      <ul>
+        <li>Проект переименован из <strong>hush.</strong> в <strong>Nee2P.</strong></li>
+        <li>Все файлы <code>hush-*.jsx</code> переименованы в <code>nee2p-*.jsx</code></li>
+        <li>Обновлены ссылки, мета-теги, launchd plist</li>
+      </ul>
+    </div>
+
+    <hr />
+
+    <!-- v0.1.0 -->
+    <div class="release">
+      <div class="release-meta">
+        <span class="release-version">v0.1.0</span>
+        <span class="release-date">начало 2025</span>
+        <span class="release-tag">первый запуск</span>
+      </div>
+      <h3 class="release-title">hush. initial snapshot</h3>
+      <ul>
+        <li>Запуск проекта под именем <strong>hush.</strong></li>
+        <li>Анонимный зашифрованный чат для двух участников</li>
+        <li>Ключ сессии выводится через PBKDF2-SHA256 из секретной фразы</li>
+        <li>Транспорт: WebSocket, два слота на комнату (A/B)</li>
+        <li>Серверная часть: ~100 строк Node.js, без базы данных, комнаты только в RAM</li>
+        <li>Фронтенд: React 18 + Babel in-browser, без сборщика</li>
+      </ul>
+    </div>
+
+  </section>
+
+  <div class="cta-wrap">
+    <a href="./" class="btn-deal">Открыть мессенджер <span class="arr">→</span></a>
+    <p class="mute">Nee2P. — анонимный зашифрованный чат без следов.</p>
+  </div>
+
+  <footer>
+    <div class="links">
+      <a href="./">← назад</a>
+      <a href="https://github.com/www7man/Nee2P" target="_blank" rel="noopener">GitHub →</a>
+    </div>
+    <div class="sig">Nee2P. — anonymous paired messenger</div>
+  </footer>
+
+</div>
+</body>
+</html>
