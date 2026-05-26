@@ -105,21 +105,19 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
             { icon: <Icon.Shield size={12} color="var(--tx-60)" />, label: 'Безопасность', href: 'trust.html' },
             { icon: <Icon.Bolt   size={12} color="var(--tx-60)" />, label: 'Что нового',   href: 'updates.html' },
           ].map(({ icon, label, href }) => (
-            <button key={href} onClick={() => window.open(href, '_blank')} style={{
-              flex: 1, height: 36, border: 'none', cursor: 'pointer',
+            <a key={href} href={href} target="_blank" rel="noopener noreferrer" style={{
+              flex: 1, height: 36, cursor: 'pointer',
               borderRadius: 12, background: 'transparent',
-              padding: 0, fontFamily: 'inherit',
+              textDecoration: 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              gap: 6,
+              fontSize: 12, fontWeight: 500, color: 'var(--tx-60)', letterSpacing: 0.2,
+              fontFamily: 'inherit',
             }}>
-              <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                gap: 6, height: '100%',
-                fontSize: 12, fontWeight: 500, color: 'var(--tx-60)', letterSpacing: 0.2,
-              }}>
-                {icon}
-                <span>{label}</span>
-                <Icon.Arrow size={11} color="var(--tx-60)" />
-              </div>
-            </button>
+              {icon}
+              <span>{label}</span>
+              <Icon.Arrow size={11} color="var(--tx-60)" />
+            </a>
           ))}
         </div>
 
