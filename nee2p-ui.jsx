@@ -162,9 +162,10 @@ function Logo({ size = 18, palette = 'mono' }) {
   return (
     <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 0 }}>
       <span style={{
-        fontFamily: "'Instrument Serif', serif", fontStyle: 'italic',
-        fontSize: size * 2.2, lineHeight: 1, fontWeight: 400,
-        color: '#fff', letterSpacing: -1,
+        fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+        fontStyle: 'normal',
+        fontSize: size * 2.2, lineHeight: 1, fontWeight: 600,
+        color: '#fff', letterSpacing: -0.5,
       }}>Nee2P</span>
       <span style={{
         display: 'inline-block', width: size * 0.34, height: size * 0.34,
