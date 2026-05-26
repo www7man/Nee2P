@@ -316,8 +316,22 @@ window.addEventListener('error', function (e) {
 -->
 <script src="http-client.js"></script>
 
-<script type="text/babel" src="nee2p-ui.jsx"></script>
-<script type="text/babel" src="nee2p-screens.jsx"></script>
-<script type="text/babel" src="nee2p-app.jsx"></script>
+<script>
+// Auto cache-bust: version = YYYYMMDDHH (UTC), changes every hour.
+// No manual bumping needed — browsers always load the current hour's copy.
+(function () {
+  var d = new Date();
+  var v = d.getUTCFullYear()
+        + String(d.getUTCMonth() + 1).padStart(2, '0')
+        + String(d.getUTCDate()).padStart(2, '0')
+        + String(d.getUTCHours()).padStart(2, '0');
+  ['nee2p-ui.jsx', 'nee2p-screens.jsx', 'nee2p-app.jsx'].forEach(function (f) {
+    var s = document.createElement('script');
+    s.type = 'text/babel';
+    s.src = f + '?v=' + v;
+    document.head.appendChild(s);
+  });
+})();
+</script>
 </body>
 </html>
