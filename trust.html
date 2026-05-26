@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<meta name="color-scheme" content="dark" />
+<title>Nee2P. — как проверить честность</title>
+<style>
+  :root {
+    --bg: #06060a;
+    --fg: rgba(255,255,255,0.82);
+    --fg-dim: rgba(255,255,255,0.62);
+    --fg-mute: rgba(255,255,255,0.42);
+    --accent: #7be0b1;
+    --rule: rgba(255,255,255,0.08);
+    --code-bg: rgba(255,255,255,0.06);
+    --pre-bg: rgba(255,255,255,0.04);
+    --row-alt: rgba(255,255,255,0.03);
+    --sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, Menlo, Consolas, "SF Mono", monospace;
+    --serif: ui-serif, Georgia, "Times New Roman", serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); }
+  body {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--fg);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .wrap {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 28px 22px 96px;
+  }
+
+  /* Header */
+  header.top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 56px;
+  }
+  .logo {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 22px;
+    color: var(--fg);
+    text-decoration: none;
+    letter-spacing: -0.5px;
+    border-bottom: 0;
+  }
+  .back {
+    font-size: 13px;
+    color: var(--fg-mute);
+    text-decoration: none;
+    border-bottom: 0;
+  }
+  .back:hover { color: var(--accent); border-bottom: 0; }
+
+  /* Hero */
+  .hero {
+    margin: 40px 0 56px;
+  }
+  .hero h1 {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 38px;
+    line-height: 1.15;
+    letter-spacing: -0.8px;
+    margin: 0 0 18px;
+    color: var(--fg);
+  }
+  .hero p {
+    color: var(--fg-dim);
+    font-size: 16px;
+    margin: 0;
+    max-width: 540px;
+  }
+
+  /* Sections */
+  hr {
+    border: 0;
+    border-top: 1px solid var(--rule);
+    margin: 48px 0;
+  }
+  section { margin: 0; }
+  h2.kicker {
+    font-size: 11px;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    color: var(--fg-mute);
+    font-weight: 500;
+    margin: 0 0 18px;
+  }
+  h3.lead {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 24px;
+    line-height: 1.25;
+    color: var(--fg);
+    margin: 0 0 18px;
+    letter-spacing: -0.3px;
+  }
+  h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--fg);
+    margin: 22px 0 8px;
+  }
+  p { margin: 0 0 14px; color: var(--fg); }
+  p.dim { color: var(--fg-dim); }
+  p.mute { color: var(--fg-mute); font-size: 13px; }
+
+  ul, ol {
+    padding-left: 20px;
+    margin: 0 0 14px;
+  }
+  li { margin: 4px 0; }
+  li::marker { color: var(--fg-mute); }
+
+  a { color: var(--accent); text-decoration: none; border-bottom: 1px solid rgba(123,224,177,0.3); }
+  a:hover { border-bottom-color: var(--accent); }
+
+  code {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--code-bg);
+    border-radius: 4px;
+    padding: 1px 5px;
+    color: var(--fg);
+  }
+  pre {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--pre-bg);
+    border-radius: 10px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    margin: 12px 0 18px;
+    line-height: 1.55;
+    color: var(--fg);
+  }
+  pre code {
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    font-size: 13px;
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0 18px;
+    font-size: 13.5px;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 12px;
+    vertical-align: top;
+    border: 0;
+  }
+  th {
+    color: var(--fg-mute);
+    font-weight: 500;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--rule);
+  }
+  tbody tr:nth-child(even) { background: var(--row-alt); }
+  tbody td:first-child { color: var(--fg); font-weight: 500; }
+  tbody td:nth-child(2) { color: var(--fg-dim); }
+  tbody td:last-child { color: var(--fg-dim); font-family: var(--mono); font-size: 12.5px; }
+
+  /* FAQ */
+  .faq-q { color: var(--fg); font-weight: 500; margin: 22px 0 6px; }
+  .faq-a { color: var(--fg-dim); margin: 0 0 14px; }
+
+  /* Callout */
+  .note {
+    border-left: 2px solid var(--accent);
+    padding: 2px 0 2px 14px;
+    color: var(--fg-dim);
+    margin: 18px 0;
+    font-size: 14px;
+  }
+
+  /* Footer */
+  footer {
+    margin-top: 72px;
+    padding-top: 28px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 12.5px;
+    color: var(--fg-mute);
+  }
+  footer .links a {
+    margin-right: 16px;
+    border-bottom: 0;
+    color: var(--fg-dim);
+  }
+  footer .links a:hover { color: var(--accent); }
+  footer .sig { font-family: var(--serif); font-style: italic; }
+
+  /* CTA — безопасность сделки */
+  .cta-wrap {
+    margin: 56px 0 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .btn-deal {
+    display: inline-flex;
+    align-items: center;
+    gap: 11px;
+    padding: 15px 28px;
+    background: rgba(123,224,177,0.10);
+    border: 1px solid rgba(123,224,177,0.28);
+    border-radius: 16px;
+    color: var(--accent);
+    font-size: 16px;
+    font-family: var(--sans);
+    font-weight: 600;
+    letter-spacing: -0.2px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .btn-deal:hover {
+    background: rgba(123,224,177,0.17);
+    border-color: rgba(123,224,177,0.50);
+    box-shadow: 0 0 24px rgba(123,224,177,0.12);
+    border-bottom: 1px solid rgba(123,224,177,0.50);
+  }
+
+  /* стрелка дважды подпрыгивает вправо, потом пауза — намекает нажать */
+  @keyframes arrow-nudge {
+    0%         { transform: translateX(0); }
+    12%        { transform: translateX(7px); }
+    24%        { transform: translateX(1px); }
+    36%        { transform: translateX(6px); }
+    50%, 100%  { transform: translateX(0); }
+  }
+  .btn-deal .arr {
+    display: inline-block;
+    font-style: normal;
+    animation: arrow-nudge 2.4s ease-in-out infinite;
+    will-change: transform;
+  }
+
+  @media (max-width: 520px) {
+    .hero h1 { font-size: 30px; }
+    h3.lead { font-size: 20px; }
+    table { font-size: 12.5px; }
+    th, td { padding: 8px 8px; }
+    .btn-deal { font-size: 15px; padding: 13px 22px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <a href="./" class="logo">Nee2P.</a>
+    <a href="./" class="back">← назад</a>
+  </header>
+
+  <div class="hero">
+    <h1>Как убедиться, что мы не врём</h1>
+    <p>Мы не просим доверять нам на слово. Вот что можно проверить самостоятельно.</p>
+  </div>
+
+  <hr />
+
+  <!-- 1. Сервер слепой -->
+  <section>
+    <h2 class="kicker">01 — Главное</h2>
+    <h3 class="lead">Сервер физически не видит ваши сообщения</h3>
+
+    <p>Самая распространённая угроза — «сервис читает вашу переписку». В Nee2P. сервер не может этого сделать, даже если захочет или будет взломан. Ключ шифрования не покидает ваш браузер.</p>
+
+    <h4>Что происходит при подключении</h4>
+    <ul>
+      <li>Ваша фраза → через Argon2id → часть ключа (не покидает браузер)</li>
+      <li>Браузер генерирует одноразовую X25519-пару (новую при каждом подключении)</li>
+      <li>Браузеры обмениваются <em>публичными</em> ключами через сервер — он видит только их</li>
+      <li>ECDH + ML-KEM-768 + phrase → итоговый AES-256-GCM ключ (только в браузере)</li>
+      <li>Сообщение шифруется: <code>AES-256-GCM(key, iv, plaintext)</code></li>
+      <li>Сервер получает <code>{iv, ct}</code> и пересылает второму участнику — содержимое ему недоступно</li>
+    </ul>
+
+    <h4>Что сервер реально видит</h4>
+<pre><code>{
+  "iv": "&lt;12 случайных байт, base64&gt;",
+  "ct": "&lt;зашифрованный текст, base64&gt;"
+}</code></pre>
+    <p class="dim">Это всё. Без ключа — бессмысленный набор байт.</p>
+
+    <h4>Как проверить самому</h4>
+    <p class="dim">Открой DevTools → Network → WS (или вкладку <code>/r/send</code>). Все исходящие пакеты содержат только <code>iv</code> и <code>ct</code>. Plaintext там нет.</p>
+  </section>
+
+  <hr />
+
+  <!-- 2. Криптостек -->
+  <section>
+    <h2 class="kicker">02 — Криптографический стек</h2>
+    <h3 class="lead">Конкретные алгоритмы и параметры</h3>
+
+    <table>
+      <thead>
+        <tr><th>Компонент</th><th>Алгоритм</th><th>Параметры</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>KDF (основной)</td><td>Argon2id</td><td>t=3, mem=64 МиБ, p=1, out=32B</td></tr>
+        <tr><td>KDF (fallback)</td><td>PBKDF2-SHA256</td><td>600 000 итераций, out=32B</td></tr>
+        <tr><td>KDF соль</td><td>domain-separated</td><td>hush.v3.argon2id:&lt;roomId&gt;</td></tr>
+        <tr><td>Key exchange</td><td>X25519 (ECDH)</td><td>эфемерная пара, забывается после сессии</td></tr>
+        <tr><td>Post-quantum</td><td>ML-KEM-768 (FIPS 203)</td><td>pk 1184B, ct 1088B, ss 32B</td></tr>
+        <tr><td>Финальный ключ</td><td>HKDF-SHA256</td><td>mix: ECDH ‖ phrase ‖ KEM shared</td></tr>
+        <tr><td>Шифрование</td><td>AES-256-GCM</td><td>IV 12B, уникальный на сообщение</td></tr>
+        <tr><td>Fingerprint</td><td>SHA-256 → BIP-39</td><td>12 слов = 132 бита энтропии</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      Если будет взломан X25519 — защищает ML-KEM-768. Если будет взломан ML-KEM — защищает X25519. Оба должны быть скомпрометированы одновременно, чтобы расшифровать сессию.
+    </div>
+  </section>
+
+  <hr />
+
+  <!-- 3. Safety Fingerprint -->
+  <section>
+    <h2 class="kicker">03 — Safety Fingerprint</h2>
+    <h3 class="lead">Проверка человеком, что между вами нет посредника</h3>
+
+    <p>После установки соединения оба участника видят одни и те же <strong>12 слов BIP-39</strong>. Это отпечаток ваших публичных ключей — SHA-256 от их конкатенации, отсортированной по значению.</p>
+
+    <ul>
+      <li>Слова <strong>совпали</strong> (вы сверили их через голос или другой канал) → между вами нет MITM.</li>
+      <li>Слова <strong>не совпали</strong> → кто-то подменяет ключи. Сессию пересоздать.</li>
+    </ul>
+
+    <p class="mute">Где смотреть: в чате → «Безопасность сессии» → 12 слов и полный hex SHA-256.</p>
+  </section>
+
+  <hr />
+
+  <!-- 4. Время жизни данных -->
+  <section>
+    <h2 class="kicker">04 — Время жизни данных</h2>
+    <h3 class="lead">Только в оперативной памяти, без диска</h3>
+
+    <ul>
+      <li>Сообщения хранятся <strong>только в RAM сервера</strong>, пока сессия активна</li>
+      <li>TTL комнаты — на выбор: 1 час, 6 часов, 24 часа, 3 дня, 7 дней</li>
+      <li>По истечении TTL (или когда все закрыли вкладку) — комната удаляется, данные исчезают</li>
+      <li>Никакой базы данных, никакого диска, никаких бэкапов</li>
+      <li>Файлы и голосовые: лежат в RAM как зашифрованный blob (до 5 МБ), удаляются вместе с комнатой</li>
+      <li>Журнала сообщений на сервере не ведётся</li>
+    </ul>
+
+    <p class="mute">Как проверить: исходный код <code>server.js</code> — <code>class Room</code> использует <code>this.history = []</code>. Обычный массив в памяти, без вызовов в БД.</p>
+  </section>
+
+  <hr />
+
+  <!-- 5. Нет трекеров -->
+  <section>
+    <h2 class="kicker">05 — Никаких трекеров и CDN</h2>
+    <h3 class="lead">Браузер ходит только на ваш relay</h3>
+
+    <ul>
+      <li>Google Analytics — нет</li>
+      <li>Яндекс.Метрика — нет</li>
+      <li>Facebook Pixel и прочие — нет</li>
+      <li>Google Fonts — убраны (для Tor-совместимости)</li>
+      <li>Внешние CDN — <strong>нет</strong>. Все библиотеки лежат локально в <code>vendor/</code></li>
+    </ul>
+
+    <h4>Что входит в vendor</h4>
+    <ul>
+      <li><code>react@18.3.1</code> + <code>react-dom@18.3.1</code> — UI</li>
+      <li><code>@babel/standalone@7.29.0</code> — компиляция JSX в браузере</li>
+      <li><code>argon2-browser@1.18.0</code> — Argon2id (WebAssembly)</li>
+      <li><code>noble-ed25519</code> — X25519 для браузеров без нативной поддержки</li>
+      <li><code>mlkem.bundle.mjs</code> — ML-KEM-768 (FIPS 203)</li>
+      <li><code>bip39-en.js</code> — 2048 английских слов для fingerprint</li>
+      <li><code>qrcode.min.js</code> — генерация QR-кода (офлайн)</li>
+    </ul>
+
+    <p class="mute">Как проверить: DevTools → Network. Никаких запросов на fonts.googleapis.com, cdn.jsdelivr.net, аналитику и т.п. — только ваш relay.</p>
+  </section>
+
+  <hr />
+
+  <!-- 6. Открытый код -->
+  <section>
+    <h2 class="kicker">06 — Исходный код</h2>
+    <h3 class="lead">Открыт и читаем</h3>
+
+    <p>Весь код — открытый. Можно прочитать <code>crypto.js</code> (вся криптография в одном файле), <code>server.js</code> (реле, ~600 строк), <code>nee2p-app.jsx</code> (логика клиента), <code>nee2p-screens.jsx</code> (интерфейс). Форкни и подними сам — инструкция в <code>DEPLOY.md</code>.</p>
+
+    <!-- TODO: добавить ссылку на GitHub -->
+    <p class="mute">Репозиторий: <code>github.com/TODO/Nee2P</code> &nbsp;<span style="opacity:.5">(ссылка появится после публикации)</span></p>
+  </section>
+
+  <hr />
+
+  <!-- 7. Локально -->
+  <section>
+    <h2 class="kicker">07 — Запустить локально</h2>
+    <h3 class="lead">Свой relay за минуту</h3>
+
+<pre><code># склонировать репозиторий
+git clone https://github.com/TODO/Nee2P
+cd Nee2P
+
+# установить зависимости
+npm install
+
+# запустить локальный relay
+node server.js
+# → http://127.0.0.1:8787</code></pre>
+
+    <p class="dim">Подняв свой relay и открыв DevTools, можно убедиться, что сервер действительно видит только <code>{iv, ct}</code> — и больше ничего.</p>
+  </section>
+
+  <hr />
+
+  <!-- 8. Чего нельзя проверить -->
+  <section>
+    <h2 class="kicker">08 — Честно: чего проверить нельзя</h2>
+    <h3 class="lead">Границы того, что вы можете подтвердить сами</h3>
+
+    <h4>Соответствие prod-кода исходнику</h4>
+    <p class="dim">Вы видите код на GitHub, но не можете автоматически проверить, что именно он крутится на нашем сервере. Решение: запустите свой relay (см. выше) или сверьте JS-файлы в DevTools с тем, что в репозитории.</p>
+
+    <h4>Память сервера после краша</h4>
+    <p class="dim">Мы говорим, что не логируем — но извне это не подтвердить. Доверяйте RAM-only архитектуре или запустите свой сервер на машине, к которой имеете доступ.</p>
+
+    <h4>Компрометация браузера или ОС</h4>
+    <p class="dim">Если у вас установлено вредоносное расширение, кейлоггер, или ОС под чужим контролем — никакая криптография на стороне приложения не поможет. Это общий предел сквозного шифрования.</p>
+  </section>
+
+  <hr />
+
+  <!-- 9. FAQ -->
+  <section>
+    <h2 class="kicker">09 — Короткий FAQ</h2>
+
+    <p class="faq-q">Вы видите IP-адреса пользователей?</p>
+    <p class="faq-a">Технически — да, как любой сервер. IP не связан с содержимым переписки, но если нужна анонимность сетевого уровня — используйте Tor.</p>
+
+    <p class="faq-q">Фраза улетает на сервер?</p>
+    <p class="faq-a">Нет. Фраза обрабатывается только в вашем браузере через Argon2id и становится частью ключа шифрования. На сервер уходит только идентификатор комнаты — <code>md5(phrase)</code>, по которому невозможно восстановить исходную фразу.</p>
+
+    <p class="faq-q">Что если сервер упадёт во время переписки?</p>
+    <p class="faq-a">Сообщения теряются — они только в RAM. Это намеренно: никакого постоянного хранилища нет.</p>
+
+    <p class="faq-q">Можно ли это прослушать на уровне сети?</p>
+    <p class="faq-a">Трафик идёт через HTTPS (TLS). Даже если перехватить его — видны только зашифрованные пакеты <code>{iv, ct}</code>, без AES-ключа их не расшифровать.</p>
+  </section>
+
+  <div class="cta-wrap">
+    <a href="./" class="btn-deal">
+      Безопасность сделки <span class="arr">→</span>
+    </a>
+    <p class="mute" style="margin:0">Создать зашифрованную сессию — фраза, один секрет, без следов.</p>
+  </div>
+
+  <footer>
+    <div class="links">
+      <a href="./">← назад</a>
+    </div>
+    <div class="sig">Nee2P. — anonymous paired messenger</div>
+  </footer>
+
+</div>
+</body>
+</html>
