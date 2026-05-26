@@ -232,50 +232,99 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
                          rememberMe, setRememberMe,
                          busy, error, onCancel, onSubmit }) {
   const p = usePalette(palette);
+  const [step, setStep] = React.useState(1);
   const [showPwd, setShowPwd] = React.useState(false);
 
-  // Phrase is the only entry — the "Случайный код" button below the field
-  // calls onGenerateSeed() to fill it with a random readable token. We always
-  // lowercase before hashing so future joiners can't trip over case mismatches
-  // ("Pushkin-22" vs "pushkin-22" used to derive different MD5s).
   const source = (phrase || '').trim().toLowerCase();
   const hash = source ? md5(source) : '';
   const canSubmit = hash && password.length >= 4 && !busy;
 
-  return (
-    <div className="no-scrollbar" style={{ height: '100%', display: 'flex', flexDirection: 'column',
-      padding: '20px 18px 24px', position: 'relative', overflowY: 'auto' }}>
+  // Back: step 1 exits, steps 2-3 go to previous step
+  const handleBack = () => step === 1 ? onCancel() : setStep(s => s - 1);
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div onClick={onCancel} style={{
-          width: 38, height: 38, borderRadius: 12,
-          background: 'rgba(255,255,255,0.06)',
-          backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-          border: '0.5px solid rgba(255,255,255,0.12)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-        }}>
-          <Icon.Arrow size={16} color="#fff" dir="left" />
-        </div>
-        <Logo size={9} palette={palette} />
-        <div style={{ width: 38 }} />
+  // Step 1 → 2: auto-generate phrase if empty, then advance
+  const handleNext1 = () => {
+    if (!(phrase || '').trim()) onGenerateSeed && onGenerateSeed();
+    setStep(2);
+  };
+
+  // ── shared sub-components ──────────────────────────────────
+
+  // Back button + logo header row
+  const NavRow = () => (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div onClick={handleBack} style={{
+        width: 38, height: 38, borderRadius: 12,
+        background: 'rgba(255,255,255,0.06)',
+        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+        border: '0.5px solid rgba(255,255,255,0.12)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+      }}>
+        <Icon.Arrow size={16} color="#fff" dir="left" />
       </div>
+      <Logo size={9} palette={palette} />
+      <div style={{ width: 38 }} />
+    </div>
+  );
 
-      <div style={{ textAlign: 'center', marginTop: 14 }}>
-        <div style={{ fontFamily: "'Instrument Serif', serif", fontStyle: 'italic',
-          fontSize: 32, lineHeight: 1.0, fontWeight: 400, letterSpacing: -0.6 }}>
-          Создать сессию
-        </div>
-        <div style={{ marginTop: 6, fontSize: 12, color: 'var(--tx-60)', letterSpacing: -0.05 }}>
-          Придумайте секретную фразу — её скажете тому, кого зовёте.
-        </div>
+  // Progress pills: filled → active → empty
+  const StepDots = () => (
+    <div style={{ display: 'flex', gap: 5, justifyContent: 'center', marginTop: 10 }}>
+      {[1, 2, 3].map(n => (
+        <div key={n} style={{
+          height: 5, borderRadius: 9999,
+          width: n === step ? 22 : 6,
+          background: n < step
+            ? 'rgba(255,255,255,0.35)'
+            : n === step
+              ? (p.accent || '#7be0b1')
+              : 'rgba(255,255,255,0.12)',
+          transition: 'width 0.3s ease, background 0.3s ease',
+        }} />
+      ))}
+    </div>
+  );
+
+  // Title block shared by all steps
+  const TitleBlock = ({ title, hint }) => (
+    <div style={{ textAlign: 'center', marginTop: 14 }}>
+      <div style={{ fontFamily: "'Instrument Serif', serif", fontStyle: 'italic',
+        fontSize: 30, lineHeight: 1.05, fontWeight: 400, letterSpacing: -0.5 }}>
+        {title}
       </div>
+      <StepDots />
+      <div style={{ marginTop: 10, fontSize: 12, color: 'var(--tx-60)',
+        lineHeight: 1.5, letterSpacing: -0.05, maxWidth: 280, margin: '10px auto 0' }}>
+        {hint}
+      </div>
+    </div>
+  );
 
-      {/* — single phrase field, with a "random code" button — */}
-      <div style={{ marginTop: 16 }}>
+  // Common page shell
+  const Shell = ({ children }) => (
+    <div className="no-scrollbar" style={{ height: '100%', display: 'flex',
+      flexDirection: 'column', padding: '20px 18px 24px',
+      position: 'relative', overflowY: 'auto' }}>
+      <NavRow />
+      {children}
+    </div>
+  );
+
+  // ── STEP 1 — Секретная фраза ───────────────────────────────
+  if (step === 1) return (
+    <Shell>
+      <TitleBlock
+        title="Секретная фраза"
+        hint="Фраза — ваш общий секрет. Она обрабатывается в браузере через Argon2id; на сервер уходит только MD5-хеш — восстановить фразу по нему невозможно."
+      />
+
+      <div style={{ marginTop: 20 }}>
         <Glass radius={18} padding="10px 14px" strong>
           <input
+            autoFocus
             value={phrase}
             onChange={(e) => setPhrase((e.target.value || '').toLowerCase())}
+            onKeyDown={(e) => e.key === 'Enter' && handleNext1()}
             placeholder="например: пушкин-кафе-22"
             maxLength={120}
             inputMode="text"
@@ -291,12 +340,13 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
             }}
           />
         </Glass>
-        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+
+        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center',
+          justifyContent: 'space-between', gap: 10 }}>
           <button onClick={() => onGenerateSeed && onGenerateSeed()}
             style={{
               height: 28, padding: '0 12px', border: 'none', cursor: 'pointer',
-              borderRadius: 9999,
-              background: 'rgba(255,255,255,0.06)',
+              borderRadius: 9999, background: 'rgba(255,255,255,0.06)',
               color: 'var(--tx-80)', fontSize: 10.5, fontWeight: 600, letterSpacing: 0.6,
               fontFamily: 'inherit', textTransform: 'uppercase',
               boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12)',
@@ -310,23 +360,41 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
         </div>
       </div>
 
-      {/* — TTL chooser — */}
-      <div style={{ marginTop: 14 }}>
+      <div style={{ flex: 1, minHeight: 20 }} />
+
+      <GlassButton primary palette={palette}
+        icon={<Icon.Arrow size={15} color={p.text} dir="right" />}
+        iconRight
+        onClick={handleNext1}>
+        {(phrase || '').trim() ? 'Далее' : 'Сгенерировать и продолжить'}
+      </GlassButton>
+    </Shell>
+  );
+
+  // ── STEP 2 — Параметры сессии ──────────────────────────────
+  if (step === 2) return (
+    <Shell>
+      <TitleBlock
+        title="Параметры сессии"
+        hint="Срок жизни — когда сессия самоуничтожится. Число мест — сколько человек может подключиться. После создания изменить нельзя."
+      />
+
+      {/* TTL chooser */}
+      <div style={{ marginTop: 22 }}>
         <div style={{ fontSize: 10, color: 'var(--tx-40)', letterSpacing: 1.4,
-          textTransform: 'uppercase', marginBottom: 8, fontFamily: "'Geist Mono', monospace",
-          textAlign: 'center' }}>
-          код активен ·
+          textTransform: 'uppercase', marginBottom: 10,
+          fontFamily: "'Geist Mono', monospace", textAlign: 'center' }}>
+          активна · сколько времени
         </div>
         <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
           {ttlOptions.map(o => (
             <button key={o.id} onClick={() => setTtlId(o.id)}
               style={{
-                position: 'relative', border: 'none', cursor: 'pointer',
+                border: 'none', cursor: 'pointer',
                 background: ttlId === o.id ? p.accent : 'rgba(255,255,255,0.06)',
                 color: ttlId === o.id ? p.text : 'var(--tx-80)',
-                padding: '7px 12px', borderRadius: 9999,
-                fontSize: 12, fontWeight: 600, letterSpacing: 0.2,
-                fontFamily: 'inherit',
+                padding: '8px 14px', borderRadius: 9999,
+                fontSize: 13, fontWeight: 600, letterSpacing: 0.2, fontFamily: 'inherit',
                 boxShadow: ttlId === o.id
                   ? `0 4px 12px ${p.glow}, inset 0 1px 0 rgba(255,255,255,0.4)`
                   : 'inset 0 1px 0 rgba(255,255,255,0.12)',
@@ -336,23 +404,23 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
         </div>
       </div>
 
-      {/* — group size chooser — */}
+      {/* Group size chooser */}
       {Array.isArray(groupOptions) && typeof setGroupMax === 'function' && (
-        <div style={{ marginTop: 12 }}>
+        <div style={{ marginTop: 20 }}>
           <div style={{ fontSize: 10, color: 'var(--tx-40)', letterSpacing: 1.4,
-            textTransform: 'uppercase', marginBottom: 8, fontFamily: "'Geist Mono', monospace",
-            textAlign: 'center' }}>
-            участников · default 2 (личка)
+            textTransform: 'uppercase', marginBottom: 10,
+            fontFamily: "'Geist Mono', monospace", textAlign: 'center' }}>
+            участников · максимум
           </div>
           <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
             {groupOptions.map(n => (
               <button key={n} onClick={() => setGroupMax(n)}
                 style={{
-                  position: 'relative', border: 'none', cursor: 'pointer',
+                  border: 'none', cursor: 'pointer',
                   background: groupMax === n ? p.accent : 'rgba(255,255,255,0.06)',
                   color: groupMax === n ? p.text : 'var(--tx-80)',
-                  padding: '7px 14px', borderRadius: 9999, minWidth: 40,
-                  fontSize: 12, fontWeight: 700, letterSpacing: 0.2,
+                  padding: '8px 16px', borderRadius: 9999, minWidth: 44,
+                  fontSize: 14, fontWeight: 700, letterSpacing: 0.2,
                   fontFamily: "'Geist Mono', monospace",
                   boxShadow: groupMax === n
                     ? `0 4px 12px ${p.glow}, inset 0 1px 0 rgba(255,255,255,0.4)`
@@ -361,31 +429,60 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
                 }}>{n}</button>
             ))}
           </div>
+          {groupMax === 2 && (
+            <div style={{ marginTop: 8, textAlign: 'center',
+              fontSize: 11, color: 'var(--tx-40)', letterSpacing: -0.05 }}>
+              2 — личная переписка (по умолчанию)
+            </div>
+          )}
         </div>
       )}
 
-      {/* — hash preview — */}
-      <div style={{ marginTop: 14 }}>
-        <Glass radius={18} padding="14px 12px" strong>
-          <div style={{ fontSize: 9.5, color: 'var(--tx-40)', letterSpacing: 1.4,
-            textTransform: 'uppercase', textAlign: 'center', marginBottom: 10,
-            fontFamily: "'Geist Mono', monospace" }}>
-            MD5 · 128 бит
-          </div>
-          <HashDisplay hash={hash} palette={palette} />
-        </Glass>
-      </div>
+      <div style={{ flex: 1, minHeight: 20 }} />
 
-      {/* — password field — */}
-      <div style={{ marginTop: 12 }}>
+      <GlassButton primary palette={palette}
+        icon={<Icon.Arrow size={15} color={p.text} dir="right" />}
+        iconRight
+        onClick={() => setStep(3)}>
+        Далее
+      </GlassButton>
+    </Shell>
+  );
+
+  // ── STEP 3 — Пароль ───────────────────────────────────────
+  return (
+    <Shell>
+      <TitleBlock
+        title="Пароль входа"
+        hint="Защищает вход с этого устройства. Каждый участник задаёт свой пароль — по сети он не передаётся и не участвует в шифровании сообщений."
+      />
+
+      {/* Hash preview — subtle confirmation of the phrase */}
+      {hash && (
+        <div style={{ marginTop: 18 }}>
+          <Glass radius={16} padding="10px 12px">
+            <div style={{ fontSize: 9, color: 'var(--tx-30)', letterSpacing: 1.2,
+              textTransform: 'uppercase', textAlign: 'center', marginBottom: 8,
+              fontFamily: "'Geist Mono', monospace" }}>
+              идентификатор сессии · MD5
+            </div>
+            <HashDisplay hash={hash} palette={palette} />
+          </Glass>
+        </div>
+      )}
+
+      {/* Password field */}
+      <div style={{ marginTop: 14 }}>
         <Glass radius={18} padding="12px 14px" strong>
           <div style={{ fontSize: 10, color: 'var(--tx-40)', letterSpacing: 1.4,
-            textTransform: 'uppercase', marginBottom: 6, fontFamily: "'Geist Mono', monospace" }}>
+            textTransform: 'uppercase', marginBottom: 6,
+            fontFamily: "'Geist Mono', monospace" }}>
             твой пароль · мин 4 символа
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Icon.Lock size={16} color="rgba(255,255,255,0.7)" />
             <input
+              autoFocus
               type={showPwd ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -400,8 +497,7 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
                 flex: 1, background: 'transparent', border: 'none', outline: 'none',
                 color: '#fff', fontSize: 18, fontWeight: 600,
                 fontFamily: showPwd ? 'Geist Mono, ui-monospace, monospace' : 'inherit',
-                letterSpacing: showPwd ? 0.5 : 4,
-                padding: '4px 0',
+                letterSpacing: showPwd ? 0.5 : 4, padding: '4px 0',
               }}
             />
             <button onClick={() => setShowPwd(!showPwd)} style={{
@@ -430,11 +526,13 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
       <div style={{ flex: 1, minHeight: 14 }} />
 
       <GlassButton primary={canSubmit} palette={palette} disabled={!canSubmit}
-        icon={canSubmit ? <Icon.Plus size={16} color={p.text} /> : <Icon.Lock size={14} color="var(--tx-40)" />}
+        icon={canSubmit
+          ? <Icon.Plus size={16} color={p.text} />
+          : <Icon.Lock size={14} color="var(--tx-40)" />}
         onClick={onSubmit}>
-        {busy ? 'создаём…' : (canSubmit ? 'Создать и поделиться' : 'фраза и пароль нужны оба')}
+        {busy ? 'создаём…' : (canSubmit ? 'Создать сессию' : 'введите пароль')}
       </GlassButton>
-    </div>
+    </Shell>
   );
 }
 

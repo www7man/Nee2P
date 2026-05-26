@@ -104,7 +104,7 @@ function Glass({ children, style = {}, radius = 28, padding = 20, strong = false
   );
 }
 
-function GlassButton({ children, primary = false, palette = 'mono', onClick, icon, style = {}, disabled = false }) {
+function GlassButton({ children, primary = false, palette = 'mono', onClick, icon, iconRight = false, style = {}, disabled = false }) {
   const p = usePalette(palette);
   const [hover, setHover] = React.useState(false);
   const [pressed, setPressed] = React.useState(false);
@@ -149,8 +149,9 @@ function GlassButton({ children, primary = false, palette = 'mono', onClick, ico
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
         fontSize: 17, fontWeight: 600, letterSpacing: -0.2,
       }}>
-        {icon}
+        {!iconRight && icon}
         <span>{children}</span>
+        {iconRight && icon}
       </div>
     </button>
   );
