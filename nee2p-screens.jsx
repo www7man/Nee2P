@@ -1929,7 +1929,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
 
-      <div style={{ position: 'relative', zIndex: 5, paddingTop: 16 }}>
+      <div style={{ position: 'relative', zIndex: 5, paddingTop: 'max(16px, env(safe-area-inset-top))' }}>
         <div style={{
           position: 'relative', margin: '0 10px',
           borderRadius: 24, overflow: 'hidden',
@@ -2063,17 +2063,17 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
               */}
               {/* Safety fingerprint nudge — shown once when keys are ready */}
               {fpNudge && (
-                <button onClick={() => { setSafetyOpen(true); setFpNudge(false); }} style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '6px 10px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                  background: 'rgba(80,180,140,0.18)',
-                  boxShadow: 'inset 0 0 0 0.5px rgba(123,224,177,0.35), 0 0 12px rgba(123,224,177,0.15)',
-                  animation: 'welcome-rise 0.4s ease both',
-                }}>
-                  <Icon.Shield size={13} color="#7be0b1" />
-                  <span style={{ fontSize: 11, fontWeight: 600, color: '#7be0b1', letterSpacing: 0.2, whiteSpace: 'nowrap' }}>
-                    Проверьте ключи
-                  </span>
+                <button onClick={() => { setSafetyOpen(true); setFpNudge(false); }}
+                  title="Проверьте ключи"
+                  aria-label="Проверьте ключи"
+                  style={{
+                    width: 40, height: 40, borderRadius: 12, border: 'none', cursor: 'pointer',
+                    background: 'rgba(80,180,140,0.22)',
+                    boxShadow: 'inset 0 0 0 1px rgba(123,224,177,0.5), 0 0 14px rgba(123,224,177,0.2)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                    animation: 'welcome-rise 0.4s ease both',
+                  }}>
+                  <Icon.Shield size={15} color="#7be0b1" />
                 </button>
               )}
               <button
@@ -2166,7 +2166,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
               background: connStatus === 'lost' ? 'rgba(210, 70, 70, 0.65)' : 'rgba(210, 140, 60, 0.55)',
               boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.18)',
             }}>
-              <span>{connStatus === 'lost'
+              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>{connStatus === 'lost'
                 ? 'соединение потеряно — переподключаемся…'
                 : 'соединение нестабильно — переподключаемся…'}
               </span>
@@ -2193,7 +2193,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
       </div>
 
       <div ref={scrollRef} className="no-scrollbar" style={{
-        flex: 1, overflowY: 'auto', padding: '14px 16px 8px',
+        flex: 1, overflowY: 'auto', padding: '14px 16px 16px',
         display: 'flex', flexDirection: 'column', gap: 8,
         position: 'relative', zIndex: 1,
       }}>
@@ -2223,7 +2223,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
         {searchOpen && (
           <div style={{
             position: 'sticky', top: 0, zIndex: 4,
-            margin: '-2px -4px 6px', padding: '8px 10px',
+            margin: '0 0 6px', padding: '8px 10px',
             borderRadius: 14, background: 'rgba(20,20,28,0.85)',
             backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
             boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 0.5px rgba(255,255,255,0.10)',
@@ -2368,7 +2368,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                     ? `0 6px 18px ${p.glow}, inset 0 1px 0 rgba(255,255,255,0.4)`
                     : 'inset 0 1px 0 rgba(255,255,255,0.14), 0 0 0 0.5px rgba(255,255,255,0.08)',
                   color: mine ? p.text : '#fff', fontSize: 15, lineHeight: 1.35,
-                  letterSpacing: -0.1, wordBreak: 'break-word',
+                  letterSpacing: -0.1, wordBreak: 'break-word', overflowWrap: 'anywhere',
                   cursor: 'default', userSelect: 'none',
                 }}>
                 {/* Group: color-coded sender label — only on the LAST bubble
@@ -2427,7 +2427,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                   />
                 )}
                 {(m.text || (!m.blob)) && (
-                  <div data-mid={m.id} style={{ whiteSpace: 'pre-wrap' }}>{renderText(m.text)}</div>
+                  <div data-mid={m.id} style={{ whiteSpace: 'pre-wrap', paddingRight: m.expireSecAfterRead ? 18 : 0 }}>{renderText(m.text)}</div>
                 )}
                 {/* Burning-message badge: shown on any msg that carries a TTL.
                     Pinned to the top-right corner of the bubble. */}
@@ -2485,6 +2485,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                   <div style={{
                     display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6,
                     justifyContent: mine ? 'flex-end' : 'flex-start',
+                    minWidth: 0, overflow: 'hidden',
                   }}>
                     {Object.entries(m.reactions).map(([emoji, reactors]) => {
                       const reactorNums = (Array.isArray(reactors) ? reactors : [])
@@ -2575,7 +2576,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
         )}
       </div>
 
-      <div style={{ padding: '8px 12px 30px', position: 'relative', zIndex: 5 }}>
+      <div style={{ padding: '8px 12px 0', paddingBottom: 'max(30px, env(safe-area-inset-bottom, 0px))', position: 'relative', zIndex: 5 }}>
         {/* Burn-after-read — icon toggle; panel expands on tap or when armed */}
         {(burnPanelOpen || burnTtl) && (
           <div style={{
@@ -2638,8 +2639,8 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
               </div>
             </div>
             <button onClick={cancelReply} style={{
-              background: 'none', border: 'none', cursor: 'pointer', padding: 4,
-              color: 'var(--tx-60)',
+              background: 'none', border: 'none', cursor: 'pointer', padding: 12,
+              color: 'var(--tx-60)', flexShrink: 0,
             }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                 <path d="M6 6l12 12M18 6l-12 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
@@ -2655,7 +2656,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
             background: 'linear-gradient(135deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04))',
             boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.16), 0 -2px 30px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(255,255,255,0.10)',
           }} />
-          <div style={{ position: 'relative', padding: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ position: 'relative', padding: 6, display: 'flex', alignItems: 'center', gap: 6, overflow: 'visible' }}>
             <input
               ref={fileInputRef}
               type="file"
@@ -2842,7 +2843,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
         </div>
         {micToast && (
           <div style={{
-            position: 'absolute', left: 0, right: 0, bottom: 96, display: 'flex',
+            position: 'fixed', left: 0, right: 0, bottom: 100, display: 'flex',
             justifyContent: 'center', pointerEvents: 'none', zIndex: 60,
           }}>
             <div style={{
@@ -2888,13 +2889,13 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
           background: 'rgba(0,0,0,0.55)',
           backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
           display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-          padding: '0 12px 28px',
+          padding: '0 12px 0', paddingBottom: 'max(28px, env(safe-area-inset-bottom, 0px))',
         }}>
           <div onClick={e => e.stopPropagation()} style={{
             width: '100%', maxWidth: 420,
             background: '#0f0f15',
             boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.1), 0 32px 80px rgba(0,0,0,0.7)',
-            borderRadius: 24, padding: '8px 0 4px', overflowY: 'auto', maxHeight: '80vh',
+            borderRadius: 24, padding: '8px 0 4px', overflowY: 'auto', maxHeight: 'min(80vh, 80dvh)',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               padding: '8px 16px 4px' }}>
