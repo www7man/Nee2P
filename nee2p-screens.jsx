@@ -105,7 +105,7 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
             { icon: <Icon.Shield size={12} color="var(--tx-60)" />, label: 'Безопасность', href: 'trust.html' },
             { icon: <Icon.Bolt   size={12} color="var(--tx-60)" />, label: 'Что нового',   href: 'updates.html' },
           ].map(({ icon, label, href }) => (
-            <a key={href} href={href} target="_blank" rel="noopener noreferrer" style={{
+            <a key={href} href={href} style={{
               flex: 1, height: 36, cursor: 'pointer',
               borderRadius: 12, background: 'transparent',
               textDecoration: 'none',
