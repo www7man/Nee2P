@@ -216,6 +216,28 @@
   footer .links a:hover { color: var(--accent); }
   footer .sig { font-family: var(--serif); font-style: italic; }
 
+  /* GitHub card under hero */
+  .gh-card {
+    margin: -20px 0 0;
+    padding: 16px 18px;
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px;
+    color: var(--fg-dim);
+    font-size: 14px;
+    line-height: 1.55;
+  }
+  .gh-card strong { color: var(--fg); font-weight: 500; }
+  .gh-card .gh-link {
+    display: inline-block;
+    margin-top: 8px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    border-bottom: 1px solid rgba(123,224,177,0.3);
+  }
+  .gh-card .gh-link:hover { border-bottom-color: var(--accent); }
+
   /* CTA — безопасность сделки */
   .cta-wrap {
     margin: 56px 0 0;
@@ -283,6 +305,12 @@
   <div class="hero">
     <h1>Как убедиться, что мы не врём</h1>
     <p>Мы не просим доверять нам на слово. Вот что можно проверить самостоятельно.</p>
+  </div>
+
+  <div class="gh-card">
+    <strong>Код проекта открыт.</strong> Любой может прочитать его, форкнуть и поднять свою копию — чтобы убедиться, что у нас на сервере именно то, что мы говорим. Никакой магии за кулисами.
+    <br />
+    <a class="gh-link" href="https://github.com/www7man/Nee2P" target="_blank" rel="noopener">github.com/www7man/Nee2P →</a>
   </div>
 
   <hr />
@@ -417,8 +445,7 @@
 
     <p>Весь код — открытый. Можно прочитать <code>crypto.js</code> (вся криптография в одном файле), <code>server.js</code> (реле, ~600 строк), <code>nee2p-app.jsx</code> (логика клиента), <code>nee2p-screens.jsx</code> (интерфейс). Форкни и подними сам — инструкция в <code>DEPLOY.md</code>.</p>
 
-    <!-- TODO: добавить ссылку на GitHub -->
-    <p class="mute">Репозиторий: <code>github.com/TODO/Nee2P</code> &nbsp;<span style="opacity:.5">(ссылка появится после публикации)</span></p>
+    <p class="mute">Репозиторий: <a href="https://github.com/www7man/Nee2P" target="_blank" rel="noopener">github.com/www7man/Nee2P</a></p>
   </section>
 
   <hr />
@@ -429,7 +456,7 @@
     <h3 class="lead">Свой relay за минуту</h3>
 
 <pre><code># склонировать репозиторий
-git clone https://github.com/TODO/Nee2P
+git clone https://github.com/www7man/Nee2P
 cd Nee2P
 
 # установить зависимости
