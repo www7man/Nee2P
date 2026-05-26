@@ -1642,10 +1642,18 @@ function App() {
   const submitCreate = async () => {
     if (!createHash || password.length < 4 || busy) return;
     setBusy(true); setFlowError(null);
-    const r = await connectAndClaim(createHash, password, {
-      ttlMs,
-      groupMax: createGroupMax,
-    });
+    let r;
+    try {
+      r = await connectAndClaim(createHash, password, {
+        ttlMs,
+        groupMax: createGroupMax,
+      });
+    } catch (e) {
+      setBusy(false);
+      setFlowError('Не удалось создать сессию. Попробуй ещё раз.');
+      console.error('submitCreate error:', e);
+      return;
+    }
     setBusy(false);
     if (!r.ok) {
       setFlowError(r.reason === 'locked'
@@ -1687,7 +1695,15 @@ function App() {
   const submitJoin = async () => {
     if (!joinHash || password.length < 4 || busy) return;
     setBusy(true); setFlowError(null);
-    const r = await connectAndClaim(joinHash, password);
+    let r;
+    try {
+      r = await connectAndClaim(joinHash, password);
+    } catch (e) {
+      setBusy(false);
+      setFlowError('Не удалось подключиться. Попробуй ещё раз.');
+      console.error('submitJoin error:', e);
+      return;
+    }
     setBusy(false);
     if (!r.ok) {
       if (r.reason === 'locked') setScreen('locked');
