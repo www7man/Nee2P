@@ -1,0 +1,26 @@
+{
+  "name": "Nee2P.",
+  "short_name": "Nee2P.",
+  "description": "Anonymous paired messenger.",
+  "lang": "ru",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#06060a",
+  "theme_color": "#06060a",
+  "start_url": ".",
+  "scope": ".",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
