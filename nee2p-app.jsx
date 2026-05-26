@@ -134,7 +134,9 @@ window.Nee2PSlotUtil = { coerceSlot, slotForWire, slotLabel, slotHue, friendlyNa
 
 function App() {
   // ── navigation ────────────────────────────────────────────
-  const [screen, setScreen] = React.useState('welcome');
+  // If opened via a #join=<phrase> deep-link (e.g. from a QR code), jump
+  // straight to the join screen so the user sees session info immediately.
+  const [screen, setScreen] = React.useState(() => parseDeepLink() ? 'join' : 'welcome');
   const [expiredReason, setExpiredReason] = React.useState(null);
 
   // ── creator input state ───────────────────────────────────
