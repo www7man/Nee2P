@@ -1,5 +1,7 @@
 # Nee2P.
 
+**🌐 [nee2p.com](https://nee2p.com)**
+
 > Anonymous end-to-end encrypted messenger. No accounts, no database, no plaintext on the server — ever.
 
 Sessions are identified by a secret phrase. Share the phrase out-of-band; the server only routes encrypted blobs it cannot read.
