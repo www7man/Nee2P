@@ -55,11 +55,11 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
         <h1 style={{
           margin: '14px 0 0',
           fontFamily: "'Instrument Serif', serif", fontStyle: 'italic',
-          fontWeight: 400, fontSize: 54, lineHeight: 0.9, letterSpacing: -1.8,
+          fontWeight: 400, fontSize: 50, lineHeight: 0.95, letterSpacing: -1.6,
           textAlign: 'center', color: 'var(--tx-100)',
           animation: 'welcome-rise 0.9s 0.25s ease both',
         }}>
-          Только свои.
+          Исчезает само.
         </h1>
 
         <div style={{
@@ -78,14 +78,34 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
         </div>
 
         <p style={{
-          margin: '18px 0 0', fontSize: 13, color: 'var(--tx-60)',
-          textAlign: 'center', maxWidth: 290, lineHeight: 1.55, letterSpacing: -0.05,
+          margin: '14px 0 0', fontSize: 13, color: 'var(--tx-60)',
+          textAlign: 'center', maxWidth: 300, lineHeight: 1.55, letterSpacing: -0.05,
           fontWeight: 400,
           animation: 'welcome-rise 0.9s 0.55s ease both',
         }}>
-          Сессия живёт, пока вы рядом.<br/>
-          И исчезает, когда вы уходите.
+          Технология с открытым исходным кодом<br/>
+          для безопасных переписок и передачи данных.
         </p>
+
+        {/* open-source badge */}
+        <a href="https://github.com/www7man/Nee2P" target="_blank" rel="noopener noreferrer"
+          style={{
+            marginTop: 12, textDecoration: 'none',
+            display: 'inline-flex', alignItems: 'center', gap: 7,
+            padding: '6px 14px', borderRadius: 9999,
+            background: 'rgba(255,255,255,0.04)',
+            boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.1)',
+            animation: 'welcome-rise 0.9s 0.65s ease both',
+          }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.49.5.09.68-.22.68-.48v-1.7C6.73 19.91 6.14 18 6.14 18c-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.58 9.58 0 0 1 12 7.8c.85 0 1.71.11 2.51.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.94.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10.01 10.01 0 0 0 22 12c0-5.52-4.48-10-10-10z" fill="rgba(255,255,255,0.5)"/>
+          </svg>
+          <span style={{
+            fontSize: 10.5, fontWeight: 600, letterSpacing: 0.4,
+            color: 'var(--tx-50)', textTransform: 'uppercase',
+          }}>Открытый исходный код</span>
+          <Icon.Arrow size={10} color="var(--tx-40)" />
+        </a>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 9,
