@@ -21,12 +21,11 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
   }, []);
 
   const [showCloneModal, setShowCloneModal] = React.useState(false);
-  const [cloneCopied, setCloneCopied] = React.useState(false);
-  const CLONE_CMD = 'git clone https://github.com/www7man/Nee2P.git';
-  const handleCopy = () => {
-    navigator.clipboard.writeText(CLONE_CMD).catch(() => {});
-    setCloneCopied(true);
-    setTimeout(() => setCloneCopied(false), 2200);
+  const [copiedStep, setCopiedStep] = React.useState(null);
+  const handleCopyCmd = (stepId, cmd) => {
+    navigator.clipboard.writeText(cmd).catch(() => {});
+    setCopiedStep(stepId);
+    setTimeout(() => setCopiedStep(s => s === stepId ? null : s), 2200);
   };
 
   // Friendly-name helper for the saved-rooms card. Mirrors nee2p-app.jsx's
@@ -172,20 +171,21 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
         <div onClick={() => setShowCloneModal(false)} style={{
           position: 'fixed', inset: 0, zIndex: 2000,
           background: 'rgba(0,0,0,0.6)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
+          backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
           display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-          padding: '0 10px 28px',
+          padding: '0 10px 24px',
         }}>
           <div onClick={e => e.stopPropagation()} style={{
-            width: '100%', maxWidth: 420,
+            width: '100%', maxWidth: 440,
             background: '#0f0f15',
             boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.1), 0 32px 80px rgba(0,0,0,0.7)',
             borderRadius: 22,
             padding: '20px 18px 22px',
+            overflowY: 'auto', maxHeight: '88vh',
           }}>
-            {/* header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+
+            {/* ── header ── */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
                   <path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.49.5.09.68-.22.68-.48v-1.7C6.73 19.91 6.14 18 6.14 18c-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.58 9.58 0 0 1 12 7.8c.85 0 1.71.11 2.51.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.94.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10.01 10.01 0 0 0 22 12c0-5.52-4.48-10-10-10z" fill="rgba(255,255,255,0.7)"/>
@@ -196,64 +196,93 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
               </div>
               <button onClick={() => setShowCloneModal(false)} style={{
                 background: 'none', border: 'none', cursor: 'pointer',
-                color: 'rgba(255,255,255,0.35)', fontSize: 18, lineHeight: 1,
-                padding: '2px 4px',
+                color: 'rgba(255,255,255,0.3)', fontSize: 18, lineHeight: 1, padding: '2px 6px',
               }}>✕</button>
             </div>
 
-            {/* description */}
-            <p style={{
-              margin: '0 0 16px', fontSize: 13, fontWeight: 300,
-              color: 'rgba(255,255,255,0.5)', lineHeight: 1.6,
-            }}>
-              Nee2P. полностью открыт — изучите код, разверните свой сервер или убедитесь что нет бэкдоров.
-            </p>
-
-            {/* label */}
+            {/* ── зачем ── */}
             <div style={{
               fontSize: 9.5, fontWeight: 600, letterSpacing: 1.6, textTransform: 'uppercase',
-              color: 'rgba(255,255,255,0.3)', fontFamily: 'var(--ff-mono)', marginBottom: 7,
-            }}>Клонировать репозиторий</div>
+              color: 'rgba(255,255,255,0.28)', fontFamily: 'var(--ff-mono)', marginBottom: 10,
+            }}>Зачем</div>
+            {[
+              { icon: '🔍', title: 'Убедиться',     desc: 'Весь код открыт — проверьте сами, что сервер физически не видит сообщения' },
+              { icon: '🖥',  title: 'Свой сервер',   desc: 'Разверните у себя: Node.js + один файл, полный контроль над данными' },
+              { icon: '🤝', title: 'Участвовать',   desc: 'Нашли баг или есть идея — пул-реквесты и issues приветствуются' },
+            ].map(({ icon, title, desc }) => (
+              <div key={title} style={{ display: 'flex', gap: 11, marginBottom: 11, alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 16, lineHeight: 1.25, flexShrink: 0, marginTop: 1 }}>{icon}</span>
+                <div>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: 'rgba(255,255,255,0.8)', marginBottom: 2, letterSpacing: -0.2 }}>{title}</div>
+                  <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.38)', lineHeight: 1.5, fontWeight: 300 }}>{desc}</div>
+                </div>
+              </div>
+            ))}
 
-            {/* clone row */}
+            {/* divider */}
+            <div style={{ height: 0.5, background: 'rgba(255,255,255,0.07)', margin: '14px 0 14px' }} />
+
+            {/* ── быстрый запуск ── */}
             <div style={{
-              display: 'flex', alignItems: 'stretch',
-              background: 'rgba(255,255,255,0.05)',
-              boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.1)',
-              borderRadius: 12, overflow: 'hidden',
-            }}>
-              <code style={{
-                flex: 1, padding: '11px 13px',
-                fontSize: 11.5, color: 'rgba(255,255,255,0.75)',
-                fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
-                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                display: 'block',
-              }}>{CLONE_CMD}</code>
-              <button onClick={handleCopy} style={{
-                flexShrink: 0,
-                padding: '11px 14px',
-                background: cloneCopied ? 'rgba(123,224,177,0.12)' : 'rgba(255,255,255,0.07)',
-                border: 'none',
-                borderLeft: '0.5px solid rgba(255,255,255,0.1)',
-                color: cloneCopied ? '#7be0b1' : 'rgba(255,255,255,0.55)',
-                fontSize: 11.5, fontWeight: 600, cursor: 'pointer',
-                whiteSpace: 'nowrap', transition: 'color 0.2s, background 0.2s',
-              }}>{cloneCopied ? '✓ Скопировано' : 'Копировать'}</button>
-            </div>
+              fontSize: 9.5, fontWeight: 600, letterSpacing: 1.6, textTransform: 'uppercase',
+              color: 'rgba(255,255,255,0.28)', fontFamily: 'var(--ff-mono)', marginBottom: 12,
+            }}>Быстрый запуск</div>
 
-            {/* github link */}
+            {[
+              { id: 1, label: 'Клонировать репозиторий', cmd: 'git clone https://github.com/www7man/Nee2P.git', copy: true },
+              { id: 2, label: 'Запустить сервер',         cmd: 'cd Nee2P && node server.js',                    copy: true },
+              { id: 3, label: 'Открыть в браузере',       cmd: 'http://localhost:3000/2Pee/',                   copy: false },
+            ].map(({ id, label, cmd, copy }) => (
+              <div key={id} style={{ display: 'flex', gap: 12, marginBottom: 12, alignItems: 'flex-start' }}>
+                {/* step number */}
+                <div style={{
+                  flexShrink: 0, width: 22, height: 22, borderRadius: 7, marginTop: 1,
+                  background: 'rgba(255,255,255,0.07)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.45)',
+                  fontFamily: 'var(--ff-mono)',
+                }}>{id}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 5 }}>{label}</div>
+                  <div style={{
+                    display: 'flex', alignItems: 'stretch',
+                    background: 'rgba(255,255,255,0.05)',
+                    boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.09)',
+                    borderRadius: 10, overflow: 'hidden',
+                  }}>
+                    <code style={{
+                      flex: 1, padding: '9px 11px', fontSize: 11,
+                      color: id === 3 ? 'rgba(123,224,177,0.8)' : 'rgba(255,255,255,0.7)',
+                      fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block',
+                    }}>{cmd}</code>
+                    {copy && (
+                      <button onClick={() => handleCopyCmd(id, cmd)} style={{
+                        flexShrink: 0, padding: '9px 12px',
+                        background: copiedStep === id ? 'rgba(123,224,177,0.12)' : 'rgba(255,255,255,0.06)',
+                        border: 'none', borderLeft: '0.5px solid rgba(255,255,255,0.09)',
+                        color: copiedStep === id ? '#7be0b1' : 'rgba(255,255,255,0.4)',
+                        fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                        whiteSpace: 'nowrap', transition: 'color 0.2s, background 0.2s',
+                      }}>{copiedStep === id ? '✓' : 'Копировать'}</button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {/* ── github link ── */}
             <a href="https://github.com/www7man/Nee2P" target="_blank" rel="noopener noreferrer"
               style={{
-                marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 padding: '11px', borderRadius: 12,
                 background: 'rgba(255,255,255,0.04)',
                 boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.08)',
                 textDecoration: 'none',
-                fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.65)',
-                letterSpacing: -0.1,
+                fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.6)', letterSpacing: -0.1,
               }}>
               Открыть на GitHub
-              <Icon.Arrow size={12} color="rgba(255,255,255,0.35)" />
+              <Icon.Arrow size={12} color="rgba(255,255,255,0.3)" />
             </a>
           </div>
         </div>
