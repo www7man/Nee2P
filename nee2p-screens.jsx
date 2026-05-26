@@ -59,7 +59,7 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
           textAlign: 'center', color: 'var(--tx-100)',
           animation: 'welcome-rise 0.9s 0.25s ease both',
         }}>
-          Исчезает само.
+          Это безопасно.
         </h1>
 
         <div style={{
