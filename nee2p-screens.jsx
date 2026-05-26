@@ -100,23 +100,28 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
           style={{ height: 54, borderRadius: 18 }}>
           Войти по коду
         </GlassButton>
-        <button onClick={() => window.open('trust.html', '_blank')} style={{
-          position: 'relative', height: 36, border: 'none', cursor: 'pointer',
-          width: '100%', borderRadius: 12, background: 'transparent',
-          padding: 0, overflow: 'hidden', fontFamily: 'inherit',
-          marginTop: 2,
-        }}>
-          <div style={{
-            position: 'relative', display: 'flex', alignItems: 'center',
-            justifyContent: 'center', gap: 8, height: '100%',
-            fontSize: 12, fontWeight: 500, color: 'var(--tx-60)',
-            letterSpacing: 0.2,
-          }}>
-            <Icon.Shield size={12} color="var(--tx-60)" />
-            <span>Безопасность сессии</span>
-            <Icon.Arrow size={11} color="var(--tx-60)" />
-          </div>
-        </button>
+        <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+          {[
+            { icon: <Icon.Shield size={12} color="var(--tx-60)" />, label: 'Безопасность', href: 'trust.html' },
+            { icon: <Icon.Bolt   size={12} color="var(--tx-60)" />, label: 'Что нового',   href: 'updates.html' },
+          ].map(({ icon, label, href }) => (
+            <button key={href} onClick={() => window.open(href, '_blank')} style={{
+              flex: 1, height: 36, border: 'none', cursor: 'pointer',
+              borderRadius: 12, background: 'transparent',
+              padding: 0, fontFamily: 'inherit',
+            }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                gap: 6, height: '100%',
+                fontSize: 12, fontWeight: 500, color: 'var(--tx-60)', letterSpacing: 0.2,
+              }}>
+                {icon}
+                <span>{label}</span>
+                <Icon.Arrow size={11} color="var(--tx-60)" />
+              </div>
+            </button>
+          ))}
+        </div>
 
         <div style={{
           marginTop: 2, display: 'flex', alignItems: 'center', justifyContent: 'center',
