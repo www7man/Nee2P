@@ -1219,7 +1219,7 @@ function QrModal({ palette, value, label, onClose }) {
   }, [value]);
   return (
     <div onPointerDown={onClose} style={{
-      position: 'absolute', inset: 0, zIndex: 60,
+      position: 'fixed', inset: 0, zIndex: 9999,
       background: 'rgba(6,6,10,0.72)', backdropFilter: 'blur(8px)',
       WebkitBackdropFilter: 'blur(8px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
