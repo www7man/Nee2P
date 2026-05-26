@@ -100,7 +100,7 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
           style={{ height: 54, borderRadius: 18 }}>
           Войти по коду
         </GlassButton>
-        <button onClick={onInfo} style={{
+        <button onClick={() => window.open('trust.html', '_blank')} style={{
           position: 'relative', height: 36, border: 'none', cursor: 'pointer',
           width: '100%', borderRadius: 12, background: 'transparent',
           padding: 0, overflow: 'hidden', fontFamily: 'inherit',
