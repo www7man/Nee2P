@@ -102,9 +102,9 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
           </svg>
           <span style={{
             fontSize: 10.5, fontWeight: 600, letterSpacing: 0.4,
-            color: 'var(--tx-50)', textTransform: 'uppercase',
+            color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase',
           }}>Открытый исходный код</span>
-          <Icon.Arrow size={10} color="var(--tx-40)" />
+          <Icon.Arrow size={10} color="rgba(255,255,255,0.35)" />
         </a>
       </div>
 
