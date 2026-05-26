@@ -307,6 +307,27 @@ function Sheet({ children, style = {} }) {
   );
 }
 
+// Returns the visual viewport height in px — updates on keyboard open/close.
+// Use instead of '100%' in form screens so the bottom CTA button always
+// stays above the soft keyboard on iOS and Android.
+function useViewportHeight() {
+  const getH = () => (window.visualViewport ? window.visualViewport.height : window.innerHeight);
+  const [h, setH] = React.useState(getH);
+  React.useEffect(() => {
+    const vv = window.visualViewport;
+    const update = () => setH(vv ? vv.height : window.innerHeight);
+    if (vv) {
+      vv.addEventListener('resize', update);
+      vv.addEventListener('scroll', update);
+      return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update); };
+    }
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+  return h;
+}
+
 Object.assign(window, {
   PALETTES, usePalette, GradientMesh, Glass, GlassButton, Logo, StatusDot, HashDisplay, Icon, Sheet,
+  useViewportHeight,
 });

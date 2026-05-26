@@ -5,7 +5,7 @@
 //   • Chat typing indicator only shows when the actual peer is typing
 //   • ChatScreen receives a goBack handler for the back arrow
 
-const { GradientMesh, Glass, GlassButton, Logo, StatusDot, HashDisplay, Icon, usePalette } = window;
+const { GradientMesh, Glass, GlassButton, Logo, StatusDot, HashDisplay, Icon, usePalette, useViewportHeight } = window;
 const md5 = window.md5;
 
 // ─────────────────────────────────────────────────────────────
@@ -386,6 +386,7 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
                          rememberMe, setRememberMe,
                          busy, error, onCancel, onSubmit }) {
   const p = usePalette(palette);
+  const vh = useViewportHeight();
   const [step, setStep] = React.useState(1);
   const [showPwd, setShowPwd] = React.useState(false);
 
@@ -459,7 +460,7 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
 
   // Common page shell
   const Shell = ({ children }) => (
-    <div className="no-scrollbar" style={{ height: '100%', display: 'flex',
+    <div className="no-scrollbar" style={{ height: vh, display: 'flex',
       flexDirection: 'column', padding: '20px 18px 24px',
       position: 'relative', overflowY: 'auto' }}>
       <NavRow />
@@ -759,6 +760,7 @@ function fmtLeft(ms) {
 // Step 1 — phrase input only (clean, no distractions)
 function JoinStep1({ palette, value, setValue, onBack, onNext }) {
   const p = usePalette(palette);
+  const vh = useViewportHeight();
   const trimmed = (value || '').trim();
   const validInput = trimmed.length > 0;
   const hashRegex = /^[a-f0-9]{32}$/i;
@@ -766,8 +768,8 @@ function JoinStep1({ palette, value, setValue, onBack, onNext }) {
   const finalHash = trimmed ? (isHash ? trimmed.toLowerCase() : md5(trimmed)) : '';
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column',
-      padding: '24px 18px', position: 'relative' }}>
+    <div style={{ height: vh, display: 'flex', flexDirection: 'column',
+      padding: '24px 18px', position: 'relative', overflow: 'hidden' }}>
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -860,6 +862,7 @@ function JoinStep2({ palette, value, password, setPassword,
                      rememberMe, setRememberMe,
                      onBack, onContinue, onCreateInstead, busy, error }) {
   const p = usePalette(palette);
+  const vh = useViewportHeight();
   const [showPwd, setShowPwd] = React.useState(false);
   const trimmed = (value || '').trim();
   const hashRegex = /^[a-f0-9]{32}$/i;
@@ -911,7 +914,7 @@ function JoinStep2({ palette, value, password, setPassword,
 
   // ── loading ──
   if (peek.state === 'loading') return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '24px 18px' }}>
+    <div style={{ height: vh, display: 'flex', flexDirection: 'column', padding: '24px 18px' }}>
       <Header />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', gap: 16 }}>
@@ -927,7 +930,7 @@ function JoinStep2({ palette, value, password, setPassword,
 
   // ── error ──
   if (peek.state === 'error') return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '24px 18px' }}>
+    <div style={{ height: vh, display: 'flex', flexDirection: 'column', padding: '24px 18px' }}>
       <Header />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', gap: 14 }}>
@@ -943,7 +946,7 @@ function JoinStep2({ palette, value, password, setPassword,
 
   // ── missing ──
   if (peek.state === 'missing') return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '24px 18px' }}>
+    <div style={{ height: vh, display: 'flex', flexDirection: 'column', padding: '24px 18px' }}>
       <Header />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', gap: 18,
@@ -999,7 +1002,7 @@ function JoinStep2({ palette, value, password, setPassword,
   const freeSlots = peek.groupMax - peek.claimed;
 
   return (
-    <div className="no-scrollbar" style={{ height: '100%', display: 'flex', flexDirection: 'column',
+    <div className="no-scrollbar" style={{ height: vh, display: 'flex', flexDirection: 'column',
       padding: '24px 18px', overflowY: 'auto' }}>
       <Header />
 
@@ -1212,14 +1215,15 @@ function JoinScreen({ palette, value, setValue, password, setPassword,
 // ─────────────────────────────────────────────────────────────
 function PasswordScreen({ palette, perspective, password, setPassword, onBack, onContinue }) {
   const p = usePalette(palette);
+  const vh = useViewportHeight();
   const [show, setShow] = React.useState(false);
   const strength = Math.min(4, Math.floor(password.length / 3));
   const strengthLabel = ['слишком короткий', 'слабый', 'нормально', 'хорошо', 'надёжный'][strength];
   const valid = password.length >= 4;
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column',
-      padding: '24px 22px 30px', position: 'relative' }}>
+    <div style={{ height: vh, display: 'flex', flexDirection: 'column',
+      padding: '24px 22px 30px', position: 'relative', overflow: 'hidden' }}>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div onClick={onBack} style={{
