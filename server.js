@@ -671,6 +671,7 @@ const server = http.createServer((req, res) => {
   // we bypass the JSON readBody helper.
   if (isWrite && p === '/r/blob') return handleBlobPut(req, res, url);
   if (req.method === 'GET' && p.startsWith('/r/blob/')) return handleBlobGet(req, res, url, p);
+  if (req.method === 'GET' && p === '/r/admin/stats') return handleAdminStats(req, res);
 
   // static
   if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -1180,6 +1181,70 @@ function handleStream(req, res, url) {
 }
 
 // ─── Web Push endpoints ──────────────────────────────────────
+function handleAdminStats(req, res) {
+  const adminKey = process.env.ADMIN_KEY || 'nee2p-admin-local';
+  if (req.headers['x-admin-key'] !== adminKey) {
+    res.writeHead(403, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Access-Control-Allow-Origin': '*',
+    });
+    return res.end(JSON.stringify({ ok: false, error: 'forbidden' }));
+  }
+
+  let sessionCount = 0;
+  let pairedCount = 0;
+  let totalHistoryBytes = 0;
+  let totalBlobBytes = 0;
+
+  const roomList = [];
+  for (const room of rooms.values()) {
+    sessionCount += room.sessions.size;
+    if (room.isPaired()) pairedCount++;
+    totalHistoryBytes += room.historyBytes;
+    totalBlobBytes += room.totalBlobBytes;
+
+    let onlineCount = 0;
+    for (let i = 0; i < room.groupMax; i++) {
+      if (room.isSlotOnline(i)) onlineCount++;
+    }
+
+    roomList.push({
+      id: room.id,
+      createdAt: room.createdAt,
+      expiresAt: room.expiresAt,
+      ttlMs: room.ttlMs,
+      groupMax: room.groupMax,
+      paired: room.isPaired(),
+      pairedAt: room.pairedAt,
+      onlineCount,
+      sessionCount: room.sessions.size,
+      msgCount: room.history.length,
+      historyBytes: room.historyBytes,
+      blobCount: room.blobs.size,
+      blobBytes: room.totalBlobBytes,
+      slotsSealed: room.slots.map(s => !!(s && s.sealed)),
+    });
+  }
+
+  const data = {
+    uptime: Math.floor(process.uptime()),
+    roomCount: rooms.size,
+    sessionCount,
+    pairedCount,
+    totalHistoryBytes,
+    totalBlobBytes,
+    relayBlobBytes: RELAY_BLOB_BYTES,
+    rooms: roomList,
+  };
+
+  res.writeHead(200, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store',
+    'Access-Control-Allow-Origin': '*',
+  });
+  res.end(JSON.stringify({ ok: true, data }));
+}
+
 function handleVapidPubkey(req, res) {
   res.writeHead(200, {
     'Content-Type': 'text/plain; charset=utf-8',
