@@ -56,8 +56,8 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
           margin: '14px 0 0',
           fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
           fontStyle: 'normal',
-          fontWeight: 200, fontSize: 66, lineHeight: 0.92, letterSpacing: -2.5,
-          textAlign: 'center', color: 'var(--tx-100)',
+          fontWeight: 200, fontSize: 42, lineHeight: 0.92, letterSpacing: -1.5,
+          textAlign: 'center', color: 'var(--tx-100)', whiteSpace: 'nowrap',
           animation: 'welcome-rise 0.9s 0.25s ease both',
         }}>
           Это безопасно.
