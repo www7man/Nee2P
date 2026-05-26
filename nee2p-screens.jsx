@@ -54,8 +54,9 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
 
         <h1 style={{
           margin: '14px 0 0',
-          fontFamily: "'Instrument Serif', serif", fontStyle: 'italic',
-          fontWeight: 400, fontSize: 50, lineHeight: 0.95, letterSpacing: -1.6,
+          fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+          fontStyle: 'normal',
+          fontWeight: 200, fontSize: 66, lineHeight: 0.92, letterSpacing: -2.5,
           textAlign: 'center', color: 'var(--tx-100)',
           animation: 'welcome-rise 0.9s 0.25s ease both',
         }}>
@@ -80,7 +81,7 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
         <p style={{
           margin: '14px 0 0', fontSize: 13, color: 'var(--tx-60)',
           textAlign: 'center', maxWidth: 300, lineHeight: 1.55, letterSpacing: -0.05,
-          fontWeight: 400,
+          fontWeight: 300,
           animation: 'welcome-rise 0.9s 0.55s ease both',
         }}>
           Технология с открытым исходным кодом<br/>
