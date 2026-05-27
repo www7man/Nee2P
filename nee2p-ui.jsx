@@ -310,6 +310,12 @@ function Sheet({ children, style = {} }) {
 // Returns the visual viewport height in px — updates on keyboard open/close.
 // Use instead of '100%' in form screens so the bottom CTA button always
 // stays above the soft keyboard on iOS and Android.
+//
+// Listens ONLY to `resize`, never `scroll`: iOS fires visualViewport.scroll
+// many times while a tap is being processed (rubber-band, IME warm-up).
+// Re-rendering on every scroll swallowed the first tap on a fresh input
+// (keyboard never came up) and caused mid-keyboard flicker. `resize` alone
+// covers all keyboard show/hide transitions on both iOS and Android.
 function useViewportHeight() {
   const getH = () => (window.visualViewport ? window.visualViewport.height : window.innerHeight);
   const [h, setH] = React.useState(getH);
@@ -318,8 +324,7 @@ function useViewportHeight() {
     const update = () => setH(vv ? vv.height : window.innerHeight);
     if (vv) {
       vv.addEventListener('resize', update);
-      vv.addEventListener('scroll', update);
-      return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update); };
+      return () => { vv.removeEventListener('resize', update); };
     }
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
