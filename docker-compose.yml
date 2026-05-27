@@ -1,0 +1,16 @@
+services:
+  nee2p:
+    build: .
+    image: nee2p:latest
+    container_name: nee2p
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8787}:8787"
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8787
+      ADMIN_KEY: ${ADMIN_KEY:-change-me-to-a-long-random-string}
+    # Web Push VAPID keys are read from ~/.nee2p-vapid.json inside the
+    # container. Mount a host file if you want push notifications:
+    # volumes:
+    #   - ./vapid.json:/home/node/.nee2p-vapid.json:ro

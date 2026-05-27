@@ -1,0 +1,14 @@
+.git
+.github
+.claude
+.DS_Store
+node_modules
+npm-debug.log
+*.log
+*.env
+.env.*
+DEPLOY.md
+CONTRIBUTING.md
+SECURITY.md
+docs/
+tools/
