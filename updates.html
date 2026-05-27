@@ -310,19 +310,24 @@
   <!-- 01 — Последнее обновление -->
   <section>
     <div class="section-num">01 — Последнее обновление</div>
-    <h2 class="section-heading">v0.7.1 — Фиксы после ребрендинга</h2>
+    <h2 class="section-heading">v0.8.3 — Open-source инфраструктура + UX polish</h2>
 
     <div class="release">
       <div class="release-meta">
-        <span class="release-version">v0.7.1</span>
+        <span class="release-version">v0.8.3</span>
         <span class="release-date">май 2026</span>
-        <span class="release-tag">исправления</span>
+        <span class="release-tag">opensource</span>
+        <span class="release-tag">звонки</span>
+        <span class="release-tag">UX</span>
       </div>
-      <h3 class="release-title">Фиксы</h3>
+      <h3 class="release-title">Docker, CI, и шлифовка вокруг клавиатуры и звонков</h3>
       <ul>
-        <li><strong>QR-модал</strong>: переведён на <code>position: fixed</code> + <code>z-index: 9999</code> — уведомления больше не перекрывают QR-код на мобильных</li>
-        <li><strong>Имена глобальных переменных</strong>: <code>HushCrypto</code> → <code>Nee2PCrypto</code>, <code>HushPersist</code> → <code>Nee2PPersist</code>, <code>HushPush</code> → <code>Nee2PPush</code> — устранено зависание «создаём…» после ребрендинга</li>
-        <li>Все продакшн-файлы синхронизированы с dev</li>
+        <li><strong>Docker compose</strong>: <code>docker compose up --build</code> — относительно <code>npm install</code> это шаг вперёд для self-hosters. Образ на <code>node:20-alpine</code>, non-root, healthcheck</li>
+        <li><strong>GitHub Actions CI</strong>: smoke wire-format на Node 18/20/22, Docker-build, <code>npm audit</code> — больше не нужно гадать «а собирается ли это вообще». Зелёный значок на репо.</li>
+        <li><strong>SECURITY.md / CONTRIBUTING.md / issue + PR templates</strong>: репозиторий впервые выглядит как настоящий open-source проект, а не дамп файлов</li>
+        <li><strong>README пересобран</strong>: tagline, бэйджи, сравнительная таблица с Session / SimpleX / Briar, секция Docker, ссылки на политику безопасности</li>
+        <li><strong>Pre-flight network check</strong>: перед каждым звонком запускается <code>NeeCall.diagnose()</code> — если что-то сломано, видишь «отказано в микрофоне / NAT блокирует / нет интернета» сразу, вместо 45-секундной тишины</li>
+        <li><strong>Keyboard UX</strong>: убран <code>translateY</code>-хак, который сжирал первый тап по input на iOS Safari; CreatedScreen больше не autoFocus-ит input — клавиатура не выскакивает сразу после создания сессии</li>
       </ul>
     </div>
   </section>
@@ -333,6 +338,187 @@
   <section>
     <div class="section-num">02 — История версий</div>
     <h2 class="section-heading">Полная история</h2>
+
+    <!-- v0.8.2 -->
+    <div class="release">
+      <div class="release-meta">
+        <span class="release-version">v0.8.2</span>
+        <span class="release-date">май 2026</span>
+        <span class="release-tag">звонки</span>
+        <span class="release-tag">UX</span>
+      </div>
+      <h3 class="release-title">Network diagnostics + мягкое offline-гейтирование</h3>
+      <ul>
+        <li><strong>NeeCall.diagnose()</strong>: проверяет WebRTC, HTTPS, микрофон, STUN-доступность через 2 независимых провайдера, определяет тип NAT (cone vs symmetric)</li>
+        <li>Кнопка «Проверить сеть» в overlay при неудачном звонке — модал с чеклистом и конкретными рекомендациями («попробуйте мобильные данные», «разрешите доступ в настройках»)</li>
+        <li>STUN-пул расширен до 6 серверов: Google, Cloudflare, Twilio, Nextcloud + endpoint на <code>:443</code> для сетей, пропускающих только HTTPS-порт</li>
+        <li>Кнопка звонка больше не блокируется жёстко при офлайн-пире — SSE-статус устаревает за ~30s; кнопка диммируется с подсказкой «попробовать»</li>
+        <li>Overlay при ошибке авто-скрывается через 10s (было 5s) — пользователь успевает прочитать ошибку</li>
+      </ul>
+    </div>
+
+    <hr />
+
+    <!-- v0.8.1 -->
+    <div class="release">
+      <div class="release-meta">
+        <span class="release-version">v0.8.1</span>
+        <span class="release-date">май 2026</span>
+        <span class="release-tag">звонки</span>
+        <span class="release-tag">UX</span>
+      </div>
+      <h3 class="release-title">Типизированные ошибки звонков + UX polish</h3>
+      <ul>
+        <li><strong>Typed error codes</strong>: <code>mic-denied</code>, <code>mic-error</code>, <code>ice-failed</code>, <code>peer-busy</code>, <code>peer-rejected</code>, <code>peer-missed</code>, <code>timeout</code> — вместо единого «connection-failed»</li>
+        <li>Кнопка звонка серая и заблокирована когда пир офлайн — исключает 45s-ожидание в никуда</li>
+        <li>Тост в чате при peer-исходах: «Собеседник отклонил звонок», «Линия занята», «Не ответил» — виден ~3.5s</li>
+        <li>Overlay показывает конкретную причину: «Микрофон недоступен», «Сеть блокирует звонки» и др.</li>
+        <li>Overlay авто-скрывается через 5s с обратным отсчётом — не нужно нажимать «Завершить» вручную</li>
+        <li>Исходящий звонок авто-отменяется через 45s с «Не ответил»</li>
+        <li>Fix: сигналы звонка буферизуются если sender-key ещё не готов — устранён race condition</li>
+      </ul>
+    </div>
+
+    <hr />
+
+    <!-- v0.8.0 -->
+    <div class="release">
+      <div class="release-meta">
+        <span class="release-version">v0.8.0</span>
+        <span class="release-date">май 2026</span>
+        <span class="release-tag">звонки</span>
+        <span class="release-tag">WebRTC</span>
+      </div>
+      <h3 class="release-title">WebRTC peer-to-peer аудиозвонки</h3>
+      <ul>
+        <li>E2E-зашифрованные голосовые звонки для 2-party сессий</li>
+        <li>Медиа-канал защищён <strong>DTLS-SRTP</strong> нативно — ключи не покидают браузер</li>
+        <li>Сигналинг (SDP + ICE) передаётся через существующий чат-канал как новый wire type <code>signal</code> — в историю не пишется</li>
+        <li>MVP: STUN-only без TURN; при неудачном NAT traversal — «Нет соединения» с подсказкой</li>
+        <li>UI: кнопка звонка в заголовке чата (появляется когда пир подключён), bottom-sheet для входящего, overlay с таймером + mute / speaker / hangup</li>
+        <li>+812 строк кода: <code>webrtc.js</code> (360), <code>nee2p-screens.jsx</code> (220), <code>nee2p-app.jsx</code> (201), <code>server.js</code> (26)</li>
+      </ul>
+    </div>
+
+    <hr />
+
+    <!-- v0.7.5 -->
+    <div class="release">
+      <div class="release-meta">
+        <span class="release-version">v0.7.5</span>
+        <span class="release-date">май 2026</span>
+        <span class="release-tag">UX</span>
+        <span class="release-tag">мобайл</span>
+      </div>
+      <h3 class="release-title">Keyboard-aware layout</h3>
+      <ul>
+        <li><strong><code>--vvh</code> CSS-переменная</strong>: <code>visualViewport.resize</code> обновляет высоту фрейма — приложение сжимается при появлении мягкой клавиатуры</li>
+        <li><strong><code>useViewportHeight()</code> хук</strong>: настоящие React-рендеры при смене viewport (iOS Safari)</li>
+        <li>Применено к CreatedScreen, JoinStep1, JoinStep2, PasswordScreen</li>
+        <li>Кнопки «Далее / Найти / Подключиться» теперь всегда видны над клавиатурой</li>
+        <li>SW cache обновлён до <code>nee2p-v9-keyboard</code></li>
+      </ul>
+    </div>
+
+    <hr />
+
+    <!-- v0.7.4 -->
+    <div class="release">
+      <div class="release-meta">
+        <span class="release-version">v0.7.4</span>
+        <span class="release-date">май 2026</span>
+        <span class="release-tag">UX</span>
+      </div>
+      <h3 class="release-title">JoinScreen: 2-шаговый вход</h3>
+      <ul>
+        <li><strong>Шаг 1</strong>: только ввод фразы — чисто, без лишнего; мини-хинт хеша появляется по мере набора</li>
+        <li><strong>Шаг 2</strong>: карточка с результатами <code>/r/peek</code> — визуал слотов, онлайн, создано, истекает (красный если &lt;1ч), статус спаривания</li>
+        <li>Нет сессии: иконка 🔍 + CTA «Создать с этой фразой»</li>
+        <li>Полная комната: баннер предупреждения + «Изменить фразу»</li>
+        <li>Deep-link (<code>#join=</code>) автоматически пропускает на шаг 2 с pre-fill фразой</li>
+      </ul>
+    </div>
+
+    <hr />
+
+    <!-- v0.7.3 -->
+    <div class="release">
+      <div class="release-meta">
+        <span class="release-version">v0.7.3</span>
+        <span class="release-date">май 2026</span>
+        <span class="release-tag">админка</span>
+        <span class="release-tag">инфраструктура</span>
+      </div>
+      <h3 class="release-title">Admin Dashboard + мелкие улучшения</h3>
+      <div class="release-subhead">Admin Dashboard v1</div>
+      <ul>
+        <li>Новый эндпоинт <code>GET /r/admin/stats</code> с key-аутентификацией — uptime, метрики комнат/сессий/блобов, детали по каждой комнате</li>
+        <li><code>admin.html</code>: тёмный дашборд с авто-обновлением, стат-карточки, сортируемая таблица комнат</li>
+      </ul>
+      <div class="release-subhead">Admin Dashboard v2</div>
+      <ul>
+        <li>Sparklines на 40 точек на карточках Rooms / Sessions / Paired</li>
+        <li>Сортировка колонок таблицы (asc/desc toggle)</li>
+        <li>Фильтры: Все / Спарено / Онлайн / Истекает &lt;1ч</li>
+        <li>Копирование полного ID комнаты по клику с flash-feedback</li>
+        <li>Подсветка истекающих строк (красный тинт &lt;1ч)</li>
+        <li>Селектор интервала обновления: 5s / 15s / 30s / 1m + пауза</li>
+        <li><code>DELETE /r/admin/room/:id</code> — принудительное закрытие любой комнаты</li>
+      </ul>
+      <div class="release-subhead">Попутно</div>
+      <ul>
+        <li><code>trust.html</code>: карточка с GitHub-ссылкой под hero</li>
+        <li>Auto cache-bust: JSX-файлы получают hourly version query param — нет нужды вручную сбрасывать кэш</li>
+      </ul>
+    </div>
+
+    <hr />
+
+    <!-- v0.7.2 -->
+    <div class="release">
+      <div class="release-meta">
+        <span class="release-version">v0.7.2</span>
+        <span class="release-date">май 2026</span>
+        <span class="release-tag">исправления</span>
+        <span class="release-tag">мобайл</span>
+      </div>
+      <h3 class="release-title">14 фиксов мобильного чата</h3>
+      <ul>
+        <li><strong>Safe-area header</strong>: <code>paddingTop</code> теперь <code>env(safe-area-inset-top)</code> — корректно на iPhone с Dynamic Island</li>
+        <li><strong>fpNudge-кнопка</strong>: только иконка (без текста) — заголовок больше не переполняется на 320 px</li>
+        <li><strong>Input bar</strong>: <code>paddingBottom</code> через <code>env(safe-area-inset-bottom)</code> — кнопки не уходят под home indicator</li>
+        <li><strong>Invite overlay</strong>: та же safe-area-правка + <code>maxHeight: min(80vh, 80dvh)</code> для ландшафтного режима</li>
+        <li><strong>micToast</strong>: <code>position: fixed</code> вместо <code>absolute</code> — тост больше не прячется в список сообщений</li>
+        <li><strong>🔥-бейдж кнопки отправки</strong>: <code>overflow: visible</code> — значок не обрезается</li>
+        <li><strong>Баннер соединения</strong>: <code>flex:1 + ellipsis</code> — не вылезает за экран на 320 px</li>
+        <li><strong>Search bar</strong>: убраны отрицательные горизонтальные отступы, вызывавшие x-scroll</li>
+        <li><strong>Пузыри сообщений</strong>: <code>overflowWrap: anywhere</code> рядом с <code>wordBreak: break-word</code> (фикс iOS Safari)</li>
+        <li><strong>Burn-бейдж</strong>: <code>paddingRight: 18</code> — значок не перекрывает короткие сообщения</li>
+        <li><strong>Кнопка отмены ответа</strong>: padding 4 → 12 px (tap target 24 → 40 px)</li>
+        <li><strong>Scroll container</strong>: нижний отступ 8 → 16 px</li>
+        <li><strong>Reactions row</strong>: <code>minWidth: 0 + overflow: hidden</code></li>
+        <li><strong>sw.js</strong>: <code>CACHE_VERSION</code> → <code>nee2p-v8-deeplink</code> — исправлен устаревший кэш QR-ссылок</li>
+      </ul>
+    </div>
+
+    <hr />
+
+    <!-- v0.7.1 -->
+    <div class="release">
+      <div class="release-meta">
+        <span class="release-version">v0.7.1</span>
+        <span class="release-date">май 2026</span>
+        <span class="release-tag">исправления</span>
+      </div>
+      <h3 class="release-title">Фиксы после ребрендинга</h3>
+      <ul>
+        <li><strong>QR-модал</strong>: переведён на <code>position: fixed</code> + <code>z-index: 9999</code> — уведомления больше не перекрывают QR-код на мобильных</li>
+        <li><strong>Имена глобальных переменных</strong>: <code>HushCrypto</code> → <code>Nee2PCrypto</code>, <code>HushPersist</code> → <code>Nee2PPersist</code>, <code>HushPush</code> → <code>Nee2PPush</code> — устранено зависание «создаём…» после ребрендинга</li>
+        <li>Все продакшн-файлы синхронизированы с dev</li>
+      </ul>
+    </div>
+
+    <hr />
 
     <!-- v0.7.0 -->
     <div class="release">
