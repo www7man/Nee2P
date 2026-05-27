@@ -60,11 +60,63 @@
     let muted = false;
     let onSpeaker = false;
     let useVideo = false;
+    // Structured exit reason — the UI maps these to specific Russian copy.
+    // Codes (string, stable):
+    //   user-hangup        — local user pressed "Завершить" or "Отклонить"
+    //   peer-ended         — peer pressed "Завершить" mid-call
+    //   peer-rejected      — peer pressed "Отклонить" on incoming
+    //   peer-busy          — peer was already in another call
+    //   peer-unsupported   — peer's browser doesn't have WebRTC
+    //   peer-missed        — peer didn't answer in time (we sent call-end after timeout)
+    //   timeout            — our outgoing call wasn't answered in CALL_TIMEOUT_MS
+    //   mic-denied         — getUserMedia rejected (NotAllowedError / SecurityError)
+    //   mic-error          — getUserMedia failed for another reason (no device, hardware busy)
+    //   ice-failed         — WebRTC ICE checks couldn't establish a path (NAT)
+    //   connection-failed  — generic connectionState='failed' (other reasons)
+    //   unsupported        — local browser doesn't have WebRTC
+    let lastReason = null;
+    let outgoingTimeoutId = null;
+
+    // 45s for the callee to pick up before we auto-cancel the outgoing call.
+    // Matches the typical "ringing duration" cellular users are used to.
+    const CALL_TIMEOUT_MS = 45000;
 
     function setState(next) {
       if (state === next) return;
       state = next;
       try { onStateChange(state); } catch {}
+    }
+
+    function emitError(code, extra) {
+      const err = new Error(code);
+      err.code = code;
+      if (extra) Object.assign(err, extra);
+      try { onError(err); } catch {}
+    }
+
+    function classifyMicError(e) {
+      const n = e && e.name;
+      if (n === 'NotAllowedError' || n === 'SecurityError') return 'mic-denied';
+      if (n === 'NotFoundError' || n === 'OverconstrainedError'
+          || n === 'NotReadableError' || n === 'AbortError') return 'mic-error';
+      return 'mic-error';
+    }
+
+    function clearOutgoingTimeout() {
+      if (outgoingTimeoutId) { clearTimeout(outgoingTimeoutId); outgoingTimeoutId = null; }
+    }
+
+    function armOutgoingTimeout() {
+      clearOutgoingTimeout();
+      outgoingTimeoutId = setTimeout(() => {
+        outgoingTimeoutId = null;
+        // Only fire if we never connected (still outgoing).
+        if (state !== 'outgoing') return;
+        lastReason = 'timeout';
+        try { sendSignal({ kind: 'call-end', reason: 'caller-timeout' }); } catch {}
+        emitError('timeout');
+        teardown('failed');
+      }, CALL_TIMEOUT_MS);
     }
 
     function ensureAudioElement() {
@@ -112,11 +164,13 @@
         // Some browsers stop at iceConnectionState='connected' without ever
         // hitting connectionState='connected'. Treat ICE connected as enough.
         if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+          clearOutgoingTimeout();
           if (state !== 'active') setState('active');
         }
         if (pc.iceConnectionState === 'failed') {
+          lastReason = 'ice-failed';
+          emitError('ice-failed');
           setState('failed');
-          try { onError(new Error('ice-failed')); } catch {}
         }
       };
 
@@ -141,11 +195,17 @@
         if (!pc) return;
         const cs = pc.connectionState;
         try { console.log('[NeeCall] connectionState =', cs); } catch {}
-        if (cs === 'connected') setState('active');
-        else if (cs === 'failed') {
+        if (cs === 'connected') {
+          clearOutgoingTimeout();
+          setState('active');
+        } else if (cs === 'failed') {
+          // Prefer the more specific 'ice-failed' if oniceconnectionstatechange
+          // already set it; otherwise fall back to generic.
+          if (lastReason !== 'ice-failed') {
+            lastReason = 'connection-failed';
+            emitError('connection-failed');
+          }
           setState('failed');
-          try { onError(new Error('connection-failed')); } catch {}
-          // Don't auto-destroy — UI shows "Нет соединения" and user taps Завершить.
         } else if (cs === 'disconnected') {
           // brief glitches happen; only escalate if state stays disconnected
           // (the next 'connected' or 'failed' transition will resolve it).
@@ -167,7 +227,16 @@
         },
         video: useVideo ? { width: { ideal: 640 }, height: { ideal: 480 } } : false,
       };
-      localStream = await navigator.mediaDevices.getUserMedia(constraints);
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (e) {
+        // Re-throw with a classified code so callers can map to UI copy.
+        const code = classifyMicError(e);
+        const err = new Error(code);
+        err.code = code;
+        err.cause = e;
+        throw err;
+      }
       return localStream;
     }
 
@@ -181,12 +250,14 @@
     async function startCall(callOpts) {
       if (state !== 'idle' && state !== 'ended' && state !== 'failed') return;
       if (!isSupported()) {
-        try { onError(new Error('unsupported')); } catch {}
+        lastReason = 'unsupported';
+        emitError('unsupported');
         return;
       }
       useVideo = !!(callOpts && callOpts.video);
       isInitiator = true;
       pendingIce = [];
+      lastReason = null;
       setState('outgoing');
       try {
         pc = buildPeerConnection();
@@ -197,8 +268,13 @@
         });
         await pc.setLocalDescription(offer);
         sendSignal({ kind: 'call-offer', sdp: offer.sdp, video: useVideo });
+        // Arm the ringing timeout. Cleared when ICE/connection state flips to
+        // connected, or when we get a call-reject / call-end from the peer.
+        armOutgoingTimeout();
       } catch (e) {
-        try { onError(e); } catch {}
+        const code = e && e.code ? e.code : 'connection-failed';
+        lastReason = code;
+        emitError(code);
         teardown('failed');
       }
     }
@@ -208,7 +284,7 @@
 
       if (msg.kind === 'call-offer') {
         // If we're already in a call, reject the second one outright.
-        if (state === 'active' || state === 'outgoing') {
+        if (state === 'active' || state === 'outgoing' || state === 'incoming') {
           try { sendSignal({ kind: 'call-reject', reason: 'busy' }); } catch {}
           return;
         }
@@ -220,6 +296,7 @@
         useVideo = !!msg.video;
         pendingOffer = msg.sdp;
         pendingIce = [];
+        lastReason = null;
         setState('incoming');
         // Wait for the user to tap Ответить → answer().
         return;
@@ -235,7 +312,8 @@
           }
           pendingIce = [];
         } catch (e) {
-          try { onError(e); } catch {}
+          lastReason = 'connection-failed';
+          emitError('connection-failed');
           teardown('failed');
         }
         return;
@@ -253,11 +331,27 @@
       }
 
       if (msg.kind === 'call-reject') {
+        // Map peer's reject reason → our reason code so the UI can show the
+        // right thing ("Линия занята", "Не поддерживается", "Отклонён").
+        if (msg.reason === 'busy') lastReason = 'peer-busy';
+        else if (msg.reason === 'unsupported') lastReason = 'peer-unsupported';
+        else lastReason = 'peer-rejected';
+        emitError(lastReason);
         teardown('ended');
         return;
       }
 
       if (msg.kind === 'call-end') {
+        // Distinguish between "callee never answered" (caller-timeout) and
+        // "peer hung up mid-call / cancelled their outgoing call".
+        if (msg.reason === 'caller-timeout') {
+          lastReason = 'peer-missed';
+          emitError('peer-missed');
+        } else if (!lastReason) {
+          // Only overwrite if we don't already have a more specific reason.
+          lastReason = 'peer-ended';
+          emitError('peer-ended');
+        }
         teardown('ended');
         return;
       }
@@ -289,6 +383,7 @@
       if (state === 'incoming') {
         try { sendSignal({ kind: 'call-reject' }); } catch {}
       }
+      lastReason = 'user-hangup';
       teardown('ended');
     }
 
@@ -296,6 +391,8 @@
       if (state === 'incoming' || state === 'outgoing' || state === 'active') {
         try { sendSignal({ kind: 'call-end' }); } catch {}
       }
+      // Only overwrite reason if it wasn't already set by peer-side event.
+      if (!lastReason) lastReason = 'user-hangup';
       teardown('ended');
     }
 
@@ -323,6 +420,7 @@
     }
 
     function teardown(nextState) {
+      clearOutgoingTimeout();
       pendingOffer = null;
       pendingIce = [];
       if (pc) {
@@ -369,6 +467,7 @@
       destroy,
       isSupported,
       getState: () => state,
+      getReason: () => lastReason,
       isMuted: () => muted,
       isOnSpeaker: () => onSpeaker,
     };

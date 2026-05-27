@@ -1722,7 +1722,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                        connStatus = 'live',
                        callState = 'idle', callPeer = null,
                        callMuted = false, callOnSpeaker = false, callError = null,
-                       callSupported = false,
+                       callToast = null, callSupported = false,
                        onCall, onAnswerCall, onRejectCall, onHangup,
                        onToggleMute, onToggleSpeaker }) {
   // Local 1-Hz ticker — only ChatScreen re-renders, not all of App.
@@ -2226,20 +2226,27 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               {/* Call button — visible when at least one peer is in the room.
+                  Disabled (greyed) when peer is offline so the user gets
+                  immediate feedback instead of waiting for a 45s timeout.
                   MVP is 2-party audio; group calls TBD. */}
               {!isGroup && partnerClaimed && callSupported && (callState === 'idle' || callState === 'ended' || callState === 'failed') && (
-                <button onClick={() => { if (onCall) onCall(); }}
-                  title="Позвонить"
-                  aria-label="Позвонить"
+                <button onClick={() => { if (partnerOnline && onCall) onCall(); }}
+                  disabled={!partnerOnline}
+                  title={partnerOnline ? 'Позвонить' : 'Собеседник не в сети'}
+                  aria-label={partnerOnline ? 'Позвонить' : 'Звонок недоступен — собеседник не в сети'}
                   style={{
                     width: 40, height: 40, borderRadius: 12, padding: 0, border: 'none',
-                    background: 'rgba(80,180,140,0.18)',
-                    boxShadow: 'inset 0 0 0 0.5px rgba(123,224,177,0.4)',
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: partnerOnline ? 'rgba(80,180,140,0.18)' : 'rgba(255,255,255,0.04)',
+                    boxShadow: partnerOnline
+                      ? 'inset 0 0 0 0.5px rgba(123,224,177,0.4)'
+                      : 'inset 0 0 0 0.5px rgba(255,255,255,0.06)',
+                    cursor: partnerOnline ? 'pointer' : 'not-allowed',
+                    opacity: partnerOnline ? 1 : 0.45,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                     <path d="M5 4c0-.6.4-1 1-1h3.3c.5 0 .9.3 1 .8l1 4.2c.1.5-.1 1-.5 1.2l-2 1.2c1.2 2.5 3.2 4.5 5.7 5.7l1.2-2c.3-.4.8-.6 1.3-.5l4.2 1c.5.1.8.5.8 1V19c0 .6-.4 1-1 1h-2C9.5 20 4 14.5 4 7V5z"
-                      stroke="#7be0b1" strokeWidth="1.6" strokeLinejoin="round" fill="none"/>
+                      stroke={partnerOnline ? '#7be0b1' : 'rgba(255,255,255,0.4)'} strokeWidth="1.6" strokeLinejoin="round" fill="none"/>
                   </svg>
                 </button>
               )}
@@ -3117,6 +3124,22 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
         </div>
       )}
 
+      {/* Transient call-event toast (peer rejected/ended/missed). Floats at
+          the top of the chat, auto-dismisses in ~3.5s. */}
+      {callToast && (
+        <div style={{
+          position: 'absolute', top: 'max(72px, env(safe-area-inset-top, 0px))',
+          left: '50%', transform: 'translateX(-50%)',
+          zIndex: 230,
+          padding: '8px 14px', borderRadius: 12,
+          background: 'rgba(20,20,30,0.92)',
+          boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.14), 0 8px 24px rgba(0,0,0,0.4)',
+          color: '#fff', fontSize: 13, letterSpacing: 0.2,
+          animation: 'fade-up 0.2s ease',
+          pointerEvents: 'none',
+        }}>{callToast}</div>
+      )}
+
       {/* Incoming call — bottom sheet with caller name + Answer/Reject. */}
       {callState === 'incoming' && (
         <div style={{
@@ -3210,6 +3233,39 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
 // Active call overlay: shown while a call is ringing (outgoing), active, or
 // failed. Sits on top of the chat. Closing routes through onHangup so the
 // peer is notified.
+// Map a structured NeeCall error code → user-facing Russian message for the
+// active-call overlay. Returns null when the code shouldn't override the
+// generic "Нет соединения" header (e.g. peer-* codes are already shown as toasts).
+function callErrorCopy(code) {
+  switch (code) {
+    case 'mic-denied':
+      return 'Микрофон недоступен. Разрешите доступ в настройках браузера и попробуйте снова.';
+    case 'mic-error':
+      return 'Не удалось получить доступ к микрофону.';
+    case 'unsupported':
+      return 'Звонки не поддерживаются в этом браузере.';
+    case 'insecure-context':
+      return 'Звонки работают только по HTTPS.';
+    case 'ice-failed':
+      return 'Не удалось установить прямое соединение. Возможно, сеть блокирует звонки.';
+    case 'connection-failed':
+      return 'Не удалось установить соединение.';
+    case 'timeout':
+      return 'Собеседник не ответил.';
+    case 'peer-busy':
+      return 'Линия занята — собеседник уже в звонке.';
+    case 'peer-unsupported':
+      return 'У собеседника не поддерживаются звонки.';
+    case 'peer-rejected':
+      return 'Собеседник отклонил звонок.';
+    case 'peer-ended':
+    case 'peer-missed':
+      return null; // toast covers this; overlay shows generic "Нет соединения"
+    default:
+      return null;
+  }
+}
+
 function ActiveCallOverlay({ palette, callState, callMuted, callOnSpeaker, callError,
                              peerLabel, peerFriendly,
                              onHangup, onToggleMute, onToggleSpeaker }) {
@@ -3218,15 +3274,19 @@ function ActiveCallOverlay({ palette, callState, callMuted, callOnSpeaker, callE
   const [now, setNow] = React.useState(Date.now());
   React.useEffect(() => {
     if (callState === 'active' && !startedAt) setStartedAt(Date.now());
-    if (callState === 'failed' || callState === 'ended' || callState === 'idle') {
-      // overlay unmounts when state leaves these branches
-    }
   }, [callState]);
   React.useEffect(() => {
     if (callState !== 'active') return;
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, [callState]);
+  // Auto-dismiss the overlay after 5s when in 'failed' state — saves the user
+  // from having to tap Завершить on every NAT-blocked attempt.
+  React.useEffect(() => {
+    if (callState !== 'failed') return;
+    const t = setTimeout(() => { if (onHangup) onHangup(); }, 5000);
+    return () => clearTimeout(t);
+  }, [callState, onHangup]);
   const elapsedSec = startedAt ? Math.max(0, Math.floor((now - startedAt) / 1000)) : 0;
   const mm = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
   const ss = String(elapsedSec % 60).padStart(2, '0');
@@ -3234,6 +3294,7 @@ function ActiveCallOverlay({ palette, callState, callMuted, callOnSpeaker, callE
   const status = callState === 'outgoing' ? 'Соединяемся…'
     : callState === 'failed' ? 'Нет соединения'
     : callState === 'active' ? `${mm}:${ss}` : '';
+  const detail = callState === 'failed' ? callErrorCopy(callError) : null;
 
   return (
     <div style={{
@@ -3264,11 +3325,17 @@ function ActiveCallOverlay({ palette, callState, callMuted, callOnSpeaker, callE
             letterSpacing: callState === 'active' ? 0.5 : 0.3 }}>
             {status}
           </div>
-          {callError && callState === 'failed' && (
-            <div style={{ fontSize: 12, color: '#ffb088', marginTop: 6 }}>
-              {callError === 'unsupported'
-                ? 'Звонки не поддерживаются на этом устройстве'
-                : 'Не удалось установить соединение'}
+          {detail && (
+            <div style={{
+              fontSize: 12, color: '#ffb088', marginTop: 8,
+              maxWidth: 280, lineHeight: 1.4, padding: '0 16px',
+            }}>
+              {detail}
+            </div>
+          )}
+          {callState === 'failed' && (
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 6 }}>
+              окно закроется через 5с
             </div>
           )}
         </div>

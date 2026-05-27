@@ -265,14 +265,27 @@ function App() {
   // ── WebRTC peer-to-peer call state (audio only on MVP) ───
   // callState: idle | outgoing | incoming | active | ended | failed
   // callPeer:  slot number of the other side once known.
+  // callError: structured code from NeeCall (mic-denied, ice-failed, peer-busy, etc.)
+  // callToast: transient banner for peer-side outcomes (rejected/missed/ended)
+  //            shown in the chat for ~3s after the call concludes.
   const [callState, setCallState] = React.useState('idle');
   const [callPeer, setCallPeer] = React.useState(null);
   const [callMuted, setCallMuted] = React.useState(false);
   const [callOnSpeaker, setCallOnSpeaker] = React.useState(false);
   const [callError, setCallError] = React.useState(null);
-  // Hard cap call duration to "session lifetime"; the timer is purely UI.
-  // Tick lives in ChatScreen.
+  const [callToast, setCallToast] = React.useState(null);
+  const callToastTimerRef = React.useRef(null);
   const neeCallRef = React.useRef(null);
+
+  // Show a transient (3s) toast in the chat for a peer-side call outcome.
+  const flashCallToast = React.useCallback((text) => {
+    if (callToastTimerRef.current) clearTimeout(callToastTimerRef.current);
+    setCallToast(text);
+    callToastTimerRef.current = setTimeout(() => {
+      setCallToast(null);
+      callToastTimerRef.current = null;
+    }, 3500);
+  }, []);
 
   // FIX 8 — two-tabs detection via BroadcastChannel. If two tabs of Nee2P.
   // are open at the same origin, both will try to claim the same slot →
@@ -518,6 +531,11 @@ function App() {
     setCallMuted(false);
     setCallOnSpeaker(false);
     setCallError(null);
+    if (callToastTimerRef.current) {
+      clearTimeout(callToastTimerRef.current);
+      callToastTimerRef.current = null;
+    }
+    setCallToast(null);
     // Revoke any blob object URLs we minted so the browser can free the
     // backing Blob memory. (Closures inside this callback can't reference
     // refs declared later in the component without a guard — null-check just
@@ -1063,7 +1081,12 @@ function App() {
         sendSignal: (p) => { sendSignal(p); },
         onRemoteStream: () => {},
         onStateChange: (s) => { setCallState(s); },
-        onError: (e) => { setCallError(e && e.message ? e.message : String(e || 'call-error')); },
+        onError: (e) => {
+          const code = (e && e.code) ? e.code : (e && e.message) ? e.message : 'call-error';
+          setCallError(code);
+          const toast = callToastForCode(code);
+          if (toast) flashCallToast(toast);
+        },
       });
       neeCallRef.current = created;
       return created;
@@ -1952,6 +1975,19 @@ function App() {
     try { wsRef.current.send(wireMsg); } catch {}
   }, []);
 
+  // Map a structured NeeCall error code → optional toast text. Returns null
+  // when the code is best left to the overlay (e.g. ice-failed stays in the
+  // overlay, doesn't pop a toast).
+  const callToastForCode = (code) => {
+    if (code === 'peer-rejected') return 'Собеседник отклонил звонок';
+    if (code === 'peer-ended') return 'Собеседник завершил звонок';
+    if (code === 'peer-busy') return 'Линия занята';
+    if (code === 'peer-unsupported') return 'У собеседника не поддерживаются звонки';
+    if (code === 'peer-missed') return 'Собеседник не ответил';
+    if (code === 'timeout') return 'Собеседник не ответил';
+    return null;
+  };
+
   // Lazily instantiate NeeCall on first need. We don't create it eagerly so a
   // user who never opens a call doesn't pay the RTCPeerConnection import cost.
   const getNeeCall = React.useCallback(() => {
@@ -1963,25 +1999,38 @@ function App() {
       sendSignal: (p) => { sendSignal(p); },
       onRemoteStream: () => {},  // NeeCall manages the hidden <audio> internally
       onStateChange: (s) => { setCallState(s); },
-      onError: (e) => { setCallError(e && e.message ? e.message : String(e || 'call-error')); },
+      onError: (e) => {
+        const code = (e && e.code) ? e.code : (e && e.message) ? e.message : 'call-error';
+        setCallError(code);
+        const toast = callToastForCode(code);
+        if (toast) flashCallToast(toast);
+      },
     });
     neeCallRef.current = inst;
     return inst;
-  }, [sendSignal]);
+  }, [sendSignal, flashCallToast]);
 
   // Outbound: start the call to the (only) peer in a 2-party room.
   const startCall = React.useCallback(async () => {
     setCallError(null);
+    // Pre-flight: getUserMedia needs HTTPS (or localhost). Show a clear
+    // message rather than silently failing inside webrtc.js.
+    if (typeof window !== 'undefined' && !window.isSecureContext) {
+      setCallError('insecure-context');
+      flashCallToast('Звонки требуют HTTPS');
+      return;
+    }
     const inst = getNeeCall();
     if (!inst) {
       setCallError('unsupported');
+      flashCallToast('Звонки не поддерживаются в этом браузере');
       return;
     }
     // 2-party only on MVP — callPeer is the single other slot.
     const ps = mySlotRef.current === 0 ? 1 : 0;
     setCallPeer(ps);
     await inst.startCall({ video: false });
-  }, [getNeeCall]);
+  }, [getNeeCall, flashCallToast]);
 
   const answerCall = React.useCallback(async () => {
     const inst = neeCallRef.current;
@@ -2540,6 +2589,7 @@ function App() {
         callMuted={callMuted}
         callOnSpeaker={callOnSpeaker}
         callError={callError}
+        callToast={callToast}
         callSupported={!!(window.NeeCall && window.NeeCall.isSupported && window.NeeCall.isSupported())}
         onCall={startCall}
         onAnswerCall={answerCall}
