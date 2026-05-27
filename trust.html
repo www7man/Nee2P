@@ -324,11 +324,11 @@
 
     <h4>Что происходит при подключении</h4>
     <ul>
-      <li>Ваша фраза → через Argon2id → часть ключа (не покидает браузер)</li>
-      <li>Браузер генерирует одноразовую X25519-пару (новую при каждом подключении)</li>
+      <li>Ваша фраза → через <a href="https://ru.wikipedia.org/wiki/Argon2" target="_blank" rel="noopener">Argon2id</a> → часть ключа (не покидает браузер)</li>
+      <li>Браузер генерирует одноразовую <a href="https://ru.wikipedia.org/wiki/Curve25519" target="_blank" rel="noopener">X25519</a>-пару (новую при каждом подключении)</li>
       <li>Браузеры обмениваются <em>публичными</em> ключами через сервер — он видит только их</li>
-      <li>ECDH + ML-KEM-768 + phrase → итоговый AES-256-GCM ключ (только в браузере)</li>
-      <li>Сообщение шифруется: <code>AES-256-GCM(key, iv, plaintext)</code></li>
+      <li><a href="https://ru.wikipedia.org/wiki/Протокол_Диффи_—_Хеллмана_на_эллиптических_кривых" target="_blank" rel="noopener">ECDH</a> + <a href="https://en.wikipedia.org/wiki/Kyber" target="_blank" rel="noopener">ML-KEM-768</a> + phrase → итоговый <a href="https://ru.wikipedia.org/wiki/Galois/Counter_Mode" target="_blank" rel="noopener">AES-256-GCM</a> ключ (только в браузере)</li>
+      <li>Сообщение шифруется: <code>AES-256-GCM(key, <a href="https://ru.wikipedia.org/wiki/Инициализирующий_вектор" target="_blank" rel="noopener">iv</a>, plaintext)</code></li>
       <li>Сервер получает <code>{iv, ct}</code> и пересылает второму участнику — содержимое ему недоступно</li>
     </ul>
 
@@ -355,19 +355,19 @@
         <tr><th>Компонент</th><th>Алгоритм</th><th>Параметры</th></tr>
       </thead>
       <tbody>
-        <tr><td>KDF (основной)</td><td>Argon2id</td><td>t=3, mem=64 МиБ, p=1, out=32B</td></tr>
-        <tr><td>KDF (fallback)</td><td>PBKDF2-SHA256</td><td>600 000 итераций, out=32B</td></tr>
-        <tr><td>KDF соль</td><td>domain-separated</td><td>hush.v3.argon2id:&lt;roomId&gt;</td></tr>
-        <tr><td>Key exchange</td><td>X25519 (ECDH)</td><td>эфемерная пара, забывается после сессии</td></tr>
-        <tr><td>Post-quantum</td><td>ML-KEM-768 (FIPS 203)</td><td>pk 1184B, ct 1088B, ss 32B</td></tr>
-        <tr><td>Финальный ключ</td><td>HKDF-SHA256</td><td>mix: ECDH ‖ phrase ‖ KEM shared</td></tr>
-        <tr><td>Шифрование</td><td>AES-256-GCM</td><td>IV 12B, уникальный на сообщение</td></tr>
-        <tr><td>Fingerprint</td><td>SHA-256 → BIP-39</td><td>12 слов = 132 бита энтропии</td></tr>
+        <tr><td><a href="https://ru.wikipedia.org/wiki/Функция_формирования_ключа" target="_blank" rel="noopener">KDF</a> (основной)</td><td><a href="https://ru.wikipedia.org/wiki/Argon2" target="_blank" rel="noopener">Argon2id</a></td><td>t=3, mem=64 МиБ, p=1, out=32B</td></tr>
+        <tr><td>KDF (fallback)</td><td><a href="https://ru.wikipedia.org/wiki/PBKDF2" target="_blank" rel="noopener">PBKDF2</a>-<a href="https://ru.wikipedia.org/wiki/SHA-2" target="_blank" rel="noopener">SHA256</a></td><td>600 000 итераций, out=32B</td></tr>
+        <tr><td><a href="https://ru.wikipedia.org/wiki/Функция_формирования_ключа" target="_blank" rel="noopener">KDF</a> соль</td><td>domain-separated</td><td>hush.v3.argon2id:&lt;roomId&gt;</td></tr>
+        <tr><td>Key exchange</td><td><a href="https://ru.wikipedia.org/wiki/Curve25519" target="_blank" rel="noopener">X25519</a> (<a href="https://ru.wikipedia.org/wiki/Протокол_Диффи_—_Хеллмана_на_эллиптических_кривых" target="_blank" rel="noopener">ECDH</a>)</td><td>эфемерная пара, забывается после сессии</td></tr>
+        <tr><td>Post-quantum</td><td><a href="https://en.wikipedia.org/wiki/Kyber" target="_blank" rel="noopener">ML-KEM-768</a> (FIPS 203)</td><td>pk 1184B, ct 1088B, ss 32B</td></tr>
+        <tr><td>Финальный ключ</td><td><a href="https://en.wikipedia.org/wiki/HKDF" target="_blank" rel="noopener">HKDF</a>-<a href="https://ru.wikipedia.org/wiki/SHA-2" target="_blank" rel="noopener">SHA256</a></td><td>mix: <a href="https://ru.wikipedia.org/wiki/Протокол_Диффи_—_Хеллмана_на_эллиптических_кривых" target="_blank" rel="noopener">ECDH</a> ‖ phrase ‖ <a href="https://en.wikipedia.org/wiki/Key_encapsulation_mechanism" target="_blank" rel="noopener">KEM</a> shared</td></tr>
+        <tr><td>Шифрование</td><td><a href="https://ru.wikipedia.org/wiki/Galois/Counter_Mode" target="_blank" rel="noopener">AES-256-GCM</a></td><td><a href="https://ru.wikipedia.org/wiki/Инициализирующий_вектор" target="_blank" rel="noopener">IV</a> 12B, уникальный на сообщение</td></tr>
+        <tr><td>Fingerprint</td><td><a href="https://ru.wikipedia.org/wiki/SHA-2" target="_blank" rel="noopener">SHA-256</a> → <a href="https://en.bitcoin.it/wiki/BIP_0039" target="_blank" rel="noopener">BIP-39</a></td><td>12 слов = 132 бита энтропии</td></tr>
       </tbody>
     </table>
 
     <div class="note">
-      Если будет взломан X25519 — защищает ML-KEM-768. Если будет взломан ML-KEM — защищает X25519. Оба должны быть скомпрометированы одновременно, чтобы расшифровать сессию.
+      Если будет взломан <a href="https://ru.wikipedia.org/wiki/Curve25519" target="_blank" rel="noopener">X25519</a> — защищает <a href="https://en.wikipedia.org/wiki/Kyber" target="_blank" rel="noopener">ML-KEM-768</a>. Если будет взломан <a href="https://en.wikipedia.org/wiki/Kyber" target="_blank" rel="noopener">ML-KEM</a> — защищает <a href="https://ru.wikipedia.org/wiki/Curve25519" target="_blank" rel="noopener">X25519</a>. Оба должны быть скомпрометированы одновременно, чтобы расшифровать сессию.
     </div>
   </section>
 
@@ -378,14 +378,14 @@
     <h2 class="kicker">03 — Safety Fingerprint</h2>
     <h3 class="lead">Проверка человеком, что между вами нет посредника</h3>
 
-    <p>После установки соединения оба участника видят одни и те же <strong>12 слов BIP-39</strong>. Это отпечаток ваших публичных ключей — SHA-256 от их конкатенации, отсортированной по значению.</p>
+    <p>После установки соединения оба участника видят одни и те же <strong>12 слов <a href="https://en.bitcoin.it/wiki/BIP_0039" target="_blank" rel="noopener">BIP-39</a></strong>. Это отпечаток ваших публичных ключей — <a href="https://ru.wikipedia.org/wiki/SHA-2" target="_blank" rel="noopener">SHA-256</a> от их конкатенации, отсортированной по значению.</p>
 
     <ul>
-      <li>Слова <strong>совпали</strong> (вы сверили их через голос или другой канал) → между вами нет MITM.</li>
+      <li>Слова <strong>совпали</strong> (вы сверили их через голос или другой канал) → между вами нет <a href="https://ru.wikipedia.org/wiki/Атака_посредника" target="_blank" rel="noopener">MITM</a>.</li>
       <li>Слова <strong>не совпали</strong> → кто-то подменяет ключи. Сессию пересоздать.</li>
     </ul>
 
-    <p class="mute">Где смотреть: в чате → «Безопасность сессии» → 12 слов и полный hex SHA-256.</p>
+    <p class="mute">Где смотреть: в чате → «Безопасность сессии» → 12 слов и полный hex <a href="https://ru.wikipedia.org/wiki/SHA-2" target="_blank" rel="noopener">SHA-256</a>.</p>
   </section>
 
   <hr />
@@ -418,17 +418,17 @@
       <li>Google Analytics — нет</li>
       <li>Яндекс.Метрика — нет</li>
       <li>Facebook Pixel и прочие — нет</li>
-      <li>Google Fonts — убраны (для Tor-совместимости)</li>
+      <li>Google Fonts — убраны (для <a href="https://ru.wikipedia.org/wiki/Tor" target="_blank" rel="noopener">Tor</a>-совместимости)</li>
       <li>Внешние CDN — <strong>нет</strong>. Все библиотеки лежат локально в <code>vendor/</code></li>
     </ul>
 
     <h4>Что входит в vendor</h4>
     <ul>
-      <li><code>react@18.3.1</code> + <code>react-dom@18.3.1</code> — UI</li>
+      <li><code><a href="https://ru.wikipedia.org/wiki/React" target="_blank" rel="noopener">react</a>@18.3.1</code> + <code>react-dom@18.3.1</code> — UI</li>
       <li><code>@babel/standalone@7.29.0</code> — компиляция JSX в браузере</li>
-      <li><code>argon2-browser@1.18.0</code> — Argon2id (WebAssembly)</li>
-      <li><code>noble-ed25519</code> — X25519 для браузеров без нативной поддержки</li>
-      <li><code>mlkem.bundle.mjs</code> — ML-KEM-768 (FIPS 203)</li>
+      <li><code>argon2-browser@1.18.0</code> — Argon2id (<a href="https://ru.wikipedia.org/wiki/WebAssembly" target="_blank" rel="noopener">WebAssembly</a>)</li>
+      <li><code>noble-ed25519</code> — <a href="https://ru.wikipedia.org/wiki/Curve25519" target="_blank" rel="noopener">X25519</a> для браузеров без нативной поддержки</li>
+      <li><code>mlkem.bundle.mjs</code> — <a href="https://en.wikipedia.org/wiki/Kyber" target="_blank" rel="noopener">ML-KEM-768</a> (FIPS 203)</li>
       <li><code>bip39-en.js</code> — 2048 английских слов для fingerprint</li>
       <li><code>qrcode.min.js</code> — генерация QR-кода (офлайн)</li>
     </ul>
@@ -493,16 +493,16 @@ node server.js
     <h2 class="kicker">09 — Короткий FAQ</h2>
 
     <p class="faq-q">Вы видите IP-адреса пользователей?</p>
-    <p class="faq-a">Технически — да, как любой сервер. IP не связан с содержимым переписки, но если нужна анонимность сетевого уровня — используйте Tor.</p>
+    <p class="faq-a">Технически — да, как любой сервер. IP не связан с содержимым переписки, но если нужна анонимность сетевого уровня — используйте <a href="https://ru.wikipedia.org/wiki/Tor" target="_blank" rel="noopener">Tor</a>.</p>
 
     <p class="faq-q">Фраза улетает на сервер?</p>
-    <p class="faq-a">Нет. Фраза обрабатывается только в вашем браузере через Argon2id и становится частью ключа шифрования. На сервер уходит только идентификатор комнаты — <code>md5(phrase)</code>, по которому невозможно восстановить исходную фразу.</p>
+    <p class="faq-a">Нет. Фраза обрабатывается только в вашем браузере через <a href="https://ru.wikipedia.org/wiki/Argon2" target="_blank" rel="noopener">Argon2id</a> и становится частью ключа шифрования. На сервер уходит только идентификатор комнаты — <code><a href="https://ru.wikipedia.org/wiki/MD5" target="_blank" rel="noopener">md5</a>(phrase)</code>, по которому невозможно восстановить исходную фразу.</p>
 
     <p class="faq-q">Что если сервер упадёт во время переписки?</p>
     <p class="faq-a">Сообщения теряются — они только в RAM. Это намеренно: никакого постоянного хранилища нет.</p>
 
     <p class="faq-q">Можно ли это прослушать на уровне сети?</p>
-    <p class="faq-a">Трафик идёт через HTTPS (TLS). Даже если перехватить его — видны только зашифрованные пакеты <code>{iv, ct}</code>, без AES-ключа их не расшифровать.</p>
+    <p class="faq-a">Трафик идёт через <a href="https://ru.wikipedia.org/wiki/HTTPS" target="_blank" rel="noopener">HTTPS</a> (<a href="https://ru.wikipedia.org/wiki/TLS" target="_blank" rel="noopener">TLS</a>). Даже если перехватить его — видны только зашифрованные пакеты <code>{iv, ct}</code>, без <a href="https://ru.wikipedia.org/wiki/Galois/Counter_Mode" target="_blank" rel="noopener">AES</a>-ключа их не расшифровать.</p>
   </section>
 
   <div class="cta-wrap">
