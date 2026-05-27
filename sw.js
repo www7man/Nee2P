@@ -10,7 +10,7 @@
 //
 // Bump CACHE_VERSION to invalidate the precache after deploys.
 
-const CACHE_VERSION = 'nee2p-v17-stage-vvtop';
+const CACHE_VERSION = 'nee2p-v18-i18n-call-trust';
 
 // All paths are relative to the SW scope (which is /2Pee/ in production).
 const PRECACHE_URLS = [
@@ -23,6 +23,7 @@ const PRECACHE_URLS = [
   './ws-client.js',
   './push.js',
   './webrtc.js',
+  './i18n.js',
   './nee2p-ui.jsx',
   './nee2p-screens.jsx',
   './nee2p-app.jsx',
