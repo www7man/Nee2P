@@ -293,7 +293,42 @@ const Icon = {
   Eraser: ({ size = 16, color = '#fff' }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"><path d="M15 4l5 5-10 10H5l-2-2 12-13z" stroke={color} strokeWidth="1.6" strokeLinejoin="round"/><path d="M10 9l5 5M9 19h10" stroke={color} strokeWidth="1.6" strokeLinecap="round"/></svg>
   ),
+  Globe: ({ size = 14, color = '#fff' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={color} strokeWidth="1.7"/><path d="M12 3c-2.5 3-4 5.5-4 9s1.5 6 4 9M12 3c2.5 3 4 5.5 4 9s-1.5 6-4 9" stroke={color} strokeWidth="1.4"/><path d="M3.5 9h17M3.5 15h17" stroke={color} strokeWidth="1.4"/></svg>
+  ),
 };
+
+// Language toggle pill — replaces the "без следов" badge in WelcomeScreen header.
+// Reads/writes window.Nee2Pi18n (i18n.js). Cycles through all available langs.
+function LangToggle({ style = {} }) {
+  const i18n = window.Nee2Pi18n;
+  const [lang, setLang] = i18n ? i18n.useLang() : [React.useState('ru')[0], () => {}];
+  const next = i18n
+    ? i18n.LANGS[(i18n.LANGS.indexOf(lang) + 1) % i18n.LANGS.length]
+    : 'en';
+  return (
+    <button
+      onClick={() => i18n && i18n.setLang(next)}
+      title={lang === 'ru' ? 'Switch to English' : 'Переключить на русский'}
+      style={{
+        height: 30, padding: '0 10px', border: 'none', cursor: 'pointer',
+        borderRadius: 9999,
+        background: 'rgba(255,255,255,0.025)',
+        boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.07)',
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        fontSize: 9.5, fontWeight: 600, letterSpacing: 1.6, textTransform: 'uppercase',
+        color: 'var(--tx-40)',
+        fontFamily: 'inherit',
+        WebkitTapHighlightColor: 'transparent',
+        userSelect: 'none',
+        ...style,
+      }}
+    >
+      <Icon.Globe size={12} color="var(--tx-40)" />
+      {lang}
+    </button>
+  );
+}
 
 function Sheet({ children, style = {} }) {
   return (
@@ -334,5 +369,5 @@ function useViewportHeight() {
 
 Object.assign(window, {
   PALETTES, usePalette, GradientMesh, Glass, GlassButton, Logo, StatusDot, HashDisplay, Icon, Sheet,
-  useViewportHeight,
+  useViewportHeight, LangToggle,
 });

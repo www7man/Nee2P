@@ -347,6 +347,12 @@ window.addEventListener('error', function (e) {
   encryption natively. Signalling rides the existing room channel as the
   wire type 'signal' (broadcast-only, never stored in history server-side).
 -->
+<!--
+  Internationalisation layer. Exposes window.Nee2Pi18n: t(), setLang(),
+  getLang(), useLang() hook. Lang stored in localStorage('nee2p_lang').
+  Auto-detects RU/EN from navigator.language on first visit.
+-->
+<script src="i18n.js"></script>
 <script src="webrtc.js"></script>
 
 <script>

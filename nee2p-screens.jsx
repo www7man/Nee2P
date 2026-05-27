@@ -5,7 +5,7 @@
 //   • Chat typing indicator only shows when the actual peer is typing
 //   • ChatScreen receives a goBack handler for the back arrow
 
-const { GradientMesh, Glass, GlassButton, Logo, StatusDot, HashDisplay, Icon, usePalette, useViewportHeight } = window;
+const { GradientMesh, Glass, GlassButton, Logo, StatusDot, HashDisplay, Icon, usePalette, useViewportHeight, LangToggle } = window;
 const md5 = window.md5;
 
 // ─────────────────────────────────────────────────────────────
@@ -40,17 +40,7 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         animation: 'welcome-rise 0.7s ease both' }}>
         <Logo size={11} palette={palette} />
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6,
-          fontSize: 9.5, fontWeight: 500, color: 'var(--tx-40)', letterSpacing: 1.6,
-          textTransform: 'uppercase', whiteSpace: 'nowrap',
-          padding: '5px 10px', borderRadius: 9999,
-          background: 'rgba(255,255,255,0.025)',
-          boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.07)',
-        }}>
-          <span style={{ display: 'inline-block', width: 4, height: 4, borderRadius: '50%',
-            background: p.a, boxShadow: `0 0 6px ${p.a}` }} />
-          без следов
-        </div>
+        <LangToggle />
       </div>
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column',
