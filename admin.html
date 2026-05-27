@@ -21,300 +21,171 @@
     --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
   }
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--font);
-    font-size: 14px;
-    line-height: 1.5;
-    min-height: 100dvh;
-    display: flex;
-    flex-direction: column;
-  }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.5; min-height: 100dvh; display: flex; flex-direction: column; }
 
   /* ── Layout ── */
-  .header {
-    padding: 16px 24px 12px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
+  .header { padding: 14px 24px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
   .header h1 { font-size: 15px; font-weight: 600; letter-spacing: .02em; white-space: nowrap; }
   .header h1 span { color: var(--accent); }
-
-  .main { flex: 1; padding: 20px 24px; display: flex; flex-direction: column; gap: 20px; }
-
-  .statusbar {
-    padding: 7px 24px;
-    border-top: 1px solid var(--border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    color: var(--muted);
-    font-size: 11px;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
+  .main { flex: 1; padding: 20px 24px; display: flex; flex-direction: column; gap: 18px; }
+  .statusbar { padding: 7px 24px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 11px; flex-wrap: wrap; gap: 8px; }
 
   /* ── Key bar ── */
   .keybar { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 200px; }
   .keybar label { color: var(--muted); font-size: 12px; white-space: nowrap; }
-  .keybar input {
-    background: rgba(255,255,255,0.06);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 12px;
-    padding: 5px 10px;
-    outline: none;
-    flex: 1;
-    min-width: 120px;
-    max-width: 260px;
-    transition: border-color .15s;
-  }
+  .keybar input { background: rgba(255,255,255,0.06); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: var(--mono); font-size: 12px; padding: 5px 10px; outline: none; flex: 1; min-width: 120px; max-width: 260px; transition: border-color .15s; }
   .keybar input:focus { border-color: var(--accent); }
 
   /* ── Buttons ── */
-  .btn {
-    background: rgba(255,255,255,0.06);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text);
-    cursor: pointer;
-    font-family: var(--font);
-    font-size: 12px;
-    padding: 5px 12px;
-    transition: background .15s;
-    white-space: nowrap;
-  }
+  .btn { background: rgba(255,255,255,0.06); border: 1px solid var(--border); border-radius: 6px; color: var(--text); cursor: pointer; font-family: var(--font); font-size: 12px; padding: 5px 12px; transition: background .15s; white-space: nowrap; }
   .btn:hover { background: rgba(255,255,255,0.1); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
   .btn.accent { background: rgba(123,97,255,0.18); border-color: rgba(123,97,255,0.35); color: #b5a7ff; }
   .btn.accent:hover { background: rgba(123,97,255,0.28); }
+  .btn.green-btn { background: rgba(52,211,153,0.14); border-color: rgba(52,211,153,0.35); color: var(--green); }
+  .btn.green-btn:hover { background: rgba(52,211,153,0.24); }
+  .btn.danger { background: rgba(248,113,113,0.12); border-color: rgba(248,113,113,0.3); color: var(--red); }
+  .btn.danger:hover { background: rgba(248,113,113,0.22); }
+  .btn.lg { font-size: 14px; padding: 9px 22px; }
 
   /* ── Refresh bar ── */
-  .refreshbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .refreshbar { display: flex; align-items: center; gap: 8px; }
   .countdown { color: var(--muted); font-size: 12px; min-width: 128px; }
 
+  /* ── Tabs ── */
+  .tab-bar { display: flex; gap: 2px; border-bottom: 1px solid var(--border); }
+  .tab { background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--muted); cursor: pointer; font-family: var(--font); font-size: 13px; padding: 6px 16px 8px; transition: all .15s; margin-bottom: -1px; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 500; }
+
   /* ── Cards ── */
-  .cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 12px;
-  }
-
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 14px 16px 10px;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .card-label {
-    color: var(--muted);
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    margin-bottom: 6px;
-    position: relative;
-    z-index: 1;
-  }
-
-  .card-value {
-    font-size: 22px;
-    font-weight: 700;
-    line-height: 1;
-    color: #fff;
-    position: relative;
-    z-index: 1;
-  }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px 10px; position: relative; overflow: hidden; }
+  .card-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; position: relative; z-index: 1; }
+  .card-value { font-size: 22px; font-weight: 700; line-height: 1; color: #fff; position: relative; z-index: 1; }
   .card-value.accent { color: var(--accent); }
   .card-value.green  { color: var(--green); }
-
-  .card-trend {
-    font-size: 11px;
-    color: var(--muted);
-    margin-top: 5px;
-    position: relative;
-    z-index: 1;
-    min-height: 14px;
-  }
+  .card-trend { font-size: 11px; color: var(--muted); margin-top: 5px; position: relative; z-index: 1; min-height: 14px; }
   .card-trend.up   { color: var(--green); }
   .card-trend.down { color: var(--red); }
-
-  .card-sparkline {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    opacity: 0.12;
-    pointer-events: none;
-  }
+  .card-sparkline { position: absolute; bottom: 0; right: 0; opacity: 0.12; pointer-events: none; }
 
   /* ── Filter bar ── */
   .filter-bar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--border); }
-
-  .filter-tab {
-    background: transparent;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--muted);
-    cursor: pointer;
-    font-family: var(--font);
-    font-size: 12px;
-    padding: 3px 11px;
-    transition: all .15s;
-  }
+  .filter-tab { background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); cursor: pointer; font-family: var(--font); font-size: 12px; padding: 3px 11px; transition: all .15s; }
   .filter-tab:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
   .filter-tab.active { background: rgba(123,97,255,0.18); border-color: rgba(123,97,255,0.4); color: #b5a7ff; }
-
-  .filter-count {
-    display: inline-block;
-    background: rgba(255,255,255,0.08);
-    border-radius: 4px;
-    font-size: 10px;
-    padding: 0 5px;
-    margin-left: 3px;
-    color: var(--muted);
-    vertical-align: middle;
-  }
+  .filter-count { display: inline-block; background: rgba(255,255,255,0.08); border-radius: 4px; font-size: 10px; padding: 0 5px; margin-left: 3px; color: var(--muted); vertical-align: middle; }
   .filter-tab.active .filter-count { background: rgba(123,97,255,0.25); color: #b5a7ff; }
 
   /* ── Notice ── */
-  .notice {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 32px;
-    text-align: center;
-    color: var(--muted);
-    font-size: 14px;
-  }
+  .notice { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 32px; text-align: center; color: var(--muted); }
   .notice.error { border-color: rgba(248,113,113,0.3); color: var(--red); }
 
   /* ── Table ── */
   .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
-
-  .table-header {
-    padding: 10px 16px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid var(--border);
-  }
+  .table-header { padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
   .table-title { font-size: 12px; font-weight: 600; letter-spacing: .04em; color: var(--muted); text-transform: uppercase; }
   .table-count { font-size: 11px; color: var(--muted); }
-
   .table-scroll { overflow-x: auto; }
-
   table { width: 100%; border-collapse: collapse; white-space: nowrap; }
-
-  th {
-    background: rgba(255,255,255,0.025);
-    color: var(--muted);
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-    padding: 9px 14px;
-    text-align: left;
-    border-bottom: 1px solid var(--border);
-    cursor: pointer;
-    user-select: none;
-    white-space: nowrap;
-    transition: color .12s;
-  }
+  th { background: rgba(255,255,255,0.025); color: var(--muted); font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; padding: 9px 14px; text-align: left; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; transition: color .12s; }
   th:hover { color: var(--text); }
   th.sort-active { color: var(--text); }
   th .si { display: inline-block; margin-left: 3px; font-style: normal; opacity: 0.4; font-size: 10px; }
   th.sort-active .si { opacity: 1; color: var(--accent); }
   th.no-sort { cursor: default; }
   th.no-sort:hover { color: var(--muted); }
-
-  td {
-    padding: 9px 14px;
-    border-bottom: 1px solid rgba(255,255,255,0.035);
-    font-size: 13px;
-    vertical-align: middle;
-  }
+  td { padding: 9px 14px; border-bottom: 1px solid rgba(255,255,255,0.035); font-size: 13px; vertical-align: middle; }
   tr:last-child td { border-bottom: none; }
   tr:hover td { background: rgba(255,255,255,0.035); }
   tr.expiring-soon td { background: rgba(248,113,113,0.045); }
   tr.expiring-soon:hover td { background: rgba(248,113,113,0.08); }
-
   .mono { font-family: var(--mono); font-size: 12px; }
   .muted { color: var(--muted); }
   .green { color: var(--green); }
   .red   { color: var(--red); }
-  .yellow { color: var(--yellow); }
-
   .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; background: var(--muted); vertical-align: middle; }
   .dot.on { background: var(--green); box-shadow: 0 0 4px rgba(52,211,153,0.5); }
-
-  /* ── Copy ID cell ── */
   .id-cell { display: flex; align-items: center; gap: 6px; cursor: pointer; }
   .copy-hint { font-size: 10px; color: var(--accent); opacity: 0; transition: opacity .15s; font-family: var(--font); }
   .id-cell:hover .copy-hint { opacity: 1; }
   .copy-hint.flashed { opacity: 1 !important; color: var(--green); }
-
-  /* ── Delete button ── */
-  .del-btn {
-    background: transparent;
-    border: none;
-    color: var(--muted);
-    cursor: pointer;
-    font-size: 14px;
-    line-height: 1;
-    padding: 2px 6px;
-    border-radius: 4px;
-    transition: all .15s;
-  }
+  .del-btn { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 14px; line-height: 1; padding: 2px 6px; border-radius: 4px; transition: all .15s; }
   .del-btn:hover { color: var(--red); background: rgba(248,113,113,0.12); }
 
-  /* ── Status bar controls ── */
+  /* ── Statusbar controls ── */
   .sb-left  { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
   .sb-right { display: flex; gap: 8px; align-items: center; }
-
-  .interval-select {
-    background: transparent;
-    border: none;
-    color: var(--muted);
-    font-family: var(--font);
-    font-size: 11px;
-    cursor: pointer;
-    outline: none;
-  }
+  .interval-select { background: transparent; border: none; color: var(--muted); font-family: var(--font); font-size: 11px; cursor: pointer; outline: none; }
   .interval-select option { background: #15151f; }
-
-  .pause-btn {
-    background: transparent;
-    border: none;
-    color: var(--muted);
-    cursor: pointer;
-    font-size: 11px;
-    padding: 2px 6px;
-    border-radius: 4px;
-    transition: all .15s;
-  }
+  .pause-btn { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 11px; padding: 2px 6px; border-radius: 4px; transition: all .15s; }
   .pause-btn:hover { color: var(--text); background: rgba(255,255,255,0.07); }
   .pause-btn.paused { color: var(--yellow); }
+
+  /* ── Tunnel panel ── */
+  .tunnel-wrap { display: flex; flex-direction: column; gap: 14px; max-width: 700px; }
+
+  .tunnel-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px 28px 24px; display: flex; flex-direction: column; gap: 20px; }
+  .tunnel-card.running { border-color: rgba(52,211,153,0.25); }
+  .tunnel-card.starting { border-color: rgba(251,191,36,0.22); }
+  .tunnel-card.error { border-color: rgba(248,113,113,0.3); }
+
+  .t-status { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 600; letter-spacing: .1em; }
+  .t-status.running { color: var(--green); }
+  .t-status.starting { color: var(--yellow); }
+  .t-status.stopped { color: var(--muted); }
+  .t-status.error { color: var(--red); }
+
+  .t-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+  .t-dot.on  { background: var(--green); box-shadow: 0 0 8px rgba(52,211,153,0.6); }
+  .t-dot.err { background: var(--red); }
+  .t-dot.pulse { animation: t-pulse 2s ease-in-out infinite; }
+
+  @keyframes t-pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(52,211,153,0.4); }
+    50%       { opacity: .6; box-shadow: 0 0 14px rgba(52,211,153,0.8); }
+  }
+
+  .t-spinner { width: 10px; height: 10px; border: 2px solid rgba(251,191,36,0.25); border-top-color: var(--yellow); border-radius: 50%; animation: t-spin .75s linear infinite; flex-shrink: 0; }
+  @keyframes t-spin { to { transform: rotate(360deg); } }
+
+  .t-uptime { font-size: 12px; color: var(--muted); margin-left: auto; }
+
+  .t-url-block { display: flex; flex-direction: column; gap: 10px; }
+  .t-url { font-family: var(--mono); font-size: 15px; color: #fff; text-decoration: none; word-break: break-all; }
+  .t-url:hover { color: var(--accent); }
+  .t-url-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .t-qr-row { display: flex; align-items: flex-start; gap: 20px; }
+  .t-qr { border-radius: 8px; background: #fff; padding: 6px; display: block; flex-shrink: 0; }
+  .t-qr-note { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; }
+  .t-qr-note p { color: var(--muted); font-size: 12px; }
+
+  .t-desc { display: flex; flex-direction: column; gap: 8px; }
+  .t-desc p { color: var(--muted); font-size: 13px; }
+  .t-desc code { font-family: var(--mono); color: #b5a7ff; font-size: 12px; }
+
+  .t-error-msg { font-size: 13px; color: var(--red); background: rgba(248,113,113,0.08); border-radius: 6px; padding: 10px 14px; line-height: 1.6; word-break: break-word; }
+
+  /* ── Log section ── */
+  .log-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .log-toggle { padding: 10px 16px; font-size: 12px; color: var(--muted); cursor: pointer; user-select: none; display: flex; align-items: center; gap: 6px; transition: color .15s; }
+  .log-toggle:hover { color: var(--text); }
+  .log-toggle .arrow { font-size: 10px; transition: transform .2s; }
+  .log-toggle.open .arrow { transform: rotate(180deg); }
+  .log-pre { display: none; padding: 12px 16px; font-family: var(--mono); font-size: 11px; color: var(--muted); line-height: 1.6; max-height: 260px; overflow-y: auto; border-top: 1px solid var(--border); white-space: pre-wrap; word-break: break-all; }
 </style>
 </head>
 <body>
 
 <div class="header">
   <h1>Nee2P <span>Admin</span></h1>
-
   <div class="keybar">
     <label>API Key</label>
     <input id="apiKey" type="password" placeholder="nee2p-admin-local" autocomplete="off">
     <button class="btn" onclick="saveKey()">Сохранить</button>
   </div>
-
   <div class="refreshbar">
     <span class="countdown" id="countdown"></span>
     <button class="btn accent" onclick="manualRefresh()">Обновить</button>
@@ -322,43 +193,63 @@
 </div>
 
 <div class="main">
-  <div class="cards" id="cards"></div>
 
-  <div id="notice" class="notice" style="display:none"></div>
+  <!-- ── Tabs ── -->
+  <div class="tab-bar">
+    <button class="tab active" data-tab="stats"  onclick="switchTab('stats')">📊 Статистика</button>
+    <button class="tab"        data-tab="tunnel" onclick="switchTab('tunnel')">🔗 Туннель</button>
+  </div>
 
-  <div class="table-wrap" id="tableWrap" style="display:none">
-    <div class="table-header">
-      <span class="table-title">Активные комнаты</span>
-      <span class="table-count" id="tableCount"></span>
-    </div>
-
-    <div class="filter-bar">
-      <button class="filter-tab active" data-filter="all"      onclick="setFilter('all')">Все <span class="filter-count" id="fc-all">0</span></button>
-      <button class="filter-tab"        data-filter="paired"   onclick="setFilter('paired')">Спарено <span class="filter-count" id="fc-paired">0</span></button>
-      <button class="filter-tab"        data-filter="online"   onclick="setFilter('online')">Онлайн <span class="filter-count" id="fc-online">0</span></button>
-      <button class="filter-tab"        data-filter="expiring" onclick="setFilter('expiring')">Истекает &lt;1ч <span class="filter-count" id="fc-expiring">0</span></button>
-    </div>
-
-    <div class="table-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th data-col="id"         onclick="toggleSort('id')">ID <i class="si">↕</i></th>
-            <th data-col="createdAt"  onclick="toggleSort('createdAt')" class="sort-active">Создана <i class="si">↓</i></th>
-            <th data-col="expiresAt"  onclick="toggleSort('expiresAt')">Истекает <i class="si">↕</i></th>
-            <th data-col="groupMax"   onclick="toggleSort('groupMax')">Размер <i class="si">↕</i></th>
+  <!-- ── Stats panel ── -->
+  <div id="panel-stats">
+    <div class="cards" id="cards"></div>
+    <div id="notice" class="notice" style="display:none"></div>
+    <div class="table-wrap" id="tableWrap" style="display:none">
+      <div class="table-header">
+        <span class="table-title">Активные комнаты</span>
+        <span class="table-count" id="tableCount"></span>
+      </div>
+      <div class="filter-bar">
+        <button class="filter-tab active" data-filter="all"      onclick="setFilter('all')">Все <span class="filter-count" id="fc-all">0</span></button>
+        <button class="filter-tab"        data-filter="paired"   onclick="setFilter('paired')">Спарено <span class="filter-count" id="fc-paired">0</span></button>
+        <button class="filter-tab"        data-filter="online"   onclick="setFilter('online')">Онлайн <span class="filter-count" id="fc-online">0</span></button>
+        <button class="filter-tab"        data-filter="expiring" onclick="setFilter('expiring')">Истекает &lt;1ч <span class="filter-count" id="fc-expiring">0</span></button>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th data-col="id"          onclick="toggleSort('id')">ID <i class="si">↕</i></th>
+            <th data-col="createdAt"   onclick="toggleSort('createdAt')" class="sort-active">Создана <i class="si">↓</i></th>
+            <th data-col="expiresAt"   onclick="toggleSort('expiresAt')">Истекает <i class="si">↕</i></th>
+            <th data-col="groupMax"    onclick="toggleSort('groupMax')">Размер <i class="si">↕</i></th>
             <th data-col="slotsSealed" onclick="toggleSort('slotsSealed')">Слоты <i class="si">↕</i></th>
-            <th data-col="paired"     onclick="toggleSort('paired')">Спарено <i class="si">↕</i></th>
+            <th data-col="paired"      onclick="toggleSort('paired')">Спарено <i class="si">↕</i></th>
             <th data-col="onlineCount" onclick="toggleSort('onlineCount')">Онлайн <i class="si">↕</i></th>
-            <th data-col="msgCount"   onclick="toggleSort('msgCount')">Сообщений <i class="si">↕</i></th>
-            <th data-col="blobBytes"  onclick="toggleSort('blobBytes')">Блобы <i class="si">↕</i></th>
+            <th data-col="msgCount"    onclick="toggleSort('msgCount')">Сообщений <i class="si">↕</i></th>
+            <th data-col="blobBytes"   onclick="toggleSort('blobBytes')">Блобы <i class="si">↕</i></th>
             <th class="no-sort">—</th>
-          </tr>
-        </thead>
-        <tbody id="tbody"></tbody>
-      </table>
+          </tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
+
+  <!-- ── Tunnel panel ── -->
+  <div id="panel-tunnel" style="display:none">
+    <div class="tunnel-wrap">
+      <div class="tunnel-card" id="tunnelCard">
+        <!-- rendered by renderTunnel() -->
+      </div>
+      <div class="log-card" id="logCard" style="display:none">
+        <div class="log-toggle" id="logToggle" onclick="toggleLog()">
+          <span class="arrow">▲</span> Лог cloudflared
+        </div>
+        <pre class="log-pre" id="logPre"></pre>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <div class="statusbar">
@@ -381,18 +272,24 @@
 <script>
 'use strict';
 
-// ── State ────────────────────────────────────────────────
+// ── Config ───────────────────────────────────────────────
 let REFRESH_INTERVAL = 5;
-let isPaused = false;
-let filterMode = 'all';
-let sortCol = 'createdAt';
-let sortAsc = false;
-let lastRooms = [];
+let isPaused    = false;
+let filterMode  = 'all';
+let sortCol     = 'createdAt';
+let sortAsc     = false;
+let lastRooms   = [];
+let activeTab   = 'stats';
 let countdownId = null;
-let countdown = 5;
+let countdown   = 5;
 
 const HISTORY_MAX = 40;
-const statsHistory = []; // {roomCount, sessionCount, pairedCount}
+const statsHistory = [];
+
+// ── Tunnel state (mirrors server) ───────────────────────
+let tunnelData    = null;  // last fetched tunnel data
+let tunnelTimerId = null;
+let uptimeTimer   = null;
 
 // ── URL helpers ──────────────────────────────────────────
 function adminBase() {
@@ -409,7 +306,19 @@ keyInput.value = localStorage.getItem('nee2p_admin_key') || 'nee2p-admin-local';
 function getKey() { return keyInput.value.trim() || 'nee2p-admin-local'; }
 function saveKey() { localStorage.setItem('nee2p_admin_key', keyInput.value.trim()); fetchStats(); }
 
-// ── Countdown ────────────────────────────────────────────
+// ── Tab switching ────────────────────────────────────────
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.getElementById('panel-stats').style.display  = tab === 'stats'  ? '' : 'none';
+  document.getElementById('panel-tunnel').style.display = tab === 'tunnel' ? '' : 'none';
+  if (tab === 'tunnel') {
+    fetchTunnel();
+    scheduleTunnelPoll();
+  }
+}
+
+// ── Stats countdown ──────────────────────────────────────
 function startCountdown() {
   clearInterval(countdownId);
   if (isPaused) { document.getElementById('countdown').textContent = '⏸ пауза'; return; }
@@ -420,14 +329,8 @@ function startCountdown() {
 
 function tick() {
   const el = document.getElementById('countdown');
-  if (countdown > 0) {
-    el.textContent = `обновление через ${countdown}с`;
-    countdown--;
-  } else {
-    el.textContent = 'обновляется…';
-    clearInterval(countdownId);
-    fetchStats();
-  }
+  if (countdown > 0) { el.textContent = `обновление через ${countdown}с`; countdown--; }
+  else { el.textContent = 'обновляется…'; clearInterval(countdownId); fetchStats(); }
 }
 
 function manualRefresh() { clearInterval(countdownId); fetchStats(); }
@@ -474,31 +377,32 @@ function sortVal(r, col) {
   }
 }
 
-// ── Format helpers ───────────────────────────────────────
+// ── Format ───────────────────────────────────────────────
 function fmtBytes(b) {
   if (b === 0) return '0 B';
   if (b < 1024) return b + ' B';
   if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
   return (b / 1048576).toFixed(2) + ' MB';
 }
-
 function fmtUptime(sec) {
-  const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600), m = Math.floor((sec % 3600) / 60);
-  if (d > 0) return `${d}д ${h}ч`;
-  if (h > 0) return `${h}ч ${m}м`;
-  return `${m}м`;
+  const d = Math.floor(sec/86400), h = Math.floor((sec%86400)/3600), m = Math.floor((sec%3600)/60);
+  if (d > 0) return `${d}д ${h}ч`; if (h > 0) return `${h}ч ${m}м`; return `${m}м`;
 }
-
+function fmtDuration(ms) {
+  const s = Math.floor(ms/1000);
+  const d = Math.floor(s/86400), h = Math.floor((s%86400)/3600), m = Math.floor((s%3600)/60), ss = s%60;
+  if (d > 0) return `${d}д ${h}ч ${m}м`;
+  if (h > 0) return `${h}ч ${m}м ${ss}с`;
+  if (m > 0) return `${m}м ${ss}с`;
+  return `${ss}с`;
+}
 function relAgo(ts) {
-  const s = Math.floor((Date.now() - ts) / 1000);
-  if (s < 60)   return `${s}с назад`;
-  if (s < 3600) return `${Math.floor(s/60)}м назад`;
-  if (s < 86400) return `${Math.floor(s/3600)}ч назад`;
-  return `${Math.floor(s/86400)}д назад`;
+  const s = Math.floor((Date.now()-ts)/1000);
+  if (s < 60) return `${s}с назад`; if (s < 3600) return `${Math.floor(s/60)}м назад`;
+  if (s < 86400) return `${Math.floor(s/3600)}ч назад`; return `${Math.floor(s/86400)}д назад`;
 }
-
 function relFuture(ts) {
-  const s = Math.floor((ts - Date.now()) / 1000);
+  const s = Math.floor((ts-Date.now())/1000);
   if (s <= 0) return '<span class="red">истекло</span>';
   if (s < 3600) return `<span class="red">${Math.floor(s/60)}м</span>`;
   if (s < 86400) return `${Math.floor(s/3600)}ч ${Math.floor((s%3600)/60)}м`;
@@ -509,22 +413,15 @@ function relFuture(ts) {
 function sparkline(values, stroke) {
   if (values.length < 2) return '';
   const W = 90, H = 28;
-  const mn = Math.min(...values), mx = Math.max(...values), rng = mx - mn || 1;
-  const pts = values.map((v, i) => {
-    const x = (i / (values.length - 1)) * W;
-    const y = H - 2 - ((v - mn) / rng) * (H - 4);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(' ');
-  return `<svg class="card-sparkline" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-    <polyline points="${pts}" fill="none" stroke="${stroke}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
-  </svg>`;
+  const mn = Math.min(...values), mx = Math.max(...values), rng = mx-mn||1;
+  const pts = values.map((v,i) => `${((i/(values.length-1))*W).toFixed(1)},${(H-2-((v-mn)/rng)*(H-4)).toFixed(1)}`).join(' ');
+  return `<svg class="card-sparkline" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><polyline points="${pts}" fill="none" stroke="${stroke}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
 }
-
 function trendTag(values) {
   if (values.length < 2) return '<div class="card-trend"></div>';
-  const diff = values[values.length - 1] - values[values.length - 2];
-  if (diff === 0) return '<div class="card-trend"></div>';
-  return `<div class="card-trend ${diff > 0 ? 'up' : 'down'}">${diff > 0 ? '▲' : '▼'} ${Math.abs(diff)}</div>`;
+  const diff = values[values.length-1] - values[values.length-2];
+  if (!diff) return '<div class="card-trend"></div>';
+  return `<div class="card-trend ${diff>0?'up':'down'}">${diff>0?'▲':'▼'} ${Math.abs(diff)}</div>`;
 }
 
 // ── Render cards ─────────────────────────────────────────
@@ -532,42 +429,13 @@ function renderCards(d) {
   const rc  = statsHistory.map(s => s.roomCount);
   const ses = statsHistory.map(s => s.sessionCount);
   const pr  = statsHistory.map(s => s.pairedCount);
-
   document.getElementById('cards').innerHTML = `
-    <div class="card">
-      <div class="card-label">Комнаты</div>
-      <div class="card-value accent">${d.roomCount}</div>
-      ${trendTag(rc)}
-      ${sparkline(rc, '#7b61ff')}
-    </div>
-    <div class="card">
-      <div class="card-label">Сессии</div>
-      <div class="card-value">${d.sessionCount}</div>
-      ${trendTag(ses)}
-      ${sparkline(ses, '#a0a0b8')}
-    </div>
-    <div class="card">
-      <div class="card-label">Спарено</div>
-      <div class="card-value green">${d.pairedCount}</div>
-      ${trendTag(pr)}
-      ${sparkline(pr, '#34d399')}
-    </div>
-    <div class="card">
-      <div class="card-label">История</div>
-      <div class="card-value" style="font-size:16px;padding-top:4px">${fmtBytes(d.totalHistoryBytes)}</div>
-      <div class="card-trend"></div>
-    </div>
-    <div class="card">
-      <div class="card-label">Блобы (relay)</div>
-      <div class="card-value" style="font-size:16px;padding-top:4px">${fmtBytes(d.relayBlobBytes)}</div>
-      <div class="card-trend"></div>
-    </div>
-    <div class="card">
-      <div class="card-label">Аптайм</div>
-      <div class="card-value" style="font-size:16px;padding-top:4px">${fmtUptime(d.uptime)}</div>
-      <div class="card-trend"></div>
-    </div>
-  `;
+    <div class="card"><div class="card-label">Комнаты</div><div class="card-value accent">${d.roomCount}</div>${trendTag(rc)}${sparkline(rc,'#7b61ff')}</div>
+    <div class="card"><div class="card-label">Сессии</div><div class="card-value">${d.sessionCount}</div>${trendTag(ses)}${sparkline(ses,'#a0a0b8')}</div>
+    <div class="card"><div class="card-label">Спарено</div><div class="card-value green">${d.pairedCount}</div>${trendTag(pr)}${sparkline(pr,'#34d399')}</div>
+    <div class="card"><div class="card-label">История</div><div class="card-value" style="font-size:16px;padding-top:4px">${fmtBytes(d.totalHistoryBytes)}</div><div class="card-trend"></div></div>
+    <div class="card"><div class="card-label">Блобы (relay)</div><div class="card-value" style="font-size:16px;padding-top:4px">${fmtBytes(d.relayBlobBytes)}</div><div class="card-trend"></div></div>
+    <div class="card"><div class="card-label">Аптайм</div><div class="card-value" style="font-size:16px;padding-top:4px">${fmtUptime(d.uptime)}</div><div class="card-trend"></div></div>`;
 }
 
 // ── Render table ─────────────────────────────────────────
@@ -575,7 +443,7 @@ function filterRooms(rooms) {
   const now = Date.now();
   if (filterMode === 'paired')   return rooms.filter(r => r.paired);
   if (filterMode === 'online')   return rooms.filter(r => r.onlineCount > 0);
-  if (filterMode === 'expiring') return rooms.filter(r => r.expiresAt - now < 3_600_000);
+  if (filterMode === 'expiring') return rooms.filter(r => r.expiresAt-now < 3_600_000);
   return rooms;
 }
 
@@ -584,79 +452,51 @@ function updateCounts(rooms) {
   document.getElementById('fc-all').textContent      = rooms.length;
   document.getElementById('fc-paired').textContent   = rooms.filter(r => r.paired).length;
   document.getElementById('fc-online').textContent   = rooms.filter(r => r.onlineCount > 0).length;
-  document.getElementById('fc-expiring').textContent = rooms.filter(r => r.expiresAt - now < 3_600_000).length;
+  document.getElementById('fc-expiring').textContent = rooms.filter(r => r.expiresAt-now < 3_600_000).length;
 }
 
 function renderTable(rooms) {
   lastRooms = rooms;
-  const notice   = document.getElementById('notice');
+  const notice    = document.getElementById('notice');
   const tableWrap = document.getElementById('tableWrap');
-
   updateCounts(rooms);
-
-  // Sync sort header indicators
   document.querySelectorAll('th[data-col]').forEach(th => {
     const col = th.dataset.col, icon = th.querySelector('.si');
     th.classList.toggle('sort-active', col === sortCol);
     if (icon) icon.textContent = col === sortCol ? (sortAsc ? '↑' : '↓') : '↕';
   });
-
-  if (rooms.length === 0) {
-    notice.className = 'notice';
-    notice.textContent = 'Нет активных комнат';
-    notice.style.display = '';
-    tableWrap.style.display = 'none';
-    return;
+  if (!rooms.length) {
+    notice.className = 'notice'; notice.textContent = 'Нет активных комнат'; notice.style.display = '';
+    tableWrap.style.display = 'none'; return;
   }
-
-  notice.style.display = 'none';
-  tableWrap.style.display = '';
-
-  let visible = filterRooms(rooms).slice().sort((a, b) => {
-    const va = sortVal(a, sortCol), vb = sortVal(b, sortCol);
-    const cmp = va < vb ? -1 : va > vb ? 1 : 0;
-    return sortAsc ? cmp : -cmp;
+  notice.style.display = 'none'; tableWrap.style.display = '';
+  let visible = filterRooms(rooms).slice().sort((a,b) => {
+    const va = sortVal(a,sortCol), vb = sortVal(b,sortCol);
+    return sortAsc ? (va<vb?-1:va>vb?1:0) : (va<vb?1:va>vb?-1:0);
   });
-
   document.getElementById('tableCount').textContent =
     visible.length !== rooms.length ? `${visible.length} из ${rooms.length}` : `${rooms.length}`;
-
   const now = Date.now();
   document.getElementById('tbody').innerHTML = visible.map(r => {
-    const expiring = r.expiresAt - now < 3_600_000;
-    const sealed   = r.slotsSealed.filter(Boolean).length;
-    const slotsTd  = sealed === r.groupMax
-      ? `<span class="green">${sealed}/${r.groupMax}</span>`
-      : `${sealed}/${r.groupMax}`;
-    const pairedTd  = r.paired ? '<span class="green">✓</span>' : '<span class="muted">—</span>';
-    const onlineTd  = r.onlineCount > 0
-      ? `<span class="dot on"></span><span class="green">${r.onlineCount}</span>`
-      : `<span class="dot"></span><span class="muted">0</span>`;
-    const blobTd = r.blobCount > 0
-      ? `${r.blobCount} <span class="muted">(${fmtBytes(r.blobBytes)})</span>`
-      : '<span class="muted">—</span>';
-
-    return `<tr class="${expiring ? 'expiring-soon' : ''}" data-id="${r.id}">
-      <td class="mono">
-        <div class="id-cell" onclick="copyId(this)">
-          ${r.id.slice(0, 8)}
-          <span class="copy-hint">копировать</span>
-        </div>
-      </td>
+    const exp    = r.expiresAt - now < 3_600_000;
+    const sealed = r.slotsSealed.filter(Boolean).length;
+    const slotsTd = sealed === r.groupMax ? `<span class="green">${sealed}/${r.groupMax}</span>` : `${sealed}/${r.groupMax}`;
+    return `<tr class="${exp?'expiring-soon':''}" data-id="${r.id}">
+      <td class="mono"><div class="id-cell" onclick="copyId(this)">${r.id.slice(0,8)}<span class="copy-hint">копировать</span></div></td>
       <td class="muted">${relAgo(r.createdAt)}</td>
       <td>${relFuture(r.expiresAt)}</td>
       <td class="muted">${r.groupMax}</td>
       <td>${slotsTd}</td>
-      <td>${pairedTd}</td>
-      <td>${onlineTd}</td>
-      <td>${r.msgCount > 0 ? r.msgCount : '<span class="muted">0</span>'}</td>
-      <td>${blobTd}</td>
-      <td><button class="del-btn" title="Принудительно закрыть" onclick="deleteRoom(this)">✕</button></td>
+      <td>${r.paired ? '<span class="green">✓</span>' : '<span class="muted">—</span>'}</td>
+      <td>${r.onlineCount>0 ? `<span class="dot on"></span><span class="green">${r.onlineCount}</span>` : '<span class="dot"></span><span class="muted">0</span>'}</td>
+      <td>${r.msgCount>0 ? r.msgCount : '<span class="muted">0</span>'}</td>
+      <td>${r.blobCount>0 ? `${r.blobCount} <span class="muted">(${fmtBytes(r.blobBytes)})</span>` : '<span class="muted">—</span>'}</td>
+      <td><button class="del-btn" title="Закрыть комнату" onclick="deleteRoom(this)">✕</button></td>
     </tr>`;
   }).join('');
 }
 
-function showError(msg) {
+function showStatsError(msg) {
   document.getElementById('notice').className = 'notice error';
   document.getElementById('notice').textContent = msg;
   document.getElementById('notice').style.display = '';
@@ -664,57 +504,180 @@ function showError(msg) {
   document.getElementById('cards').innerHTML = '';
 }
 
-// ── Copy ID ──────────────────────────────────────────────
+// ── Copy / Delete helpers ────────────────────────────────
 async function copyId(el) {
   const id = el.closest('tr').dataset.id;
   try {
     await navigator.clipboard.writeText(id);
     const hint = el.querySelector('.copy-hint');
-    hint.textContent = '✓ скопировано';
-    hint.classList.add('flashed');
+    hint.textContent = '✓ скопировано'; hint.classList.add('flashed');
     setTimeout(() => { hint.textContent = 'копировать'; hint.classList.remove('flashed'); }, 1500);
   } catch {}
 }
 
-// ── Delete room ──────────────────────────────────────────
 async function deleteRoom(btn) {
   const id = btn.closest('tr').dataset.id;
-  if (!confirm(`Закрыть комнату ${id.slice(0, 8)}…?\n\nВсе участники получат уведомление об истечении.`)) return;
+  if (!confirm(`Закрыть комнату ${id.slice(0,8)}…?\nВсе участники получат уведомление.`)) return;
   btn.disabled = true;
   try {
-    const resp = await fetch(`${adminBase()}/room/${id}`, {
-      method: 'DELETE',
-      headers: { 'x-admin-key': getKey() },
-    });
-    const json = await resp.json();
-    if (json.ok) { fetchStats(); }
-    else { alert('Ошибка: ' + (json.error || 'unknown')); btn.disabled = false; }
+    const r = await fetch(`${adminBase()}/room/${id}`, { method: 'DELETE', headers: { 'x-admin-key': getKey() } });
+    const j = await r.json();
+    if (j.ok) fetchStats(); else { alert('Ошибка: ' + (j.error||'unknown')); btn.disabled = false; }
   } catch { alert('Сервер недоступен'); btn.disabled = false; }
 }
 
-// ── Fetch ────────────────────────────────────────────────
+// ── Stats fetch ──────────────────────────────────────────
 async function fetchStats() {
   let json;
   try {
     const resp = await fetch(`${adminBase()}/stats`, { headers: { 'x-admin-key': getKey() } });
-    if (resp.status === 403) { showError('Неверный API-ключ'); startCountdown(); return; }
-    if (!resp.ok) { showError(`Ошибка сервера: HTTP ${resp.status}`); startCountdown(); return; }
+    if (resp.status === 403) { showStatsError('Неверный API-ключ'); startCountdown(); return; }
+    if (!resp.ok) { showStatsError(`Ошибка сервера: HTTP ${resp.status}`); startCountdown(); return; }
     json = await resp.json();
-  } catch { showError('Сервер недоступен'); startCountdown(); return; }
-
-  if (!json.ok) { showError(json.error || 'Неизвестная ошибка'); startCountdown(); return; }
+  } catch { showStatsError('Сервер недоступен'); startCountdown(); return; }
+  if (!json.ok) { showStatsError(json.error||'Ошибка'); startCountdown(); return; }
 
   const d = json.data;
   statsHistory.push({ roomCount: d.roomCount, sessionCount: d.sessionCount, pairedCount: d.pairedCount });
   if (statsHistory.length > HISTORY_MAX) statsHistory.shift();
-
   renderCards(d);
   renderTable(d.rooms);
-
   document.getElementById('statusUpdated').textContent  = `Обновлено: ${new Date().toLocaleTimeString('ru')}`;
   document.getElementById('statusSessions').textContent = `Сессий: ${d.sessionCount}`;
-
   startCountdown();
+}
+
+// ── Tunnel rendering ─────────────────────────────────────
+function renderTunnel(d) {
+  tunnelData = d;
+  const card = document.getElementById('tunnelCard');
+  card.className = `tunnel-card ${d.status}`;
+
+  // Uptime counter
+  clearInterval(uptimeTimer);
+
+  if (d.status === 'running') {
+    card.innerHTML = `
+      <div style="display:flex;align-items:center;gap:0">
+        <div class="t-status running"><div class="t-dot on pulse"></div>АКТИВЕН</div>
+        <div class="t-uptime" id="tunnelUptime">—</div>
+      </div>
+      <div class="t-url-block">
+        <a class="t-url" href="${d.url}" target="_blank" rel="noopener">${d.url}</a>
+        <div class="t-url-actions">
+          <button class="btn green-btn" onclick="copyTunnelUrl()">Копировать ссылку</button>
+          <a class="btn" href="${d.url}" target="_blank" rel="noopener">Открыть ↗</a>
+        </div>
+      </div>
+      <div class="t-qr-row">
+        <img class="t-qr" width="140" height="140"
+          src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&color=e8e8f0&bgcolor=06060a&data=${encodeURIComponent(d.url)}"
+          alt="QR">
+        <div class="t-qr-note">
+          <p>Отсканируй QR с телефона чтобы быстро открыть сессию.</p>
+          <p style="margin-top:4px">Ссылка временная — работает до остановки туннеля.</p>
+          <p>Изменится при перезапуске.</p>
+        </div>
+      </div>
+      <button class="btn danger" onclick="stopTunnel()">■ Остановить туннель</button>`;
+
+    if (d.startedAt) {
+      const tick = () => {
+        const el = document.getElementById('tunnelUptime');
+        if (el) el.textContent = 'Аптайм: ' + fmtDuration(Date.now() - d.startedAt);
+      };
+      tick();
+      uptimeTimer = setInterval(tick, 1000);
+    }
+
+  } else if (d.status === 'starting') {
+    card.innerHTML = `
+      <div class="t-status starting"><div class="t-spinner"></div>ЗАПУСКАЕТСЯ</div>
+      <div class="muted" style="font-size:13px">Получение URL от Cloudflare…</div>
+      <button class="btn" style="width:fit-content" onclick="stopTunnel()">Отменить</button>`;
+
+  } else if (d.status === 'error') {
+    card.innerHTML = `
+      <div class="t-status error"><div class="t-dot err"></div>ОШИБКА</div>
+      <div class="t-error-msg">${d.error || 'Неизвестная ошибка'}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn accent" onclick="startTunnel()">↻ Повторить</button>
+        <button class="btn" onclick="stopTunnel()">Сбросить</button>
+      </div>`;
+
+  } else {
+    // stopped
+    card.innerHTML = `
+      <div class="t-status stopped"><div class="t-dot"></div>ОСТАНОВЛЕН</div>
+      <div class="t-desc">
+        <p>Создаёт временный публичный URL <code>*.trycloudflare.com</code> для вашего сервера.</p>
+        <p>Не требует аккаунта Cloudflare и настройки DNS.</p>
+      </div>
+      <button class="btn green-btn lg" onclick="startTunnel()">▶ Запустить туннель</button>`;
+  }
+
+  // Log section
+  const logCard = document.getElementById('logCard');
+  const logPre  = document.getElementById('logPre');
+  if (d.log && d.log.length > 0) {
+    logCard.style.display = '';
+    logPre.textContent = d.log.join('\n');
+    // Auto-scroll to bottom
+    logPre.scrollTop = logPre.scrollHeight;
+  } else {
+    logCard.style.display = 'none';
+  }
+}
+
+// ── Tunnel polling ───────────────────────────────────────
+function scheduleTunnelPoll() {
+  clearTimeout(tunnelTimerId);
+  const s = tunnelData && tunnelData.status;
+  if (s === 'starting' || s === 'running') {
+    tunnelTimerId = setTimeout(async () => { await fetchTunnel(); scheduleTunnelPoll(); }, 3000);
+  }
+}
+
+async function fetchTunnel() {
+  try {
+    const resp = await fetch(`${adminBase()}/tunnel`, { headers: { 'x-admin-key': getKey() } });
+    if (!resp.ok) return;
+    const json = await resp.json();
+    if (json.ok) renderTunnel(json.data);
+  } catch {}
+}
+
+// ── Tunnel actions ───────────────────────────────────────
+async function startTunnel() {
+  try {
+    const resp = await fetch(`${adminBase()}/tunnel/start`, { method: 'POST', headers: { 'x-admin-key': getKey() } });
+    const json = await resp.json();
+    if (json.ok) { renderTunnel(json.data || { status: 'starting', log: [] }); scheduleTunnelPoll(); }
+    else alert('Ошибка: ' + (json.error || 'unknown'));
+  } catch { alert('Сервер недоступен'); }
+}
+
+async function stopTunnel() {
+  clearTimeout(tunnelTimerId);
+  clearInterval(uptimeTimer);
+  try {
+    await fetch(`${adminBase()}/tunnel/stop`, { method: 'POST', headers: { 'x-admin-key': getKey() } });
+  } catch {}
+  renderTunnel({ status: 'stopped', url: null, startedAt: null, error: null, log: [] });
+}
+
+async function copyTunnelUrl() {
+  if (!tunnelData || !tunnelData.url) return;
+  try { await navigator.clipboard.writeText(tunnelData.url); } catch {}
+}
+
+// ── Log toggle ───────────────────────────────────────────
+function toggleLog() {
+  const toggle = document.getElementById('logToggle');
+  const pre    = document.getElementById('logPre');
+  const open   = toggle.classList.toggle('open');
+  pre.style.display = open ? 'block' : 'none';
+  if (open) pre.scrollTop = pre.scrollHeight;
 }
 
 // ── Init ─────────────────────────────────────────────────

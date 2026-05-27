@@ -46,6 +46,7 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
+const { spawn } = require('child_process');
 const webpush = require('web-push');
 
 // Process-level error guards. Goal: keep relay running on transient errors
@@ -63,6 +64,19 @@ process.on('unhandledRejection', (err) => {
 const PORT = Number(process.env.PORT) || 8787;
 const HOST = process.env.HOST || '0.0.0.0';
 const ROOT = __dirname;
+
+// ── Cloudflare Quick Tunnel state ─────────────────────────────────────────────
+let tunnelProc      = null;
+let tunnelUrl       = null;
+let tunnelStatus    = 'stopped';  // 'stopped' | 'starting' | 'running' | 'error'
+let tunnelError     = null;
+let tunnelStartedAt = null;
+let tunnelLog       = [];
+const TUNNEL_LOG_MAX = 30;
+const CLOUDFLARED   = process.env.CLOUDFLARED_PATH || 'cloudflared';
+const CF_URL_RE     = /https:\/\/[a-z0-9-]+\.trycloudflare\.com/;
+function tunnelLogPush(line) { tunnelLog.push(line); if (tunnelLog.length > TUNNEL_LOG_MAX) tunnelLog.shift(); }
+process.on('exit', () => { try { if (tunnelProc) tunnelProc.kill(); } catch {} });
 
 const ONE_HOUR = 3600 * 1000;
 const MIN_TTL_MS = ONE_HOUR;
@@ -674,6 +688,9 @@ const server = http.createServer((req, res) => {
   if (req.method === 'GET' && p === '/r/admin/stats') return handleAdminStats(req, res);
   if (req.method === 'OPTIONS' && p.startsWith('/r/admin/')) return handleAdminCors(req, res);
   if (req.method === 'DELETE' && p.startsWith('/r/admin/room/')) return handleAdminDeleteRoom(req, res, p);
+  if (req.method === 'GET'  && p === '/r/admin/tunnel')       return handleAdminTunnelStatus(req, res);
+  if (req.method === 'POST' && p === '/r/admin/tunnel/start') return handleAdminTunnelStart(req, res);
+  if (req.method === 'POST' && p === '/r/admin/tunnel/stop')  return handleAdminTunnelStop(req, res);
 
   // static
   if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -1272,7 +1289,7 @@ function handleAdminStats(req, res) {
 function handleAdminCors(req, res) {
   res.writeHead(204, {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, DELETE, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, DELETE, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'x-admin-key',
     'Access-Control-Max-Age': '86400',
   });
@@ -1296,6 +1313,72 @@ function handleAdminDeleteRoom(req, res, p) {
   }
   destroyRoom(id);
   res.writeHead(200, headers);
+  res.end(JSON.stringify({ ok: true }));
+}
+
+// ── Admin tunnel ──────────────────────────────────────────────────────────────
+const ADMIN_JSON = { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' };
+function adminAuthOk(req) { return req.headers['x-admin-key'] === (process.env.ADMIN_KEY || 'nee2p-admin-local'); }
+
+function handleAdminTunnelStatus(req, res) {
+  if (!adminAuthOk(req)) { res.writeHead(403, ADMIN_JSON); return res.end(JSON.stringify({ ok: false, error: 'forbidden' })); }
+  res.writeHead(200, ADMIN_JSON);
+  res.end(JSON.stringify({ ok: true, data: {
+    status: tunnelStatus,
+    url: tunnelUrl,
+    startedAt: tunnelStartedAt,
+    error: tunnelError,
+    log: tunnelLog,
+    pid: tunnelProc ? tunnelProc.pid : null,
+  }}));
+}
+
+function handleAdminTunnelStart(req, res) {
+  if (!adminAuthOk(req)) { res.writeHead(403, ADMIN_JSON); return res.end(JSON.stringify({ ok: false, error: 'forbidden' })); }
+  if (tunnelStatus === 'running' || tunnelStatus === 'starting') {
+    res.writeHead(200, ADMIN_JSON);
+    return res.end(JSON.stringify({ ok: true, data: { status: tunnelStatus, url: tunnelUrl } }));
+  }
+  tunnelUrl = null; tunnelError = null; tunnelLog = []; tunnelStatus = 'starting'; tunnelStartedAt = null;
+
+  tunnelProc = spawn(CLOUDFLARED, ['tunnel', '--url', `http://localhost:${PORT}`], { stdio: ['ignore', 'pipe', 'pipe'] });
+
+  tunnelProc.on('error', (err) => {
+    tunnelStatus = 'error';
+    tunnelError = err.code === 'ENOENT'
+      ? `cloudflared не найден. Установите: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/`
+      : err.message;
+    tunnelProc = null;
+  });
+
+  function parseLine(line) {
+    tunnelLogPush(line);
+    if (!tunnelUrl) {
+      const m = line.match(CF_URL_RE);
+      if (m) { tunnelUrl = m[0]; tunnelStatus = 'running'; tunnelStartedAt = Date.now(); }
+    }
+  }
+
+  tunnelProc.stdout.on('data', d => d.toString().split('\n').forEach(l => { if (l.trim()) parseLine(l.trim()); }));
+  tunnelProc.stderr.on('data', d => d.toString().split('\n').forEach(l => { if (l.trim()) parseLine(l.trim()); }));
+
+  tunnelProc.on('close', (code) => {
+    if (tunnelStatus !== 'stopped') {
+      tunnelStatus = (code === 0 || code === null) ? 'stopped' : 'error';
+      if (code && code !== 0 && !tunnelError) tunnelError = `process exited with code ${code}`;
+    }
+    tunnelProc = null;
+  });
+
+  res.writeHead(200, ADMIN_JSON);
+  res.end(JSON.stringify({ ok: true, data: { status: 'starting' } }));
+}
+
+function handleAdminTunnelStop(req, res) {
+  if (!adminAuthOk(req)) { res.writeHead(403, ADMIN_JSON); return res.end(JSON.stringify({ ok: false, error: 'forbidden' })); }
+  if (tunnelProc) { try { tunnelProc.kill('SIGTERM'); } catch {} tunnelProc = null; }
+  tunnelStatus = 'stopped'; tunnelUrl = null; tunnelError = null; tunnelStartedAt = null;
+  res.writeHead(200, ADMIN_JSON);
   res.end(JSON.stringify({ ok: true }));
 }
 
