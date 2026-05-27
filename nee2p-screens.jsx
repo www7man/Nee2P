@@ -3276,40 +3276,27 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
   );
 }
 
-// ─── WebRTC call UI: error copy (owner: webrtc-calls) ───
-// Map a structured NeeCall error code → user-facing Russian message for the
-// active-call overlay. Returns null when the code shouldn't override the
-// generic "Нет соединения" header (e.g. peer-* codes are already shown as toasts).
-// TODO i18n: all return values here need wrapping under keys
-//   call.err.mic_denied, call.err.mic_error, call.err.unsupported,
-//   call.err.insecure_context, call.err.ice_failed, call.err.connection_failed,
-//   call.err.timeout, call.err.peer_busy, call.err.peer_unsupported,
-//   call.err.peer_rejected
-function callErrorCopy(code) {
+// ─── WebRTC call UI: error copy (owner: webrtc-calls, i18n-wrapped by i18n) ───
+// Map a structured NeeCall error code → user-facing message for the active-call
+// overlay. `tr` is the i18n translator (window.Nee2Pi18n.t) passed in from the
+// caller so the helper can stay outside any component. Returns null when the
+// code shouldn't override the generic "no connection" header (e.g. peer-*
+// codes are already shown as toasts).
+function callErrorCopy(code, tr) {
   switch (code) {
-    case 'mic-denied':
-      return 'Микрофон недоступен. Разрешите доступ в настройках браузера и попробуйте снова.';
-    case 'mic-error':
-      return 'Не удалось получить доступ к микрофону.';
-    case 'unsupported':
-      return 'Звонки не поддерживаются в этом браузере.';
-    case 'insecure-context':
-      return 'Звонки работают только по HTTPS.';
-    case 'ice-failed':
-      return 'Не удалось установить прямое соединение. Возможно, сеть блокирует звонки.';
-    case 'connection-failed':
-      return 'Не удалось установить соединение.';
-    case 'timeout':
-      return 'Собеседник не ответил.';
-    case 'peer-busy':
-      return 'Линия занята — собеседник уже в звонке.';
-    case 'peer-unsupported':
-      return 'У собеседника не поддерживаются звонки.';
-    case 'peer-rejected':
-      return 'Собеседник отклонил звонок.';
+    case 'mic-denied':         return tr('call.err.mic_denied');
+    case 'mic-error':          return tr('call.err.mic_error');
+    case 'unsupported':        return tr('call.err.unsupported');
+    case 'insecure-context':   return tr('call.err.insecure_context');
+    case 'ice-failed':         return tr('call.err.ice_failed');
+    case 'connection-failed':  return tr('call.err.connection_failed');
+    case 'timeout':            return tr('call.err.timeout');
+    case 'peer-busy':          return tr('call.err.peer_busy');
+    case 'peer-unsupported':   return tr('call.err.peer_unsupported');
+    case 'peer-rejected':      return tr('call.err.peer_rejected');
     case 'peer-ended':
     case 'peer-missed':
-      return null; // toast covers this; overlay shows generic "Нет соединения"
+      return null; // toast covers this; overlay shows generic no-connection header
     default:
       return null;
   }
@@ -3327,6 +3314,10 @@ function ActiveCallOverlay({ palette, callState, callMuted, callOnSpeaker, callE
                              peerLabel, peerFriendly,
                              onHangup, onToggleMute, onToggleSpeaker, onCheckNetwork }) {
   const p = usePalette(palette);
+  // i18n: aliased to `tr` to avoid colliding with local timer handles (`t`)
+  // used by the elapsed-seconds and auto-dismiss effects below.
+  const [lang] = window.Nee2Pi18n.useLang();
+  const tr = window.Nee2Pi18n.t;
   const [startedAt, setStartedAt] = React.useState(null);
   const [now, setNow] = React.useState(Date.now());
   React.useEffect(() => {
@@ -3349,10 +3340,10 @@ function ActiveCallOverlay({ palette, callState, callMuted, callOnSpeaker, callE
   const mm = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
   const ss = String(elapsedSec % 60).padStart(2, '0');
 
-  const status = callState === 'outgoing' ? 'Соединяемся…'
-    : callState === 'failed' ? 'Нет соединения'
+  const status = callState === 'outgoing' ? tr('call.status.connecting')
+    : callState === 'failed' ? tr('call.status.no_connection')
     : callState === 'active' ? `${mm}:${ss}` : '';
-  const detail = callState === 'failed' ? callErrorCopy(callError) : null;
+  const detail = callState === 'failed' ? callErrorCopy(callError, tr) : null;
 
   return (
     <div style={{
@@ -3376,7 +3367,7 @@ function ActiveCallOverlay({ palette, callState, callMuted, callOnSpeaker, callE
         }}>{peerLabel || '·'}</div>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 22, fontWeight: 600, color: '#fff' }}>
-            {peerFriendly || 'anonymous'}
+            {peerFriendly || tr('call.peer_anonymous')}
           </div>
           <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', marginTop: 8,
             fontFamily: callState === 'active' ? 'var(--ff-mono)' : 'inherit',
@@ -3398,11 +3389,11 @@ function ActiveCallOverlay({ palette, callState, callMuted, callOnSpeaker, callE
               boxShadow: 'inset 0 0 0 0.5px rgba(150,180,235,0.5)',
               border: 'none', color: '#d5e2ff', fontSize: 13, fontWeight: 500,
               fontFamily: 'inherit', cursor: 'pointer',
-            }}>Проверить сеть</button>
+            }}>{tr('call.action.check_network')}</button>
           )}
           {callState === 'failed' && (
             <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 10 }}>
-              окно закроется через 10с
+              {tr('call.auto_dismiss_hint')}
             </div>
           )}
         </div>
@@ -3411,8 +3402,8 @@ function ActiveCallOverlay({ palette, callState, callMuted, callOnSpeaker, callE
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center',
         gap: 22, padding: '0 24px 8px' }}>
         <button onClick={() => { if (onToggleMute) onToggleMute(); }}
-          aria-label={callMuted ? 'Включить микрофон' : 'Выключить микрофон'}
-          title={callMuted ? 'Включить микрофон' : 'Выключить микрофон'}
+          aria-label={callMuted ? tr('call.action.mute_on') : tr('call.action.mute_off')}
+          title={callMuted ? tr('call.action.mute_on') : tr('call.action.mute_off')}
           style={{
             width: 60, height: 60, borderRadius: '50%', border: 'none', cursor: 'pointer',
             background: callMuted ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.08)',
@@ -3427,8 +3418,8 @@ function ActiveCallOverlay({ palette, callState, callMuted, callOnSpeaker, callE
         </button>
 
         <button onClick={() => { if (onHangup) onHangup(); }}
-          aria-label="Завершить"
-          title="Завершить"
+          aria-label={tr('call.action.hangup')}
+          title={tr('call.action.hangup')}
           style={{
             width: 72, height: 72, borderRadius: '50%', border: 'none', cursor: 'pointer',
             background: 'linear-gradient(135deg, #e84a4a, #b22222)',
@@ -3442,8 +3433,8 @@ function ActiveCallOverlay({ palette, callState, callMuted, callOnSpeaker, callE
         </button>
 
         <button onClick={() => { if (onToggleSpeaker) onToggleSpeaker(); }}
-          aria-label={callOnSpeaker ? 'Динамик выключить' : 'Динамик включить'}
-          title={callOnSpeaker ? 'Динамик выключить' : 'Динамик включить'}
+          aria-label={callOnSpeaker ? tr('call.action.speaker_off') : tr('call.action.speaker_on')}
+          title={callOnSpeaker ? tr('call.action.speaker_off') : tr('call.action.speaker_on')}
           style={{
             width: 60, height: 60, borderRadius: '50%', border: 'none', cursor: 'pointer',
             background: callOnSpeaker ? 'rgba(80,180,140,0.25)' : 'rgba(255,255,255,0.08)',
@@ -3485,6 +3476,10 @@ function ActiveCallOverlay({ palette, callState, callMuted, callOnSpeaker, callE
 //   call.diag.cancel, call.diag.confirm_ready, call.diag.confirm_degraded,
 //   call.diag.confirm_running, call.diag.confirm_disabled_hint, call.diag.close
 function NetworkDiagnosticsModal({ onClose, mode = 'post-failure', onConfirm }) {
+  // i18n: `tr` (not `t`) because the local `natLabel(t)` below takes `t` as
+  // the natType parameter — keep them distinct to avoid shadowing.
+  const [lang] = window.Nee2Pi18n.useLang();
+  const tr = window.Nee2Pi18n.t;
   // Try to seed from cache so the modal opens with results instantly when
   // possible. If cache is empty we render the spinner while diagnose() runs.
   const cached = React.useMemo(() => {
@@ -3557,9 +3552,9 @@ function NetworkDiagnosticsModal({ onClose, mode = 'post-failure', onConfirm }) 
   );
 
   const natLabel = (t) => {
-    if (t === 'cone' || t === 'open') return 'Хорошо: подходит для P2P звонков';
-    if (t === 'symmetric') return 'Симметричный NAT — прямое соединение скорее всего не пройдёт';
-    return 'Не удалось определить';
+    if (t === 'cone' || t === 'open') return tr('call.diag.nat_good_hint');
+    if (t === 'symmetric') return tr('call.diag.nat_symmetric_hint');
+    return tr('call.diag.nat_unknown_hint');
   };
 
   return (
@@ -3580,7 +3575,7 @@ function NetworkDiagnosticsModal({ onClose, mode = 'post-failure', onConfirm }) 
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           marginBottom: 16 }}>
-          <div style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>Проверка сети</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>{tr('call.diag.title')}</div>
           <button onClick={onClose} style={{
             background: 'none', border: 'none', cursor: 'pointer',
             color: 'rgba(255,255,255,0.4)', fontSize: 20, padding: '0 4px',
@@ -3595,7 +3590,7 @@ function NetworkDiagnosticsModal({ onClose, mode = 'post-failure', onConfirm }) 
               borderTopColor: '#7be0b1', animation: 'spin 0.9s linear infinite',
             }} />
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>
-              Тестируем STUN-серверы…
+              {tr('call.diag.probing')}
             </div>
           </div>
         )}
@@ -3604,39 +3599,39 @@ function NetworkDiagnosticsModal({ onClose, mode = 'post-failure', onConfirm }) 
           <>
             <Row
               ok={report.supported}
-              label="WebRTC поддерживается"
-              hint={report.supported ? null : 'Этот браузер не умеет звонки'}
+              label={tr('call.diag.row_webrtc')}
+              hint={report.supported ? null : tr('call.diag.row_webrtc_hint')}
             />
             <Row
               ok={report.secureContext}
-              label="HTTPS подключение"
-              hint={report.secureContext ? null : 'Звонки работают только по HTTPS'}
+              label={tr('call.diag.row_https')}
+              hint={report.secureContext ? null : tr('call.diag.row_https_hint')}
             />
             <Row
               ok={report.micPermission === 'granted'}
               neutral={report.micPermission === 'unknown' || report.micPermission === 'prompt'}
-              label="Микрофон"
+              label={tr('call.diag.row_mic')}
               hint={
-                report.micPermission === 'granted' ? 'Доступ разрешён'
-                : report.micPermission === 'denied' ? 'Доступ запрещён в настройках браузера'
-                : report.micPermission === 'prompt' ? 'Браузер спросит при первом звонке'
-                : 'Статус неизвестен'
+                report.micPermission === 'granted' ? tr('call.diag.mic_granted')
+                : report.micPermission === 'denied' ? tr('call.diag.mic_denied')
+                : report.micPermission === 'prompt' ? tr('call.diag.mic_prompt')
+                : tr('call.diag.mic_unknown')
               }
             />
             <Row
               ok={report.stunReachable}
-              label="STUN-серверы отвечают"
+              label={tr('call.diag.row_stun')}
               hint={report.stunReachable
-                ? 'Удалось узнать публичный IP'
-                : 'Сеть, возможно, блокирует UDP. Попробуйте другую сеть.'}
+                ? tr('call.diag.stun_ok')
+                : tr('call.diag.stun_blocked')}
             />
             <Row
               ok={report.natType === 'cone' || report.natType === 'open'}
               neutral={report.natType === 'unknown'}
-              label={'Тип NAT: ' + (report.natType === 'cone' ? 'cone'
-                : report.natType === 'symmetric' ? 'симметричный'
-                : report.natType === 'open' ? 'открытый'
-                : 'неизвестен')}
+              label={tr('call.diag.nat_label') + (report.natType === 'cone' ? tr('call.diag.nat_cone')
+                : report.natType === 'symmetric' ? tr('call.diag.nat_symmetric')
+                : report.natType === 'open' ? tr('call.diag.nat_open')
+                : tr('call.diag.nat_unknown'))}
               hint={natLabel(report.natType)}
             />
 
@@ -3645,7 +3640,7 @@ function NetworkDiagnosticsModal({ onClose, mode = 'post-failure', onConfirm }) 
                 background: 'rgba(255,255,255,0.04)',
                 boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.08)' }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.7)',
-                  marginBottom: 8, letterSpacing: 0.2 }}>Рекомендации</div>
+                  marginBottom: 8, letterSpacing: 0.2 }}>{tr('call.diag.recommendations')}</div>
                 {report.warnings.map((w, i) => (
                   <div key={i} style={{
                     fontSize: 12, lineHeight: 1.5,
@@ -3669,16 +3664,14 @@ function NetworkDiagnosticsModal({ onClose, mode = 'post-failure', onConfirm }) 
               background: 'rgba(255,255,255,0.03)',
               fontSize: 11, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5,
             }}>
-              Звонки в Nee2P. идут напрямую между устройствами (P2P, без сервера-посредника).
-              Это даёт E2E-шифрование медиа, но требует, чтобы сеть пропускала UDP-трафик.
-              Если ничего не помогает — попробуйте мобильные данные или другую сеть Wi-Fi.
+              {tr('call.diag.footer_explainer')}
             </div>
           </>
         )}
 
         {!running && report && report.error && (
           <div style={{ padding: 18, fontSize: 13, color: '#ffb088', textAlign: 'center' }}>
-            Не удалось запустить проверку: {report.error}
+            {tr('call.diag.run_failed')}{report.error}
           </div>
         )}
 
@@ -3692,11 +3685,11 @@ function NetworkDiagnosticsModal({ onClose, mode = 'post-failure', onConfirm }) 
               background: 'rgba(255,255,255,0.06)',
               boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.12)',
               color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: 500, fontFamily: 'inherit',
-            }}>Отмена</button>
+            }}>{tr('common.cancel')}</button>
             <button
               onClick={() => { if (canConfirm && onConfirm) { onClose(); onConfirm(); } }}
               disabled={!canConfirm}
-              title={canConfirm ? 'Начать звонок' : (running ? 'Идёт проверка…' : 'Сначала решите красные ошибки')}
+              title={canConfirm ? tr('call.diag.confirm_ok_title') : (running ? tr('call.diag.confirm_running_title') : tr('call.diag.confirm_blocked_title'))}
               style={{
                 flex: 1.4, minHeight: 46, borderRadius: 12, border: 'none',
                 cursor: canConfirm ? 'pointer' : 'not-allowed',
@@ -3708,9 +3701,9 @@ function NetworkDiagnosticsModal({ onClose, mode = 'post-failure', onConfirm }) 
                 color: canConfirm ? '#a8efc8' : 'rgba(168,239,200,0.6)',
                 fontSize: 14, fontWeight: 600, fontFamily: 'inherit',
               }}>
-              {running ? 'Проверяем…'
-                : readiness === 'degraded' ? 'Позвонить всё равно'
-                : 'Позвонить'}
+              {running ? tr('call.diag.confirm_running')
+                : readiness === 'degraded' ? tr('call.diag.confirm_degraded')
+                : tr('call.diag.confirm_ready')}
             </button>
           </div>
         )}
@@ -3723,7 +3716,7 @@ function NetworkDiagnosticsModal({ onClose, mode = 'post-failure', onConfirm }) 
               background: 'rgba(255,255,255,0.06)',
               boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.12)',
               color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: 500, fontFamily: 'inherit',
-            }}>Закрыть</button>
+            }}>{tr('common.close')}</button>
           </div>
         )}
       </div>

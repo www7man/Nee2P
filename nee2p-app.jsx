@@ -262,7 +262,8 @@ function App() {
   // the same Nee2P. origin so the user can close one before slot conflicts.
   const [twoTabsWarning, setTwoTabsWarning] = React.useState(false);
 
-  // ── WebRTC peer-to-peer call state (audio only on MVP) ───
+  // ─── WebRTC call orchestration state (owner: webrtc-calls) ───
+  // Drives the peer-to-peer audio call UI. Audio only on MVP.
   // callState: idle | outgoing | incoming | active | ended | failed
   // callPeer:  slot number of the other side once known.
   // callError: structured code from NeeCall (mic-denied, ice-failed, peer-busy, etc.)
@@ -1017,6 +1018,7 @@ function App() {
   const ingestMessageRef = React.useRef(ingestMessage);
   React.useEffect(() => { ingestMessageRef.current = ingestMessage; }, [ingestMessage]);
 
+  // ─── WebRTC call: signal ingest (owner: webrtc-calls) ───
   // Decrypt + dispatch a 'signal' wire envelope (WebRTC signalling). Mirrors
   // the key-selection of ingestMessage but never touches chat history.
   //
@@ -1948,7 +1950,7 @@ function App() {
     setMessages(prev => [...prev, local]);
   };
 
-  // ── WebRTC call signalling ────────────────────────────────
+  // ─── WebRTC call: signalling out (owner: webrtc-calls) ───
   // Encrypt + send a signalling payload (offer/answer/ICE/etc.) through the
   // same group sender-key the chat uses. Server stores nothing; broadcast only.
   const sendSignal = React.useCallback(async (payload) => {
@@ -1975,16 +1977,19 @@ function App() {
     try { wsRef.current.send(wireMsg); } catch {}
   }, []);
 
+  // ─── WebRTC call orchestration: peer-event toast copy (owner: webrtc-calls, i18n-wrapped) ───
   // Map a structured NeeCall error code → optional toast text. Returns null
   // when the code is best left to the overlay (e.g. ice-failed stays in the
   // overlay, doesn't pop a toast).
   const callToastForCode = (code) => {
-    if (code === 'peer-rejected') return 'Собеседник отклонил звонок';
-    if (code === 'peer-ended') return 'Собеседник завершил звонок';
-    if (code === 'peer-busy') return 'Линия занята';
-    if (code === 'peer-unsupported') return 'У собеседника не поддерживаются звонки';
-    if (code === 'peer-missed') return 'Собеседник не ответил';
-    if (code === 'timeout') return 'Собеседник не ответил';
+    const tr = window.Nee2Pi18n && window.Nee2Pi18n.t;
+    if (!tr) return null;
+    if (code === 'peer-rejected')    return tr('call.toast.peer_rejected');
+    if (code === 'peer-ended')       return tr('call.toast.peer_ended');
+    if (code === 'peer-busy')        return tr('call.toast.peer_busy');
+    if (code === 'peer-unsupported') return tr('call.toast.peer_unsupported');
+    if (code === 'peer-missed')      return tr('call.toast.peer_missed');
+    if (code === 'timeout')          return tr('call.toast.timeout');
     return null;
   };
 
@@ -2010,20 +2015,23 @@ function App() {
     return inst;
   }, [sendSignal, flashCallToast]);
 
-  // Outbound: start the call to the (only) peer in a 2-party room.
+  // ─── WebRTC call: outbound start + control actions (owner: webrtc-calls) ───
+  // 2-party only on MVP. Pre-flight modal in ChatScreen gates this; we keep
+  // a defensive isSecureContext check for the case where startCall is called
+  // outside the pre-flight path (e.g. from a future debug command).
   const startCall = React.useCallback(async () => {
     setCallError(null);
     // Pre-flight: getUserMedia needs HTTPS (or localhost). Show a clear
     // message rather than silently failing inside webrtc.js.
     if (typeof window !== 'undefined' && !window.isSecureContext) {
       setCallError('insecure-context');
-      flashCallToast('Звонки требуют HTTPS');
+      flashCallToast((window.Nee2Pi18n && window.Nee2Pi18n.t('call.toast.requires_https')) || 'Звонки требуют HTTPS');
       return;
     }
     const inst = getNeeCall();
     if (!inst) {
       setCallError('unsupported');
-      flashCallToast('Звонки не поддерживаются в этом браузере');
+      flashCallToast((window.Nee2Pi18n && window.Nee2Pi18n.t('call.toast.unsupported_browser')) || 'Звонки не поддерживаются в этом браузере');
       return;
     }
     // 2-party only on MVP — callPeer is the single other slot.
