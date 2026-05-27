@@ -756,6 +756,7 @@ function fmtLeft(ms) {
   return Math.floor(h / 24) + 'д ' + (h % 24) + 'ч';
 }
 
+// ─── JoinStep1 / JoinStep2 / JoinScreen UX (owner: main-ux) ───────────────
 // Step 1 — phrase input only (clean, no distractions)
 function JoinStep1({ palette, value, setValue, onBack, onNext }) {
   const p = usePalette(palette);
@@ -1185,7 +1186,7 @@ function JoinStep2({ palette, value, password, setPassword,
   );
 }
 
-// JoinScreen — orchestrates step1 / step2
+// ─── JoinScreen orchestrator (owner: main-ux) ─────────────────────────────
 function JoinScreen({ palette, value, setValue, password, setPassword,
                       rememberMe, setRememberMe,
                       onBack, onContinue, onCreateInstead, busy, error }) {
