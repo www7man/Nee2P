@@ -313,6 +313,12 @@ function switchTab(tab) {
   document.getElementById('panel-stats').style.display  = tab === 'stats'  ? '' : 'none';
   document.getElementById('panel-tunnel').style.display = tab === 'tunnel' ? '' : 'none';
   if (tab === 'tunnel') {
+    // Render default state immediately so card is never empty
+    if (!tunnelData) {
+      renderTunnel({ status: 'stopped', url: null, startedAt: null, error: null, log: [] });
+    } else {
+      renderTunnel(tunnelData);
+    }
     fetchTunnel();
     scheduleTunnelPoll();
   }
@@ -641,10 +647,17 @@ function scheduleTunnelPoll() {
 async function fetchTunnel() {
   try {
     const resp = await fetch(`${adminBase()}/tunnel`, { headers: { 'x-admin-key': getKey() } });
-    if (!resp.ok) return;
+    if (!resp.ok) {
+      // Server not restarted yet or endpoint missing — show stopped state
+      if (!tunnelData) renderTunnel({ status: 'stopped', url: null, startedAt: null, error: null, log: [] });
+      return;
+    }
     const json = await resp.json();
     if (json.ok) renderTunnel(json.data);
-  } catch {}
+    else if (!tunnelData) renderTunnel({ status: 'stopped', url: null, startedAt: null, error: json.error || null, log: [] });
+  } catch {
+    if (!tunnelData) renderTunnel({ status: 'stopped', url: null, startedAt: null, error: null, log: [] });
+  }
 }
 
 // ── Tunnel actions ───────────────────────────────────────
