@@ -1782,6 +1782,9 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
   const [burnPanelOpen, setBurnPanelOpen] = React.useState(false);
   // invite modal — shows ShareCodeCard as overlay (accessible any time, not just before pairing)
   const [inviteOpen, setInviteOpen] = React.useState(false);
+  // Network-diagnostics modal — opens from the failed-call overlay's
+  // "Проверить сеть" button OR can be triggered manually in the future.
+  const [diagOpen, setDiagOpen] = React.useState(false);
   // virtualization: render only the last N messages. At 1000+ msgs a typing
   // indicator state change would re-render every bubble; this caps the cost.
   // User can expand via the "Загрузить ещё" button at the top.
@@ -2226,27 +2229,26 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               {/* Call button — visible when at least one peer is in the room.
-                  Disabled (greyed) when peer is offline so the user gets
-                  immediate feedback instead of waiting for a 45s timeout.
+                  Dimmed (not disabled) when peer appears offline: online state
+                  comes from server-side SSE which can be stale for ~30s. Better
+                  to let the user try than block them with bad data. The 45s
+                  outgoing-call timeout handles the truly-offline case.
                   MVP is 2-party audio; group calls TBD. */}
               {!isGroup && partnerClaimed && callSupported && (callState === 'idle' || callState === 'ended' || callState === 'failed') && (
-                <button onClick={() => { if (partnerOnline && onCall) onCall(); }}
-                  disabled={!partnerOnline}
-                  title={partnerOnline ? 'Позвонить' : 'Собеседник не в сети'}
-                  aria-label={partnerOnline ? 'Позвонить' : 'Звонок недоступен — собеседник не в сети'}
+                <button onClick={() => { if (onCall) onCall(); }}
+                  title={partnerOnline ? 'Позвонить' : 'Собеседник может быть не в сети — попробовать'}
+                  aria-label="Позвонить"
                   style={{
                     width: 40, height: 40, borderRadius: 12, padding: 0, border: 'none',
-                    background: partnerOnline ? 'rgba(80,180,140,0.18)' : 'rgba(255,255,255,0.04)',
-                    boxShadow: partnerOnline
-                      ? 'inset 0 0 0 0.5px rgba(123,224,177,0.4)'
-                      : 'inset 0 0 0 0.5px rgba(255,255,255,0.06)',
-                    cursor: partnerOnline ? 'pointer' : 'not-allowed',
-                    opacity: partnerOnline ? 1 : 0.45,
+                    background: 'rgba(80,180,140,0.18)',
+                    boxShadow: 'inset 0 0 0 0.5px rgba(123,224,177,0.4)',
+                    cursor: 'pointer',
+                    opacity: partnerOnline ? 1 : 0.55,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                     <path d="M5 4c0-.6.4-1 1-1h3.3c.5 0 .9.3 1 .8l1 4.2c.1.5-.1 1-.5 1.2l-2 1.2c1.2 2.5 3.2 4.5 5.7 5.7l1.2-2c.3-.4.8-.6 1.3-.5l4.2 1c.5.1.8.5.8 1V19c0 .6-.4 1-1 1h-2C9.5 20 4 14.5 4 7V5z"
-                      stroke={partnerOnline ? '#7be0b1' : 'rgba(255,255,255,0.4)'} strokeWidth="1.6" strokeLinejoin="round" fill="none"/>
+                      stroke="#7be0b1" strokeWidth="1.6" strokeLinejoin="round" fill="none"/>
                   </svg>
                 </button>
               )}
@@ -3209,7 +3211,13 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
           onHangup={onHangup}
           onToggleMute={onToggleMute}
           onToggleSpeaker={onToggleSpeaker}
+          onCheckNetwork={() => setDiagOpen(true)}
         />
+      )}
+
+      {/* Network diagnostics modal — opens from failed-call overlay. */}
+      {diagOpen && (
+        <NetworkDiagnosticsModal onClose={() => setDiagOpen(false)} />
       )}
 
       {fullscreenUrl && (
@@ -3268,7 +3276,7 @@ function callErrorCopy(code) {
 
 function ActiveCallOverlay({ palette, callState, callMuted, callOnSpeaker, callError,
                              peerLabel, peerFriendly,
-                             onHangup, onToggleMute, onToggleSpeaker }) {
+                             onHangup, onToggleMute, onToggleSpeaker, onCheckNetwork }) {
   const p = usePalette(palette);
   const [startedAt, setStartedAt] = React.useState(null);
   const [now, setNow] = React.useState(Date.now());
@@ -3280,11 +3288,12 @@ function ActiveCallOverlay({ palette, callState, callMuted, callOnSpeaker, callE
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, [callState]);
-  // Auto-dismiss the overlay after 5s when in 'failed' state — saves the user
-  // from having to tap Завершить on every NAT-blocked attempt.
+  // Auto-dismiss the overlay after 10s when in 'failed' state — gives users
+  // enough time to read the error + tap "Проверить сеть" before we tear down.
+  // (5s was too rushed.)
   React.useEffect(() => {
     if (callState !== 'failed') return;
-    const t = setTimeout(() => { if (onHangup) onHangup(); }, 5000);
+    const t = setTimeout(() => { if (onHangup) onHangup(); }, 10000);
     return () => clearTimeout(t);
   }, [callState, onHangup]);
   const elapsedSec = startedAt ? Math.max(0, Math.floor((now - startedAt) / 1000)) : 0;
@@ -3333,9 +3342,18 @@ function ActiveCallOverlay({ palette, callState, callMuted, callOnSpeaker, callE
               {detail}
             </div>
           )}
+          {callState === 'failed' && onCheckNetwork && (
+            <button onClick={onCheckNetwork} style={{
+              marginTop: 14, padding: '8px 16px', borderRadius: 10,
+              background: 'rgba(122,154,223,0.22)',
+              boxShadow: 'inset 0 0 0 0.5px rgba(150,180,235,0.5)',
+              border: 'none', color: '#d5e2ff', fontSize: 13, fontWeight: 500,
+              fontFamily: 'inherit', cursor: 'pointer',
+            }}>Проверить сеть</button>
+          )}
           {callState === 'failed' && (
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 6 }}>
-              окно закроется через 5с
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 10 }}>
+              окно закроется через 10с
             </div>
           )}
         </div>
@@ -3391,6 +3409,200 @@ function ActiveCallOverlay({ palette, callState, callMuted, callOnSpeaker, callE
               stroke={callOnSpeaker ? '#7be0b1' : '#fff'} strokeWidth="1.6" strokeLinecap="round"/>
           </svg>
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Network diagnostics modal — runs NeeCall.diagnose() and displays a
+// human-readable checklist so the user can decide WHY a call failed and
+// what to try next (e.g. switch networks before the next attempt).
+function NetworkDiagnosticsModal({ onClose }) {
+  const [report, setReport] = React.useState(null);
+  const [running, setRunning] = React.useState(true);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await (window.NeeCall && window.NeeCall.diagnose
+          ? window.NeeCall.diagnose()
+          : Promise.resolve(null));
+        if (cancelled) return;
+        setReport(r);
+      } catch (e) {
+        if (!cancelled) setReport({ error: String(e && e.message || e) });
+      } finally {
+        if (!cancelled) setRunning(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const Row = ({ ok, neutral, label, hint }) => (
+    <div style={{
+      display: 'flex', alignItems: 'flex-start', gap: 10,
+      padding: '10px 0', borderBottom: '0.5px solid rgba(255,255,255,0.06)',
+    }}>
+      <div style={{
+        flexShrink: 0, marginTop: 2,
+        width: 18, height: 18, borderRadius: '50%',
+        background: ok === null || neutral
+          ? 'rgba(255,255,255,0.08)'
+          : ok ? 'rgba(80,180,140,0.25)' : 'rgba(232,90,90,0.22)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        boxShadow: 'inset 0 0 0 0.5px ' + (ok === null || neutral
+          ? 'rgba(255,255,255,0.18)'
+          : ok ? 'rgba(123,224,177,0.6)' : 'rgba(255,140,140,0.5)'),
+      }}>
+        {ok === null || neutral ? (
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.5)' }} />
+        ) : ok ? (
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+            <path d="M5 12l5 5 9-11" stroke="#7be0b1" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        ) : (
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+            <path d="M6 6l12 12M18 6L6 18" stroke="#ff9a9a" strokeWidth="2.4" strokeLinecap="round"/>
+          </svg>
+        )}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, color: '#fff', lineHeight: 1.35 }}>{label}</div>
+        {hint && <div style={{
+          fontSize: 11, color: 'rgba(255,255,255,0.5)',
+          marginTop: 3, lineHeight: 1.4,
+        }}>{hint}</div>}
+      </div>
+    </div>
+  );
+
+  const natLabel = (t) => {
+    if (t === 'cone' || t === 'open') return 'Хорошо: подходит для P2P звонков';
+    if (t === 'symmetric') return 'Симметричный NAT — прямое соединение скорее всего не пройдёт';
+    return 'Не удалось определить';
+  };
+
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, zIndex: 230,
+      background: 'rgba(0,0,0,0.6)',
+      backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+      padding: '0 12px',
+      paddingBottom: 'max(28px, env(safe-area-inset-bottom, 0px))',
+      animation: 'fade-up 0.2s ease',
+    }}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        width: '100%', maxWidth: 460, background: '#0f0f15',
+        boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.1), 0 32px 80px rgba(0,0,0,0.7)',
+        borderRadius: 24, padding: '20px 18px',
+        maxHeight: 'min(85vh, 85dvh)', overflowY: 'auto',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          marginBottom: 16 }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>Проверка сети</div>
+          <button onClick={onClose} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: 'rgba(255,255,255,0.4)', fontSize: 20, padding: '0 4px',
+          }}>✕</button>
+        </div>
+
+        {running && (
+          <div style={{ padding: '24px 8px', textAlign: 'center' }}>
+            <div style={{
+              width: 28, height: 28, margin: '0 auto 12px',
+              borderRadius: '50%', border: '2px solid rgba(255,255,255,0.15)',
+              borderTopColor: '#7be0b1', animation: 'spin 0.9s linear infinite',
+            }} />
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>
+              Тестируем STUN-серверы…
+            </div>
+          </div>
+        )}
+
+        {!running && report && !report.error && (
+          <>
+            <Row
+              ok={report.supported}
+              label="WebRTC поддерживается"
+              hint={report.supported ? null : 'Этот браузер не умеет звонки'}
+            />
+            <Row
+              ok={report.secureContext}
+              label="HTTPS подключение"
+              hint={report.secureContext ? null : 'Звонки работают только по HTTPS'}
+            />
+            <Row
+              ok={report.micPermission === 'granted'}
+              neutral={report.micPermission === 'unknown' || report.micPermission === 'prompt'}
+              label="Микрофон"
+              hint={
+                report.micPermission === 'granted' ? 'Доступ разрешён'
+                : report.micPermission === 'denied' ? 'Доступ запрещён в настройках браузера'
+                : report.micPermission === 'prompt' ? 'Браузер спросит при первом звонке'
+                : 'Статус неизвестен'
+              }
+            />
+            <Row
+              ok={report.stunReachable}
+              label="STUN-серверы отвечают"
+              hint={report.stunReachable
+                ? 'Удалось узнать публичный IP'
+                : 'Сеть, возможно, блокирует UDP. Попробуйте другую сеть.'}
+            />
+            <Row
+              ok={report.natType === 'cone' || report.natType === 'open'}
+              neutral={report.natType === 'unknown'}
+              label={'Тип NAT: ' + (report.natType === 'cone' ? 'cone'
+                : report.natType === 'symmetric' ? 'симметричный'
+                : report.natType === 'open' ? 'открытый'
+                : 'неизвестен')}
+              hint={natLabel(report.natType)}
+            />
+
+            {Array.isArray(report.warnings) && report.warnings.length > 0 && (
+              <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 12,
+                background: 'rgba(255,255,255,0.04)',
+                boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.08)' }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.7)',
+                  marginBottom: 8, letterSpacing: 0.2 }}>Рекомендации</div>
+                {report.warnings.map((w, i) => (
+                  <div key={i} style={{
+                    fontSize: 12, lineHeight: 1.5,
+                    color: w.level === 'red' ? '#ffb088' : '#ffe19a',
+                    paddingLeft: 14, position: 'relative',
+                    marginTop: i > 0 ? 6 : 0,
+                  }}>
+                    <span style={{
+                      position: 'absolute', left: 0, top: 6,
+                      width: 6, height: 6, borderRadius: '50%',
+                      background: w.level === 'red' ? '#ff7a4d' : '#ffd166',
+                    }} />
+                    {w.text}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{
+              marginTop: 14, padding: '10px 14px', borderRadius: 10,
+              background: 'rgba(255,255,255,0.03)',
+              fontSize: 11, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5,
+            }}>
+              Звонки в Nee2P. идут напрямую между устройствами (P2P, без сервера-посредника).
+              Это даёт E2E-шифрование медиа, но требует, чтобы сеть пропускала UDP-трафик.
+              Если ничего не помогает — попробуйте мобильные данные или другую сеть Wi-Fi.
+            </div>
+          </>
+        )}
+
+        {!running && report && report.error && (
+          <div style={{ padding: 18, fontSize: 13, color: '#ffb088', textAlign: 'center' }}>
+            Не удалось запустить проверку: {report.error}
+          </div>
+        )}
       </div>
     </div>
   );

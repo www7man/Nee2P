@@ -30,10 +30,26 @@
 //   call.isSupported()                     // browser capability check
 
 (function (g) {
+  // STUN pool — mix of independent providers (different anycast networks) so
+  // that if one is blocked or slow, others still respond. Diversity also
+  // enables symmetric-NAT detection (we compare srflx ports across providers).
+  // TCP STUN is included for networks that block UDP outbound (some corporate
+  // firewalls, hotel WiFi).
   const ICE_SERVERS = [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun.cloudflare.com:3478' },
     { urls: 'stun:global.stun.twilio.com:3478' },
+    { urls: 'stun:stun.nextcloud.com:443' },        // TCP-friendly :443 (some networks only allow 443)
+  ];
+
+  // Independent STUN URLs used by diagnose() to detect symmetric NAT. We need
+  // genuinely different IP backends — if both servers share an anycast prefix
+  // the symmetric-port comparison is meaningless.
+  const DIAG_STUN_URLS = [
+    'stun:stun.l.google.com:19302',
+    'stun:stun.cloudflare.com:3478',
   ];
 
   function isSupported() {
@@ -41,6 +57,136 @@
       return typeof RTCPeerConnection !== 'undefined'
           && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
     } catch { return false; }
+  }
+
+  // Probe a single STUN URL: returns the set of srflx (public-reflected) ports
+  // we got back. If empty → STUN didn't respond or is blocked. Times out at 5s.
+  function probeSingleStun(stunUrl) {
+    return new Promise((resolve) => {
+      let pc, finalized = false;
+      const ports = new Set();
+      const addrs = new Set();
+      const done = () => {
+        if (finalized) return;
+        finalized = true;
+        try { pc && pc.close(); } catch {}
+        resolve({ ports: [...ports], addrs: [...addrs] });
+      };
+      try {
+        pc = new RTCPeerConnection({ iceServers: [{ urls: stunUrl }], iceCandidatePoolSize: 0 });
+      } catch {
+        return resolve({ ports: [], addrs: [] });
+      }
+      pc.onicegatheringstatechange = () => {
+        if (pc.iceGatheringState === 'complete') done();
+      };
+      pc.onicecandidate = (e) => {
+        if (!e.candidate) { done(); return; }
+        const c = e.candidate.candidate || '';
+        if (/ typ srflx /.test(c)) {
+          // candidate-attribute format:
+          //   candidate:<foundation> <component> <transport> <priority> <addr> <port> typ srflx ...
+          const parts = c.split(/\s+/);
+          if (parts.length >= 6) {
+            addrs.add(parts[4]);
+            ports.add(parts[5]);
+          }
+        }
+      };
+      try {
+        pc.createDataChannel('diag'); // forces ICE gathering
+        pc.createOffer().then(o => pc.setLocalDescription(o)).catch(done);
+      } catch { done(); }
+      setTimeout(done, 5000);
+    });
+  }
+
+  // Full diagnostics report — runs every pre-flight check we can do without a
+  // peer. Returns a structured result the UI displays as a checklist. Safe to
+  // call multiple times; ~5-6s total because of the STUN probes.
+  //
+  // Result shape:
+  //   {
+  //     supported: bool,
+  //     secureContext: bool,
+  //     micPermission: 'granted'|'denied'|'prompt'|'unknown',
+  //     stunReachable: bool,
+  //     natType: 'open' (host candidates only on a public IP)
+  //            | 'cone'  (same srflx port across providers — P2P should work)
+  //            | 'symmetric' (different ports — direct P2P will NOT work, needs TURN)
+  //            | 'unknown' (STUN didn't respond or single-provider success),
+  //     warnings: [{level: 'red'|'yellow', text: string}, ...]
+  //   }
+  async function diagnose() {
+    const result = {
+      supported: isSupported(),
+      secureContext: typeof window !== 'undefined' && !!window.isSecureContext,
+      micPermission: 'unknown',
+      stunReachable: false,
+      natType: 'unknown',
+      warnings: [],
+    };
+
+    if (!result.supported) {
+      result.warnings.push({ level: 'red', text: 'Браузер не поддерживает WebRTC' });
+      return result;
+    }
+    if (!result.secureContext) {
+      result.warnings.push({ level: 'red', text: 'Звонки работают только по HTTPS' });
+      return result;
+    }
+
+    // Microphone permission state — best-effort. Permissions API isn't on all
+    // browsers (notably Safari sometimes returns 'prompt' even when granted).
+    try {
+      if (navigator.permissions && navigator.permissions.query) {
+        const p = await navigator.permissions.query({ name: 'microphone' });
+        result.micPermission = p.state || 'unknown';
+      }
+    } catch { /* not supported — leave 'unknown' */ }
+    if (result.micPermission === 'denied') {
+      result.warnings.push({
+        level: 'red',
+        text: 'Доступ к микрофону запрещён. Откройте настройки сайта и разрешите его.',
+      });
+    }
+
+    // STUN reachability + NAT-type detection. Probe two independent providers
+    // in parallel. We compare the srflx ports they report:
+    //   • port-set empty  → STUN blocked entirely or UDP forbidden → 'unknown'
+    //   • single port across all providers → cone NAT (P2P likely works)
+    //   • multiple ports  → symmetric NAT (P2P needs TURN, won't work direct)
+    const probes = await Promise.all(DIAG_STUN_URLS.map(probeSingleStun));
+    const allPorts = new Set();
+    const allAddrs = new Set();
+    let anyReachable = false;
+    for (const r of probes) {
+      if (r.ports.length > 0) anyReachable = true;
+      for (const p of r.ports) allPorts.add(p);
+      for (const a of r.addrs) allAddrs.add(a);
+    }
+    result.stunReachable = anyReachable;
+
+    if (!anyReachable) {
+      result.natType = 'unknown';
+      result.warnings.push({
+        level: 'red',
+        text: 'STUN-серверы недоступны. Сеть, возможно, блокирует UDP — звонки могут не работать.',
+      });
+    } else if (allPorts.size === 0) {
+      // shouldn't happen if anyReachable is true, but defensive
+      result.natType = 'unknown';
+    } else if (allPorts.size === 1) {
+      result.natType = 'cone';
+    } else {
+      result.natType = 'symmetric';
+      result.warnings.push({
+        level: 'yellow',
+        text: 'Обнаружен симметричный NAT — прямое соединение, скорее всего, не пройдёт. Попробуйте другую сеть (например, мобильные данные) или Wi-Fi без корпоративного фильтра.',
+      });
+    }
+
+    return result;
   }
 
   function create(opts) {
@@ -473,5 +619,5 @@
     };
   }
 
-  g.NeeCall = { create, isSupported };
+  g.NeeCall = { create, isSupported, diagnose };
 })(typeof window !== 'undefined' ? window : globalThis);
