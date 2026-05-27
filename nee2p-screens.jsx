@@ -192,7 +192,7 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
                   <path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.49.5.09.68-.22.68-.48v-1.7C6.73 19.91 6.14 18 6.14 18c-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.58 9.58 0 0 1 12 7.8c.85 0 1.71.11 2.51.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.94.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10.01 10.01 0 0 0 22 12c0-5.52-4.48-10-10-10z" fill="rgba(255,255,255,0.7)"/>
                 </svg>
                 <span style={{ fontSize: 15, fontWeight: 600, color: 'rgba(255,255,255,0.9)', letterSpacing: -0.3 }}>
-                  Открытый исходный код
+                  {t('welcome.opensource')}
                 </span>
               </div>
               <button onClick={() => setShowCloneModal(false)} style={{
@@ -205,11 +205,11 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
             <div style={{
               fontSize: 9.5, fontWeight: 600, letterSpacing: 1.6, textTransform: 'uppercase',
               color: 'rgba(255,255,255,0.28)', fontFamily: 'var(--ff-mono)', marginBottom: 10,
-            }}>Зачем</div>
+            }}>{t('clone.section.why')}</div>
             {[
-              { icon: '🔍', title: 'Убедиться',   desc: 'Весь код открыт (MIT) — проверьте сами, что сервер не видит сообщения' },
-              { icon: '🖥',  title: 'Свой сервер', desc: 'Node.js, Docker или один клик в облако — полный контроль над данными' },
-              { icon: '🤝', title: 'Участвовать', desc: 'CI, тесты, CONTRIBUTING.md — пул-реквесты и issues приветствуются' },
+              { icon: '🔍', title: t('clone.why.verify.title'),     desc: t('clone.why.verify.desc') },
+              { icon: '🖥',  title: t('clone.why.selfhost.title'),   desc: t('clone.why.selfhost.desc') },
+              { icon: '🤝', title: t('clone.why.contribute.title'), desc: t('clone.why.contribute.desc') },
             ].map(({ icon, title, desc }) => (
               <div key={title} style={{ display: 'flex', gap: 11, marginBottom: 11, alignItems: 'flex-start' }}>
                 <span style={{ fontSize: 16, lineHeight: 1.25, flexShrink: 0, marginTop: 1 }}>{icon}</span>
@@ -227,7 +227,7 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
             <div style={{
               fontSize: 9.5, fontWeight: 600, letterSpacing: 1.6, textTransform: 'uppercase',
               color: 'rgba(255,255,255,0.28)', fontFamily: 'var(--ff-mono)', marginBottom: 10,
-            }}>Быстрый запуск</div>
+            }}>{t('clone.section.quickstart')}</div>
 
             {/* OS tabs */}
             {(() => {
@@ -239,27 +239,27 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
               ];
               const osSteps = {
                 mac: [
-                  { id: 1, label: 'Клонировать',    cmd: 'git clone https://github.com/www7man/Nee2P.git', copy: true },
-                  { id: 2, label: 'Установить',      cmd: 'cd Nee2P && npm install',                       copy: true },
-                  { id: 3, label: 'Запустить',       cmd: 'node server.js',                                copy: true },
-                  { id: 4, label: 'Открыть',         cmd: 'http://localhost:8787/',                        copy: false, isUrl: true },
+                  { id: 1, label: t('clone.step.clone'),    cmd: 'git clone https://github.com/www7man/Nee2P.git', copy: true },
+                  { id: 2, label: t('clone.step.install'), cmd: 'cd Nee2P && npm install',                       copy: true },
+                  { id: 3, label: t('clone.step.run'),     cmd: 'node server.js',                                copy: true },
+                  { id: 4, label: t('clone.step.open'),    cmd: 'http://localhost:8787/',                        copy: false, isUrl: true },
                 ],
                 linux: [
-                  { id: 1, label: 'Клонировать',    cmd: 'git clone https://github.com/www7man/Nee2P.git', copy: true },
-                  { id: 2, label: 'Установить',      cmd: 'cd Nee2P && npm install',                       copy: true },
-                  { id: 3, label: 'Запустить',       cmd: 'node server.js',                                copy: true },
-                  { id: 4, label: 'Открыть',         cmd: 'http://localhost:8787/',                        copy: false, isUrl: true },
+                  { id: 1, label: t('clone.step.clone'),   cmd: 'git clone https://github.com/www7man/Nee2P.git', copy: true },
+                  { id: 2, label: t('clone.step.install'), cmd: 'cd Nee2P && npm install',                       copy: true },
+                  { id: 3, label: t('clone.step.run'),     cmd: 'node server.js',                                copy: true },
+                  { id: 4, label: t('clone.step.open'),    cmd: 'http://localhost:8787/',                        copy: false, isUrl: true },
                 ],
                 win: [
-                  { id: 1, label: 'Клонировать',    cmd: 'git clone https://github.com/www7man/Nee2P.git', copy: true },
-                  { id: 2, label: 'Установить',      cmd: 'cd Nee2P; npm install',                         copy: true },
-                  { id: 3, label: 'Запустить',       cmd: 'node server.js',                                copy: true },
-                  { id: 4, label: 'Открыть',         cmd: 'http://localhost:8787/',                        copy: false, isUrl: true },
+                  { id: 1, label: t('clone.step.clone'),   cmd: 'git clone https://github.com/www7man/Nee2P.git', copy: true },
+                  { id: 2, label: t('clone.step.install'), cmd: 'cd Nee2P; npm install',                         copy: true },
+                  { id: 3, label: t('clone.step.run'),     cmd: 'node server.js',                                copy: true },
+                  { id: 4, label: t('clone.step.open'),    cmd: 'http://localhost:8787/',                        copy: false, isUrl: true },
                 ],
                 docker: [
-                  { id: 1, label: 'Клонировать',    cmd: 'git clone https://github.com/www7man/Nee2P.git', copy: true },
-                  { id: 2, label: 'Запустить',       cmd: 'cd Nee2P && docker compose up',                 copy: true },
-                  { id: 3, label: 'Открыть',         cmd: 'http://localhost:8787/',                        copy: false, isUrl: true },
+                  { id: 1, label: t('clone.step.clone'),   cmd: 'git clone https://github.com/www7man/Nee2P.git', copy: true },
+                  { id: 2, label: t('clone.step.run'),     cmd: 'cd Nee2P && docker compose up',                 copy: true },
+                  { id: 3, label: t('clone.step.open'),    cmd: 'http://localhost:8787/',                        copy: false, isUrl: true },
                 ],
               };
               const steps = osSteps[selectedOS] || osSteps.mac;
@@ -321,7 +321,7 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
                               color: copiedStep === id + selectedOS ? '#7be0b1' : 'rgba(255,255,255,0.35)',
                               fontSize: 10.5, fontWeight: 600, cursor: 'pointer',
                               whiteSpace: 'nowrap', transition: 'color 0.2s, background 0.2s',
-                            }}>{copiedStep === id + selectedOS ? '✓' : 'Copy'}</button>
+                            }}>{copiedStep === id + selectedOS ? '✓' : t('clone.copy')}</button>
                           )}
                         </div>
                       </div>
@@ -812,22 +812,30 @@ function RememberMeToggle({ palette, checked, onChange }) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// ─── JoinScreen helpers ──────────────────────────────────────
+// ─── JoinScreen helpers (i18n-wrapped) ───────────────────────
+// fmtAgo / fmtLeft are pure functions called from JSX render trees that
+// already subscribe to language changes via useLang() — so reading
+// window.Nee2Pi18n.t lazily here is safe: each render re-invokes the
+// helpers with the current language.
+function _i18nT(key, fallback) {
+  const i18n = typeof window !== 'undefined' && window.Nee2Pi18n;
+  return (i18n && i18n.t(key)) || fallback;
+}
 function fmtAgo(ms) {
   const s = Math.floor(ms / 1000);
-  if (s < 60)  return s + 'с назад';
+  if (s < 60)  return s + _i18nT('time.ago_s', 'с назад');
   const m = Math.floor(s / 60);
-  if (m < 60)  return m + 'м назад';
+  if (m < 60)  return m + _i18nT('time.ago_m', 'м назад');
   const h = Math.floor(m / 60);
-  if (h < 24)  return h + 'ч назад';
-  return Math.floor(h / 24) + 'д назад';
+  if (h < 24)  return h + _i18nT('time.ago_h', 'ч назад');
+  return Math.floor(h / 24) + _i18nT('time.ago_d', 'д назад');
 }
 function fmtLeft(ms) {
   const m = Math.floor(ms / 60000);
-  if (m < 60)  return m + ' мин';
+  if (m < 60)  return m + _i18nT('time.left_min', ' мин');
   const h = Math.floor(m / 60);
-  if (h < 24)  return h + 'ч ' + (m % 60) + 'м';
-  return Math.floor(h / 24) + 'д ' + (h % 24) + 'ч';
+  if (h < 24)  return h + _i18nT('time.left_h', 'ч ') + (m % 60) + _i18nT('time.left_m', 'м');
+  return Math.floor(h / 24) + _i18nT('time.left_d', 'д ') + (h % 24) + _i18nT('time.left_hh', 'ч');
 }
 
 // ─── JoinStep1 / JoinStep2 / JoinScreen UX (owner: main-ux) ───────────────
@@ -1427,6 +1435,8 @@ function PasswordScreen({ palette, perspective, password, setPassword, onBack, o
 // ─────────────────────────────────────────────────────────────
 function WaitingScreen({ palette, perspective, peerSealed }) {
   const p = usePalette(palette);
+  const [lang] = window.Nee2Pi18n.useLang();
+  const t = window.Nee2Pi18n.t;
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column',
       padding: '24px 22px 30px', position: 'relative' }}>
@@ -1515,7 +1525,7 @@ function WaitingScreen({ palette, perspective, peerSealed }) {
           textAlign: 'center' }}>
           Ваш секрет запечатан.<br/>
           <span style={{ color: 'rgba(255,255,255,0.55)' }}>
-            {peerSealed ? 'Открываем сессию…' : 'Ждём собеседника…'}
+            {peerSealed ? t('created.opening_session') : t('created.waiting_peer')}
           </span>
         </div>
 
@@ -1546,6 +1556,8 @@ function WaitingScreen({ palette, perspective, peerSealed }) {
 // ─────────────────────────────────────────────────────────────
 function ShareCodeCard({ palette, hash, phrase, partnerClaimed }) {
   const p = usePalette(palette);
+  const [lang] = window.Nee2Pi18n.useLang();
+  const t = window.Nee2Pi18n.t;
   const [copied, setCopied] = React.useState(false);
   const [qrOpen, setQrOpen] = React.useState(false);
   const copyValue = phrase || hash;
@@ -1572,7 +1584,7 @@ function ShareCodeCard({ palette, hash, phrase, partnerClaimed }) {
       <div style={{ fontSize: 10, color: 'var(--tx-40)', letterSpacing: 1.4,
         textTransform: 'uppercase', textAlign: 'center', marginBottom: 8,
         fontFamily: "'Geist Mono', monospace" }}>
-        {partnerClaimed ? 'партнёр зашёл — ждёт пароль' : 'отправь код партнёру'}
+        {partnerClaimed ? t('sharecard.peer_arrived_pwd') : t('sharecard.send_to_peer')}
       </div>
       {phrase && (
         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tx-100)',
@@ -1592,15 +1604,15 @@ function ShareCodeCard({ palette, hash, phrase, partnerClaimed }) {
             letterSpacing: 0.4, textTransform: 'uppercase',
           }}>
           {copied
-            ? <><Icon.Check size={12} color={p.a} /> скопировано</>
-            : <><Icon.Copy size={12} /> {phrase ? 'фразу' : 'хеш'}</>}
+            ? <><Icon.Check size={12} color={p.a} /> {t('created.copied').toLowerCase()}</>
+            : <><Icon.Copy size={12} /> {phrase ? t('sharecard.copy_phrase_short') : t('sharecard.copy_hash_short')}</>}
         </button>
         <button onClick={() => setQrOpen(true)} style={{
           width: 34, height: 34, border: 'none', cursor: 'pointer',
           borderRadius: 10, background: 'rgba(255,255,255,0.08)', color: '#fff',
           boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18), 0 0 0 0.5px rgba(255,255,255,0.10)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }} title="показать QR">
+        }} title={t('sharecard.show_qr')}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8">
             <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
             <rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h3v3M20 14v3M14 20h3M20 20v.01" strokeLinecap="round"/>
@@ -1718,10 +1730,18 @@ function renderText(text) {
 // "вчера в 21:30", "23 мая, 10:01". `now` is the current ms-since-epoch (used
 // only to decide whether the divider's day is "today" / "yesterday").
 const TIME_DIVIDER_MS = 10 * 60 * 1000;
+// Month names come from the active i18n locale at render time
+// (`time.months_genitive`). Falls back to the Russian array if i18n hasn't
+// loaded yet — matches the original hard-coded behavior.
 const RU_MONTHS_GEN = [
   'января','февраля','марта','апреля','мая','июня',
   'июля','августа','сентября','октября','ноября','декабря',
 ];
+function _months() {
+  const i18n = typeof window !== 'undefined' && window.Nee2Pi18n;
+  const arr = i18n && i18n.t('time.months_genitive');
+  return Array.isArray(arr) ? arr : RU_MONTHS_GEN;
+}
 function _pad2(n) { return n < 10 ? '0' + n : '' + n; }
 function _ymd(ts) {
   const d = new Date(ts);
@@ -1733,11 +1753,11 @@ function formatDividerLabel(ts, now) {
   const hhmm = _pad2(d.getHours()) + ':' + _pad2(d.getMinutes());
   const today = _ymd(now);
   const ymd = _ymd(ts);
-  if (ymd === today) return 'сегодня в ' + hhmm;
+  if (ymd === today) return _i18nT('time.today_at', 'сегодня в ') + hhmm;
   // Yesterday = today minus one calendar day in local time.
   const y = new Date(now); y.setDate(y.getDate() - 1);
-  if (ymd === _ymd(y.getTime())) return 'вчера в ' + hhmm;
-  return d.getDate() + ' ' + RU_MONTHS_GEN[d.getMonth()] + ', ' + hhmm;
+  if (ymd === _ymd(y.getTime())) return _i18nT('time.yesterday_at', 'вчера в ') + hhmm;
+  return d.getDate() + ' ' + _months()[d.getMonth()] + ', ' + hhmm;
 }
 
 // Walk a chronological message list once and tag each item with cluster info:
@@ -1819,7 +1839,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
   // Fall back to letter-based labels when this file is loaded standalone.
   const slotUtil = window.Nee2PSlotUtil || {
     coerceSlot: (v) => (typeof v === 'number' ? v : (v === 'A' ? 0 : v === 'B' ? 1 : null)),
-    slotLabel: (n, gm) => (gm === 2 ? (n === 0 ? 'A' : 'B') : 'Участник ' + (n + 1)),
+    slotLabel: (n, gm) => (gm === 2 ? (n === 0 ? 'A' : 'B') : t('slot.participant') + ' ' + (n + 1)),
     slotHue: (n) => Math.round(((n || 0) * 137.508) % 360),
     friendlyName: () => '',
   };
@@ -2711,7 +2731,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                       <div style={{ fontSize: 9.5, letterSpacing: 0.5, textTransform: 'uppercase',
                         fontFamily: "'Geist Mono', monospace",
                         opacity: 0.6, marginBottom: 2 }}>
-                        {orig ? (isMineQuote ? 'мой ответ на моё' : `${isMineQuote ? '' : ''}ответ`) : 'ответ'}
+                        {orig ? (isMineQuote ? t('chat.reply_mine_to_mine') : t('chat.reply_plain')) : t('chat.reply_plain')}
                       </div>
                       <div style={{
                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
@@ -2892,9 +2912,9 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
             flexWrap: 'wrap',
             animation: 'fade-up 0.15s ease',
           }}>
-            <span style={{ opacity: 0.8 }}>{burnTtl ? '🔥 после прочтения:' : '🔥 авто-удаление:'}</span>
+            <span style={{ opacity: 0.8 }}>🔥 {t('chat.burn_aria').toLowerCase()}:</span>
             {[
-              { id: null,  label: 'выкл' },
+              { id: null,  label: t('chat.burn_off') },
               { id: 10,    label: '10с' },
               { id: 60,    label: '1м' },
               { id: 3600,  label: '1ч' },
@@ -2933,9 +2953,9 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                 letterSpacing: 0.6, textTransform: 'uppercase', fontFamily: "'Geist Mono', monospace" }}>
                 {(() => {
                   const repSide = slotUtil.coerceSlot(replyingTo.side);
-                  if (repSide === perspective) return 'ответ на своё';
+                  if (repSide === perspective) return t('chat.reply_to_mine');
                   const lbl = repSide !== null ? slotUtil.slotLabel(repSide, groupMax) : '?';
-                  return `ответ на ${lbl}`;
+                  return `${t('chat.reply_plain')} ${lbl}`;
                 })()}
               </div>
               <div style={{ fontSize: 12, color: 'var(--tx-80)', marginTop: 2,
@@ -2991,8 +3011,8 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
             <button
               type="button"
               onClick={() => setBurnPanelOpen(v => !v)}
-              aria-label="Авто-удаление"
-              title="Авто-удаление после прочтения"
+              aria-label={t('chat.burn_aria')}
+              title={t('chat.burn_title')}
               style={{
                 width: 40, height: 40, borderRadius: 14, border: 'none', cursor: 'pointer',
                 background: burnTtl ? 'rgba(255,140,80,0.18)' : 'rgba(255,255,255,0.06)',
@@ -3034,7 +3054,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                   opacity: recording.cancel ? 0.5 : 1,
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 }}>
-                  {recording.cancel ? 'отпусти для отмены' : '← смахни влево для отмены'}
+                  {recording.cancel ? t('chat.rec_release_to_cancel') : t('chat.rec_slide_to_cancel')}
                 </span>
               </div>
             ) : (
@@ -3267,10 +3287,10 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
               </div>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', letterSpacing: 0.3 }}>
-                  Входящий звонок
+                  {t('chat.call_incoming')}
                 </div>
                 <div style={{ fontSize: 18, fontWeight: 600, color: '#fff', marginTop: 4 }}>
-                  {callPeer != null && friendlyFor(callPeer) ? friendlyFor(callPeer) : (partnerFriendly || 'anonymous')}
+                  {callPeer != null && friendlyFor(callPeer) ? friendlyFor(callPeer) : (partnerFriendly || t('call.peer_anonymous'))}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 12, width: '100%', marginTop: 6 }}>
@@ -3280,14 +3300,14 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                     background: 'rgba(255,90,90,0.18)',
                     boxShadow: 'inset 0 0 0 0.5px rgba(255,140,140,0.4)',
                     color: '#ff9a9a', fontSize: 14, fontWeight: 600, fontFamily: 'inherit',
-                  }}>Отклонить</button>
+                  }}>{t('chat.call_reject')}</button>
                 <button onClick={() => { if (onAnswerCall) onAnswerCall(); }}
                   style={{
                     flex: 1, minHeight: 50, borderRadius: 14, border: 'none', cursor: 'pointer',
                     background: 'rgba(80,180,140,0.25)',
                     boxShadow: 'inset 0 0 0 0.5px rgba(123,224,177,0.6), 0 0 18px rgba(123,224,177,0.18)',
                     color: '#a8efc8', fontSize: 14, fontWeight: 600, fontFamily: 'inherit',
-                  }}>Ответить</button>
+                  }}>{t('chat.call_answer')}</button>
               </div>
             </div>
           </div>
@@ -3792,6 +3812,8 @@ function NetworkDiagnosticsModal({ onClose, mode = 'post-failure', onConfirm }) 
 // Blob bubble: image (thumb → full), voice (player), or file card.
 function BlobBubble({ msg, palette, mine, onBlobUrl, onOpenFullscreen }) {
   const p = usePalette(palette);
+  const [lang] = window.Nee2Pi18n.useLang();
+  const t = window.Nee2Pi18n.t;
   const blob = msg.blob;
   if (!blob) return null;
 
@@ -3801,7 +3823,7 @@ function BlobBubble({ msg, palette, mine, onBlobUrl, onOpenFullscreen }) {
         margin: '2px 0 4px', padding: '10px 12px', borderRadius: 14,
         background: 'rgba(255,255,255,0.06)', fontSize: 12, color: 'var(--tx-60)',
         fontStyle: 'italic',
-      }}>вложение зашифровано прежним ключом</div>
+      }}>{t('blob.undecryptable')}</div>
     );
   }
 
@@ -3874,6 +3896,8 @@ function ImageBubble({ msg, palette, mine, onBlobUrl, onOpenFullscreen }) {
 }
 
 function FileBubble({ msg, palette, mine, onBlobUrl }) {
+  const [lang] = window.Nee2Pi18n.useLang();
+  const t = window.Nee2Pi18n.t;
   const p = usePalette(palette);
   const blob = msg.blob;
   const [busy, setBusy] = React.useState(false);
@@ -3914,7 +3938,7 @@ function FileBubble({ msg, palette, mine, onBlobUrl }) {
         <div style={{
           fontSize: 13, fontWeight: 600, color: mine ? p.text : '#fff',
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}>{blob.name || 'файл'}</div>
+        }}>{blob.name || t('blob.file_fallback')}</div>
         <div style={{
           fontSize: 11, color: mine ? (p.text === '#ffffff' ? 'rgba(255,255,255,0.7)' : 'rgba(10,10,16,0.55)')
                                     : 'rgba(255,255,255,0.5)',
@@ -4109,6 +4133,8 @@ function FileIcon({ size = 18, color = '#fff' }) {
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '🔥', '👀', '😢'];
 
 function MessageActionMenu({ palette, msg, isMine, onQuote, onDelete, onReact, onClose }) {
+  const [lang] = window.Nee2Pi18n.useLang();
+  const t = window.Nee2Pi18n.t;
   const p = usePalette(palette);
   const preview = (msg.text || '').slice(0, 120);
   return (
@@ -4162,7 +4188,7 @@ function MessageActionMenu({ palette, msg, isMine, onQuote, onDelete, onReact, o
 
         <MenuItem
           icon={<Icon.Copy size={16} color="#fff" />}
-          label="Скопировать"
+          label={t('menu.copy')}
           onClick={() => {
             try { navigator.clipboard && navigator.clipboard.writeText(msg.text || ''); } catch {}
             onClose();
@@ -4170,13 +4196,13 @@ function MessageActionMenu({ palette, msg, isMine, onQuote, onDelete, onReact, o
         />
         <MenuItem
           icon={<QuoteIcon />}
-          label="Процитировать"
+          label={t('menu.quote')}
           onClick={onQuote}
         />
         {isMine && (
           <MenuItem
             icon={<Icon.Eraser size={16} color="#ff7a7a" />}
-            label="Удалить"
+            label={t('menu.delete')}
             danger
             onClick={onDelete}
           />
@@ -4229,6 +4255,8 @@ function QuoteIcon({ size = 16, color = '#fff' }) {
 function SafetyNumbersModal({ palette, fingerprint, onClose,
                                expiresAt, totalSeconds, sessionHash, groupMax, participants }) {
   const p = usePalette(palette);
+  const [lang] = window.Nee2Pi18n.useLang();
+  const t = window.Nee2Pi18n.t;
   const now = useNow(true);
 
   // fingerprint is Array<{slot,label,friendly,words,hex,hasKem}> | legacy obj | null
@@ -4258,13 +4286,13 @@ function SafetyNumbersModal({ palette, fingerprint, onClose,
   const kemBad     = kemAvailable === false;
 
   const kdfLabel = kdfMode === 'argon2id' ? 'Argon2id ✓'
-    : kdfMode === 'pbkdf2' ? 'PBKDF2 (запасной)' : '…';
+    : kdfMode === 'pbkdf2' ? t('safety.kdf.fallback') : '…';
   const x25519Label = x25519Source === 'subtle' ? 'WebCrypto ✓'
-    : x25519Source === 'noble' ? 'noble (запасной)'
-    : x25519Source === 'stablelib' ? 'stablelib (запасной)'
-    : x25519Source === 'unavailable' ? 'недоступно' : '…';
-  const kemLabel = kemAvailable === true ? 'доступен ✓'
-    : kemAvailable === false ? 'недоступен (только pre-quantum)' : '…';
+    : x25519Source === 'noble' ? 'noble (fallback)'
+    : x25519Source === 'stablelib' ? 'stablelib (fallback)'
+    : x25519Source === 'unavailable' ? t('safety.source.unavailable') : '…';
+  const kemLabel = kemAvailable === true ? t('safety.kem.available')
+    : kemAvailable === false ? t('safety.kem.unavailable') : '…';
 
   // Session expiry
   const expirySeconds = expiresAt ? Math.max(0, Math.floor((expiresAt - now) / 1000)) : 0;
@@ -4320,7 +4348,7 @@ function SafetyNumbersModal({ palette, fingerprint, onClose,
               <Icon.Shield size={15} color="#7be0b1" />
             </div>
             <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', letterSpacing: -0.2 }}>
-              Безопасность сессии
+              {t('chat.security')}
             </div>
           </div>
           <button onClick={onClose} style={{
@@ -4331,8 +4359,8 @@ function SafetyNumbersModal({ palette, fingerprint, onClose,
 
         <div style={{ padding: '8px 18px 0', fontSize: 12, color: 'var(--tx-60)', lineHeight: 1.45 }}>
           {list.length > 1
-            ? 'У каждого участника свой отпечаток. Переключайтесь между вкладками и сверяйте каждого голосом.'
-            : 'Ваш отпечаток соединения. Сверьте с партнёром — по голосу, не через этот чат.'}
+            ? t('safety.info.group')
+            : t('safety.info.pair')}
         </div>
 
         <div style={{ padding: '14px 16px' }}>
@@ -4343,7 +4371,7 @@ function SafetyNumbersModal({ palette, fingerprint, onClose,
               className="no-scrollbar">
               {list.map((fp, idx) => {
                 const slotN = (fp.slot ?? 0) + 1;
-                const display = fp.friendly ? (fp.friendly + ' · ' + slotN) : (fp.label || ('Участник ' + slotN));
+                const display = fp.friendly ? (fp.friendly + ' · ' + slotN) : (fp.label || (t('slot.participant') + ' ' + slotN));
                 return (
                   <button key={fp.slot} onClick={() => setActiveIdx(idx)} title={display}
                     style={{
@@ -4391,7 +4419,7 @@ function SafetyNumbersModal({ palette, fingerprint, onClose,
                 <span style={{ fontFamily: 'var(--ff-mono)', fontSize: 9.5, color: 'var(--tx-40)',
                   letterSpacing: 0.4, wordBreak: 'break-all', flex: 1 }}>{active.hex}</span>
                 <span style={{ fontSize: 10, color: copiedKey === 'hex' ? '#7be0b1' : 'var(--tx-30)',
-                  flexShrink: 0, fontWeight: 600 }}>{copiedKey === 'hex' ? '✓' : 'копировать'}</span>
+                  flexShrink: 0, fontWeight: 600 }}>{copiedKey === 'hex' ? '✓' : t('safety.copy_short')}</span>
               </div>
             </>
           ) : (
@@ -4405,9 +4433,9 @@ function SafetyNumbersModal({ palette, fingerprint, onClose,
           {/* ── Как проверить ── */}
           <div style={sectionLabel}>Как проверить</div>
           {[
-            'Позвоните партнёру по голосу или встретьтесь лично.',
-            'По очереди прочитайте слова вслух — начиная с первого.',
-            'Все 12 совпали? Соединение чистое, подмены ключей не было.',
+            t('safety.howto.step1'),
+            t('safety.howto.step2'),
+            t('safety.howto.step3'),
           ].map((step, i) => (
             <div key={i} style={{
               display: 'flex', gap: 10, marginBottom: 8, alignItems: 'flex-start',
@@ -4438,9 +4466,9 @@ function SafetyNumbersModal({ palette, fingerprint, onClose,
             border: '0.5px solid rgba(255,255,255,0.08)',
           }}>
             {[
-              { label: 'Истекает',    value: fmtExpiry,       key: null },
-              { label: 'Участников',  value: participantStr,  key: null },
-              { label: 'Идентификатор', value: sessionHash
+              { label: t('safety.session.expires'),    value: fmtExpiry,       key: null },
+              { label: t('safety.session.participants'),  value: participantStr,  key: null },
+              { label: t('safety.session.id'), value: sessionHash
                 ? `${sessionHash.slice(0,6)}…${sessionHash.slice(-6)}`
                 : '—',                                         key: 'hash' },
             ].map(({ label, value, key }, i, arr) => (
@@ -4475,10 +4503,10 @@ function SafetyNumbersModal({ palette, fingerprint, onClose,
             border: '0.5px solid rgba(255,255,255,0.08)',
           }}>
             {[
-              { name: 'Argon2id',     desc: 'Превращает пароль в ключ — перебор занял бы годы', bad: kdfBad, note: kdfBad ? 'PBKDF2 (запасной)' : null },
-              { name: 'X25519',       desc: 'Обмен ключами без передачи самих ключей по сети',   bad: x25519Bad, note: x25519Bad ? x25519Label : null },
-              { name: 'ML-KEM-768',   desc: 'Защищает от будущих квантовых компьютеров',         bad: kemBad, note: kemBad ? 'недоступен' : null },
-              { name: 'AES-256-GCM',  desc: 'Шифрует каждое сообщение и проверяет целостность',  bad: false, note: null },
+              { name: 'Argon2id',     desc: t('safety.crypto.argon_desc'),  bad: kdfBad, note: kdfBad ? t('safety.kdf.fallback') : null },
+              { name: 'X25519',       desc: t('safety.crypto.x25519_desc'), bad: x25519Bad, note: x25519Bad ? x25519Label : null },
+              { name: 'ML-KEM-768',   desc: t('safety.crypto.kem_desc'),    bad: kemBad, note: kemBad ? t('safety.kem.missing_short') : null },
+              { name: 'AES-256-GCM',  desc: t('safety.crypto.aes_desc'),    bad: false, note: null },
             ].map(({ name, desc, bad, note }, i, arr) => (
               <div key={name} style={{
                 display: 'flex', alignItems: 'flex-start', gap: 10, padding: '9px 12px',
@@ -4504,21 +4532,21 @@ function SafetyNumbersModal({ palette, fingerprint, onClose,
               background: 'rgba(255,180,80,0.10)', border: '0.5px solid rgba(255,180,80,0.25)',
               fontSize: 11, color: '#ffd29a', lineHeight: 1.4,
             }}>
-              ⚠ Постквантовая защита недоступна — отпечаток построен только на X25519.
+              ⚠ {t('info.tenet.pq.title')}: {t('safety.kem.unavailable')}
             </div>
           )}
 
           <div style={divider} />
 
           {/* ── Открытый код ── */}
-          <div style={sectionLabel}>Открытый код</div>
+          <div style={sectionLabel}>{t('welcome.opensource')}</div>
           <div style={{ fontSize: 12, color: 'var(--tx-50)', lineHeight: 1.5, marginBottom: 10, fontWeight: 300 }}>
-            Код открыт — убедитесь сами, что сервер не видит сообщения.
+            {t('clone.why.verify.desc')}.
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             {[
               { label: 'GitHub', href: 'https://github.com/www7man/Nee2P' },
-              { label: 'Страница безопасности', href: './trust.html' },
+              { label: t('safety.link.trust'), href: './trust.html' },
             ].map(({ label, href }) => (
               <a key={label} href={href} target="_blank" rel="noopener noreferrer"
                 style={{
@@ -4541,7 +4569,7 @@ function SafetyNumbersModal({ palette, fingerprint, onClose,
           background: 'transparent', color: '#fff',
           fontSize: 14, fontWeight: 600, fontFamily: 'inherit',
           borderTop: '0.5px solid rgba(255,255,255,0.08)',
-        }}>Понятно</button>
+        }}>{t('common.done')}</button>
       </div>
     </div>
   );
@@ -4550,22 +4578,24 @@ function SafetyNumbersModal({ palette, fingerprint, onClose,
 // ─────────────────────────────────────────────────────────────
 function InfoScreen({ palette, onBack }) {
   const p = usePalette(palette);
+  const [lang] = window.Nee2Pi18n.useLang();
+  const t = window.Nee2Pi18n.t;
 
   const tenets = [
-    { icon: Icon.Lock,     title: 'End-to-end шифрование',
-      body: 'Сообщения шифруются на устройстве отправителя и расшифровываются только на устройствах получателей. Между ними — нечитаемый поток.' },
-    { icon: Icon.NoServer, title: 'Ничего не хранится',
-      body: 'Серверов с историей переписки не существует. Всё живёт в оперативной памяти и исчезает вместе с сессией — ни базы, ни бэкапа, ни кэша.' },
-    { icon: Icon.Ghost,    title: 'Никакой регистрации',
-      body: 'Нет аккаунтов, email, номеров. Сессия живёт под одноразовым кодом — и принадлежит только тем, кто знает фразу.' },
-    { icon: Icon.Key,      title: 'У каждого свой пароль',
-      body: 'Войти можно, только установив личный пароль для своего слота. Забыл — переписка теряется навсегда, восстановить нельзя.' },
-    { icon: Icon.Eraser,   title: 'Таймер самоуничтожения',
-      body: 'С момента запуска идёт обратный отсчёт. Когда таймер обнуляется, сессия и все ключи стираются из памяти устройств.' },
-    { icon: Icon.Shield,   title: 'Постквантовая защита',
-      body: 'Гибридное рукопожатие X25519 + ML-KEM-768 даёт прямую секретность сегодня и устойчивость к будущим квантовым атакам. 12 BIP-39 слов позволяют сверить ключи голосом.' },
-    { icon: Icon.Bolt,     title: 'Без метаданных',
-      body: 'Не собираем кто, когда, с кем. Нет идентификаторов устройств, IP-логов, телеметрии, аналитики и внешних шрифтов — дружелюбно к Tor.' },
+    { icon: Icon.Lock,     title: t('info.tenet.e2e.title'),
+      body: t('info.tenet.e2e.body') },
+    { icon: Icon.NoServer, title: t('info.tenet.nothing.title'),
+      body: t('info.tenet.nothing.body') },
+    { icon: Icon.Ghost,    title: t('info.tenet.noreg.title'),
+      body: t('info.tenet.noreg.body') },
+    { icon: Icon.Key,      title: t('info.tenet.pwd.title'),
+      body: t('info.tenet.pwd.body') },
+    { icon: Icon.Eraser,   title: t('info.tenet.timer.title'),
+      body: t('info.tenet.timer.body') },
+    { icon: Icon.Shield,   title: t('info.tenet.pq.title'),
+      body: t('info.tenet.pq.body') },
+    { icon: Icon.Bolt,     title: t('info.tenet.nometa.title'),
+      body: t('info.tenet.nometa.body') },
   ];
 
   return (
@@ -4592,7 +4622,7 @@ function InfoScreen({ palette, onBack }) {
           <Icon.Shield size={16} color="rgba(255,255,255,0.7)" />
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)',
             letterSpacing: 0.6, textTransform: 'uppercase' }}>
-            безопасность и шифрование
+            {t('info.kicker')}
           </span>
         </div>
         <h1 style={{
@@ -4600,8 +4630,8 @@ function InfoScreen({ palette, onBack }) {
           fontWeight: 400, fontSize: 38, lineHeight: 1.0, letterSpacing: -0.8,
           color: '#fff',
         }}>
-          Семь правил,<br/>
-          <span style={{ color: 'rgba(255,255,255,0.5)' }}>на которых стоит Nee2P.</span>
+          {t('info.heading_top')}<br/>
+          <span style={{ color: 'rgba(255,255,255,0.5)' }}>{t('info.heading_bottom')}</span>
         </h1>
       </div>
 
@@ -4650,9 +4680,9 @@ function InfoScreen({ palette, onBack }) {
             fontSize: 11, color: 'rgba(255,255,255,0.4)', lineHeight: 1.55,
             letterSpacing: -0.05,
           }}>
-            <b style={{ color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>Алгоритм:</b> Argon2id для деривации из фразы (PBKDF2 600k как fallback), гибридное эфемерное рукопожатие X25519&nbsp;+&nbsp;ML-KEM-768 для общего секрета (forward secrecy + постквантовая стойкость), AES-256-GCM для шифра сообщений с уникальным IV (96 бит) на каждый пакет. Ключи никогда не покидают устройство; сервер видит только зашифрованные блобы и редактирует токены сессии из access-логов.
+            <b style={{ color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>{t('info.algorithm_label')}</b> {t('info.algorithm_body')}
             <br/><br/>
-            <b style={{ color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>Доверие:</b> мы&nbsp;не можем читать ваши сообщения. Это не обещание, а свойство протокола — у нас нет ключей.
+            <b style={{ color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>{t('info.trust_label')}</b> {t('info.trust_body')}
           </div>
         </div>
       </div>
@@ -4660,7 +4690,7 @@ function InfoScreen({ palette, onBack }) {
       <div style={{ padding: '8px 22px 0' }}>
         <GlassButton primary palette={palette} onClick={onBack}
           icon={<Icon.Check size={14} color="#0a0a10" />}>
-          Понятно
+          {t('common.done')}
         </GlassButton>
       </div>
     </div>
@@ -4670,6 +4700,8 @@ function InfoScreen({ palette, onBack }) {
 // ─────────────────────────────────────────────────────────────
 function ExpiredScreen({ palette, onRestart, reason }) {
   const p = usePalette(palette);
+  const [lang] = window.Nee2Pi18n.useLang();
+  const t = window.Nee2Pi18n.t;
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column',
       padding: '24px 22px 30px', position: 'relative' }}>
@@ -4696,19 +4728,19 @@ function ExpiredScreen({ palette, onRestart, reason }) {
         <div style={{ fontFamily: "'Instrument Serif', serif", fontStyle: 'italic',
           fontSize: 36, lineHeight: 1.05, fontWeight: 400, letterSpacing: -0.6,
           textAlign: 'center' }}>
-          Сессия<br/>
-          <span style={{ color: 'rgba(255,255,255,0.55)' }}>растворилась.</span>
+          {t('expired.title_top')}<br/>
+          <span style={{ color: 'rgba(255,255,255,0.55)' }}>{t('expired.title_bottom')}</span>
         </div>
 
         <div style={{ marginTop: 16, fontSize: 13, color: 'rgba(255,255,255,0.55)',
           textAlign: 'center', maxWidth: 300, lineHeight: 1.5 }}>
-          {reason || 'Таймер обнулился. Все сообщения и ключи стёрты с устройств.'}
+          {reason || t('expired.reason_default')}
         </div>
       </div>
 
       <GlassButton primary palette={palette} onClick={onRestart}
         icon={<Icon.Plus size={16} color={p.text} />}>
-        Открыть новую
+        {t('expired.open_new')}
       </GlassButton>
     </div>
   );
@@ -4722,6 +4754,8 @@ function ShareScreen({ palette, hash, phrase, expiresAt,
                        slots, mySlot, paired, groupMax = 2, participants = null,
                        onEnterChat, onCancel }) {
   const p = usePalette(palette);
+  const [lang] = window.Nee2Pi18n.useLang();
+  const t = window.Nee2Pi18n.t;
   // Local 1-Hz ticker — keeps the expiry countdown live without re-rendering
   // the whole App every second. (Was previously a `nowMs` prop driven by App.)
   const nowMs = useNow(true);
@@ -4786,7 +4820,7 @@ function ShareScreen({ palette, hash, phrase, expiresAt,
                 boxShadow: paired ? '0 0 10px rgba(61,255,154,0.7)' : `0 0 10px ${p.a}`,
                 animation: 'pulse-dot 1.6s ease-in-out infinite' }} />
             </span>
-            {paired ? 'оба в сессии' : (peerClaimed ? 'второй внутри' : 'ждём второго')}
+            {paired ? t('share.status_both') : (peerClaimed ? t('share.status_peer_in') : t('share.status_waiting'))}
           </div>
         </Glass>
       </div>
@@ -4794,11 +4828,11 @@ function ShareScreen({ palette, hash, phrase, expiresAt,
       <div style={{ textAlign: 'center', marginTop: 14 }}>
         <div style={{ fontFamily: "'Instrument Serif', serif", fontStyle: 'italic',
           fontSize: 32, lineHeight: 1.0, fontWeight: 400, letterSpacing: -0.6 }}>
-          Код сессии
+          {t('share.code_title')}
         </div>
         <div style={{ marginTop: 6, fontSize: 12, color: 'var(--tx-60)',
           letterSpacing: -0.05, maxWidth: 300, margin: '6px auto 0' }}>
-          Передай партнёру фразу или хеш. Можно закрыть вкладку — комната живёт ещё <b style={{ color: 'var(--tx-100)' }}>{ttlLabel}</b>.
+          {t('share.code_desc_prefix')} <b style={{ color: 'var(--tx-100)' }}>{ttlLabel}</b>.
         </div>
       </div>
 
@@ -4809,7 +4843,7 @@ function ShareScreen({ palette, hash, phrase, expiresAt,
             <div style={{ fontSize: 9.5, color: 'var(--tx-40)', letterSpacing: 1.4,
               textTransform: 'uppercase', textAlign: 'center', marginBottom: 6,
               fontFamily: "'Geist Mono', monospace" }}>
-              фраза
+              {t('share.phrase_label')}
             </div>
             <div style={{ fontSize: 15, fontWeight: 600, textAlign: 'center',
               color: 'var(--tx-100)', wordBreak: 'break-word' }}>
@@ -4824,7 +4858,7 @@ function ShareScreen({ palette, hash, phrase, expiresAt,
           <div style={{ fontSize: 9.5, color: 'var(--tx-40)', letterSpacing: 1.4,
             textTransform: 'uppercase', textAlign: 'center', marginBottom: 12,
             fontFamily: "'Geist Mono', monospace" }}>
-            MD5 · 128 бит
+            {t('share.hash_label')}
           </div>
           <HashDisplay hash={hash} big palette={palette} />
           <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
@@ -4838,8 +4872,8 @@ function ShareScreen({ palette, hash, phrase, expiresAt,
                 letterSpacing: 0.4, textTransform: 'uppercase',
               }}>
               {copied
-                ? <><Icon.Check size={13} color={p.a} /> скопировано</>
-                : <><Icon.Copy size={13} /> {phrase ? 'фразу' : 'хеш'}</>}
+                ? <><Icon.Check size={13} color={p.a} /> {t('created.copied').toLowerCase()}</>
+                : <><Icon.Copy size={13} /> {phrase ? t('sharecard.copy_phrase_short') : t('sharecard.copy_hash_short')}</>}
             </button>
             <button onClick={async () => {
               try {
@@ -4871,7 +4905,7 @@ function ShareScreen({ palette, hash, phrase, expiresAt,
 
       <GlassButton primary palette={palette} onClick={onEnterChat}
         icon={<Icon.Arrow size={16} color={p.text} />}>
-        {paired ? 'Войти в чат' : 'Открыть чат (партнёр потом)'}
+        {paired ? t('share.enter_chat') : t('share.open_chat_alone')}
       </GlassButton>
     </div>
   );
@@ -4881,6 +4915,8 @@ function ShareScreen({ palette, hash, phrase, expiresAt,
 // LockedScreen — both slots already claimed by other passwords.
 function LockedScreen({ palette, onBack }) {
   const p = usePalette(palette);
+  const [lang] = window.Nee2Pi18n.useLang();
+  const t = window.Nee2Pi18n.t;
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column',
       padding: '24px 22px 30px', position: 'relative' }}>
@@ -4915,19 +4951,19 @@ function LockedScreen({ palette, onBack }) {
         <div style={{ fontFamily: "'Instrument Serif', serif", fontStyle: 'italic',
           fontSize: 32, lineHeight: 1.05, fontWeight: 400, letterSpacing: -0.6,
           textAlign: 'center' }}>
-          Сессия закрыта<br/>
-          <span style={{ color: 'rgba(255,255,255,0.55)' }}>максимум участников исчерпан.</span>
+          {t('locked.title_top')}<br/>
+          <span style={{ color: 'rgba(255,255,255,0.55)' }}>{t('locked.title_bottom')}</span>
         </div>
 
         <div style={{ marginTop: 16, fontSize: 13, color: 'rgba(255,255,255,0.55)',
           textAlign: 'center', maxWidth: 300, lineHeight: 1.5 }}>
-          По этой фразе все слоты заняты. Если ты участник — введи свой пароль ещё раз. Иначе — попроси у создателя свежую фразу или новую сессию побольше.
+          {t('locked.message')}
         </div>
       </div>
 
       <GlassButton primary palette={palette} onClick={onBack}
         icon={<Icon.Arrow size={16} color={p.text} dir="left" />}>
-        К началу
+        {t('locked.back_home')}
       </GlassButton>
     </div>
   );
