@@ -33,6 +33,7 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
 
   const [showCloneModal, setShowCloneModal] = React.useState(false);
   const [copiedStep, setCopiedStep] = React.useState(null);
+  const [selectedOS, setSelectedOS] = React.useState('mac');
   const handleCopyCmd = (stepId, cmd) => {
     navigator.clipboard.writeText(cmd).catch(() => {});
     setCopiedStep(stepId);
@@ -206,9 +207,9 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
               color: 'rgba(255,255,255,0.28)', fontFamily: 'var(--ff-mono)', marginBottom: 10,
             }}>Зачем</div>
             {[
-              { icon: '🔍', title: 'Убедиться',     desc: 'Весь код открыт — проверьте сами, что сервер физически не видит сообщения' },
-              { icon: '🖥',  title: 'Свой сервер',   desc: 'Разверните у себя: Node.js + один файл, полный контроль над данными' },
-              { icon: '🤝', title: 'Участвовать',   desc: 'Нашли баг или есть идея — пул-реквесты и issues приветствуются' },
+              { icon: '🔍', title: 'Убедиться',   desc: 'Весь код открыт (MIT) — проверьте сами, что сервер не видит сообщения' },
+              { icon: '🖥',  title: 'Свой сервер', desc: 'Node.js, Docker или один клик в облако — полный контроль над данными' },
+              { icon: '🤝', title: 'Участвовать', desc: 'CI, тесты, CONTRIBUTING.md — пул-реквесты и issues приветствуются' },
             ].map(({ icon, title, desc }) => (
               <div key={title} style={{ display: 'flex', gap: 11, marginBottom: 11, alignItems: 'flex-start' }}>
                 <span style={{ fontSize: 16, lineHeight: 1.25, flexShrink: 0, marginTop: 1 }}>{icon}</span>
@@ -225,65 +226,151 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
             {/* ── быстрый запуск ── */}
             <div style={{
               fontSize: 9.5, fontWeight: 600, letterSpacing: 1.6, textTransform: 'uppercase',
-              color: 'rgba(255,255,255,0.28)', fontFamily: 'var(--ff-mono)', marginBottom: 12,
+              color: 'rgba(255,255,255,0.28)', fontFamily: 'var(--ff-mono)', marginBottom: 10,
             }}>Быстрый запуск</div>
 
-            {[
-              { id: 1, label: 'Клонировать репозиторий', cmd: 'git clone https://github.com/www7man/Nee2P.git', copy: true },
-              { id: 2, label: 'Запустить сервер',         cmd: 'cd Nee2P && node server.js',                    copy: true },
-              { id: 3, label: 'Открыть в браузере',       cmd: 'http://localhost:3000/2Pee/',                   copy: false },
-            ].map(({ id, label, cmd, copy }) => (
-              <div key={id} style={{ display: 'flex', gap: 12, marginBottom: 12, alignItems: 'flex-start' }}>
-                {/* step number */}
-                <div style={{
-                  flexShrink: 0, width: 22, height: 22, borderRadius: 7, marginTop: 1,
-                  background: 'rgba(255,255,255,0.07)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.45)',
-                  fontFamily: 'var(--ff-mono)',
-                }}>{id}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 11.5, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 5 }}>{label}</div>
-                  <div style={{
-                    display: 'flex', alignItems: 'stretch',
-                    background: 'rgba(255,255,255,0.05)',
-                    boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.09)',
-                    borderRadius: 10, overflow: 'hidden',
-                  }}>
-                    <code style={{
-                      flex: 1, padding: '9px 11px', fontSize: 11,
-                      color: id === 3 ? 'rgba(123,224,177,0.8)' : 'rgba(255,255,255,0.7)',
-                      fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
-                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block',
-                    }}>{cmd}</code>
-                    {copy && (
-                      <button onClick={() => handleCopyCmd(id, cmd)} style={{
-                        flexShrink: 0, padding: '9px 12px',
-                        background: copiedStep === id ? 'rgba(123,224,177,0.12)' : 'rgba(255,255,255,0.06)',
-                        border: 'none', borderLeft: '0.5px solid rgba(255,255,255,0.09)',
-                        color: copiedStep === id ? '#7be0b1' : 'rgba(255,255,255,0.4)',
-                        fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                        whiteSpace: 'nowrap', transition: 'color 0.2s, background 0.2s',
-                      }}>{copiedStep === id ? '✓' : 'Копировать'}</button>
-                    )}
+            {/* OS tabs */}
+            {(() => {
+              const osList = [
+                { id: 'mac',    label: ' macOS' },
+                { id: 'linux',  label: ' Linux' },
+                { id: 'win',    label: ' Windows' },
+                { id: 'docker', label: ' Docker' },
+              ];
+              const osSteps = {
+                mac: [
+                  { id: 1, label: 'Клонировать',    cmd: 'git clone https://github.com/www7man/Nee2P.git', copy: true },
+                  { id: 2, label: 'Установить',      cmd: 'cd Nee2P && npm install',                       copy: true },
+                  { id: 3, label: 'Запустить',       cmd: 'node server.js',                                copy: true },
+                  { id: 4, label: 'Открыть',         cmd: 'http://localhost:8787/',                        copy: false, isUrl: true },
+                ],
+                linux: [
+                  { id: 1, label: 'Клонировать',    cmd: 'git clone https://github.com/www7man/Nee2P.git', copy: true },
+                  { id: 2, label: 'Установить',      cmd: 'cd Nee2P && npm install',                       copy: true },
+                  { id: 3, label: 'Запустить',       cmd: 'node server.js',                                copy: true },
+                  { id: 4, label: 'Открыть',         cmd: 'http://localhost:8787/',                        copy: false, isUrl: true },
+                ],
+                win: [
+                  { id: 1, label: 'Клонировать',    cmd: 'git clone https://github.com/www7man/Nee2P.git', copy: true },
+                  { id: 2, label: 'Установить',      cmd: 'cd Nee2P; npm install',                         copy: true },
+                  { id: 3, label: 'Запустить',       cmd: 'node server.js',                                copy: true },
+                  { id: 4, label: 'Открыть',         cmd: 'http://localhost:8787/',                        copy: false, isUrl: true },
+                ],
+                docker: [
+                  { id: 1, label: 'Клонировать',    cmd: 'git clone https://github.com/www7man/Nee2P.git', copy: true },
+                  { id: 2, label: 'Запустить',       cmd: 'cd Nee2P && docker compose up',                 copy: true },
+                  { id: 3, label: 'Открыть',         cmd: 'http://localhost:8787/',                        copy: false, isUrl: true },
+                ],
+              };
+              const steps = osSteps[selectedOS] || osSteps.mac;
+              return (
+                <div>
+                  {/* tab row */}
+                  <div style={{ display: 'flex', gap: 5, marginBottom: 12 }}>
+                    {osList.map(os => (
+                      <button key={os.id} onClick={() => setSelectedOS(os.id)} style={{
+                        flex: 1, padding: '6px 4px', borderRadius: 8, border: 'none',
+                        cursor: 'pointer', fontSize: 10.5, fontWeight: 600,
+                        letterSpacing: 0.2, whiteSpace: 'nowrap',
+                        transition: 'background 0.15s, color 0.15s',
+                        background: selectedOS === os.id ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)',
+                        boxShadow: selectedOS === os.id ? 'inset 0 0 0 0.5px rgba(255,255,255,0.18)' : 'inset 0 0 0 0.5px rgba(255,255,255,0.07)',
+                        color: selectedOS === os.id ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.38)',
+                      }}>{os.label}</button>
+                    ))}
                   </div>
+                  {/* steps */}
+                  {steps.map(({ id, label, cmd, copy, isUrl }) => (
+                    <div key={id} style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'flex-start' }}>
+                      <div style={{
+                        flexShrink: 0, width: 20, height: 20, borderRadius: 6, marginTop: 2,
+                        background: 'rgba(255,255,255,0.07)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 9.5, fontWeight: 700, color: 'rgba(255,255,255,0.4)',
+                        fontFamily: 'var(--ff-mono)',
+                      }}>{id}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>{label}</div>
+                        <div style={{
+                          display: 'flex', alignItems: 'stretch',
+                          background: 'rgba(255,255,255,0.05)',
+                          boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.09)',
+                          borderRadius: 9, overflow: 'hidden',
+                        }}>
+                          {isUrl ? (
+                            <a href={cmd} target="_blank" rel="noopener noreferrer" style={{
+                              flex: 1, padding: '8px 10px', fontSize: 11,
+                              color: 'rgba(123,224,177,0.85)',
+                              fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
+                              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                              display: 'block', textDecoration: 'none',
+                            }}>{cmd}</a>
+                          ) : (
+                            <code style={{
+                              flex: 1, padding: '8px 10px', fontSize: 11,
+                              color: 'rgba(255,255,255,0.75)',
+                              fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
+                              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block',
+                            }}>{cmd}</code>
+                          )}
+                          {copy && (
+                            <button onClick={() => handleCopyCmd(id + selectedOS, cmd)} style={{
+                              flexShrink: 0, padding: '8px 11px',
+                              background: copiedStep === id + selectedOS ? 'rgba(123,224,177,0.12)' : 'rgba(255,255,255,0.05)',
+                              border: 'none', borderLeft: '0.5px solid rgba(255,255,255,0.09)',
+                              color: copiedStep === id + selectedOS ? '#7be0b1' : 'rgba(255,255,255,0.35)',
+                              fontSize: 10.5, fontWeight: 600, cursor: 'pointer',
+                              whiteSpace: 'nowrap', transition: 'color 0.2s, background 0.2s',
+                            }}>{copiedStep === id + selectedOS ? '✓' : 'Copy'}</button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            ))}
+              );
+            })()}
 
-            {/* ── github link ── */}
-            <a href="https://github.com/www7man/Nee2P" target="_blank" rel="noopener noreferrer"
-              style={{
-                marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                padding: '11px', borderRadius: 12,
-                background: 'rgba(255,255,255,0.04)',
-                boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.08)',
-                textDecoration: 'none',
-                fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.6)', letterSpacing: -0.1,
-              }}>
-              Открыть на GitHub
-              <Icon.Arrow size={12} color="rgba(255,255,255,0.3)" />
-            </a>
+            {/* divider */}
+            <div style={{ height: 0.5, background: 'rgba(255,255,255,0.07)', margin: '14px 0 14px' }} />
+
+            {/* ── облако за минуту ── */}
+            <div style={{
+              fontSize: 9.5, fontWeight: 600, letterSpacing: 1.6, textTransform: 'uppercase',
+              color: 'rgba(255,255,255,0.28)', fontFamily: 'var(--ff-mono)', marginBottom: 10,
+            }}>Или в облаке за минуту</div>
+            <div style={{ display: 'flex', gap: 7 }}>
+              {[
+                { label: '▲ Render',  href: 'https://render.com/deploy?repo=https://github.com/www7man/Nee2P', color: 'rgba(0,214,143,0.15)', border: 'rgba(0,214,143,0.25)' },
+                { label: '🚂 Railway', href: 'https://railway.app/new/template?template=https%3A%2F%2Fgithub.com%2Fwww7man%2FNee2P', color: 'rgba(160,100,255,0.12)', border: 'rgba(160,100,255,0.22)' },
+              ].map(({ label, href, color, border }) => (
+                <a key={href} href={href} target="_blank" rel="noopener noreferrer" style={{
+                  flex: 1, padding: '10px 8px', borderRadius: 11, textDecoration: 'none',
+                  background: color, boxShadow: `inset 0 0 0 0.5px ${border}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.75)',
+                  letterSpacing: -0.1,
+                }}>{label}</a>
+              ))}
+            </div>
+
+            {/* ── footer ── */}
+            <div style={{
+              marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              gap: 14, flexWrap: 'wrap',
+            }}>
+              {[
+                { label: `v${typeof window.NEE2P_VERSION !== 'undefined' ? window.NEE2P_VERSION : '0.8.4'}`, href: 'https://github.com/www7man/Nee2P/releases' },
+                { label: 'MIT',          href: 'https://github.com/www7man/Nee2P/blob/main/LICENSE' },
+                { label: 'GitHub',       href: 'https://github.com/www7man/Nee2P' },
+                { label: 'Security',     href: 'https://github.com/www7man/Nee2P/blob/main/SECURITY.md' },
+              ].map(({ label, href }) => (
+                <a key={href} href={href} target="_blank" rel="noopener noreferrer" style={{
+                  fontSize: 10.5, color: 'rgba(255,255,255,0.28)', textDecoration: 'none',
+                  letterSpacing: 0.2, fontWeight: 500,
+                }}>{label}</a>
+              ))}
+            </div>
           </div>
         </div>
       )}
