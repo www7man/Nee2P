@@ -54,6 +54,22 @@ Reporters are credited unless they request otherwise.
 | `main`  | ✅ Yes    |
 | Tagged releases | ✅ For 90 days after the next minor release |
 
+## Production deployment requirements
+
+When self-hosting, set these environment variables before exposing the relay
+to the internet:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `ADMIN_KEY` | **Yes** | Protects `/r/admin/*` endpoints. If unset, the server falls back to a well-known default key and logs a warning at startup. Any publicly accessible instance **must** set this. |
+| `PORT` | No | Listening port (default `8787`) |
+| `HOST` | No | Bind address (default `0.0.0.0`) |
+
+Generate a strong key:
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
 ## Threat model — quick reference
 
 - Server is **untrusted**: assume it is fully compromised. Past messages

@@ -1862,4 +1862,8 @@ setInterval(() => {
 
 server.listen(PORT, HOST, () => {
   console.log(`Nee2P. running at http://${HOST}:${PORT}`);
+  if (!process.env.ADMIN_KEY) {
+    console.warn('[warn] ADMIN_KEY env not set — /r/admin/* is protected by ' +
+      'the default local key. Set ADMIN_KEY in production.');
+  }
 });
