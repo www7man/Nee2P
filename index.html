@@ -303,8 +303,16 @@ window.addEventListener('error', function (e) {
     // users on an old SW keep seeing stale code until they hard-reload. The
     // `refreshing` guard prevents reload loops when several SWs claim in
     // succession (Chrome fires controllerchange more than once on update).
+    //
+    // IMPORTANT: only reload when an *existing* SW was already in control
+    // (i.e. this is a SW *update*, not a first install). On a brand-new origin
+    // (e.g. a fresh tunnel URL like pinggy) there is no old SW, so the page
+    // already loaded fresh from the network — reloading would only interrupt
+    // any session the user is about to create and serves no purpose.
+    var hadController = !!navigator.serviceWorker.controller;
     var refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (!hadController) return; // first install on this origin — no reload needed
       if (refreshing) return;
       refreshing = true;
       location.reload();
