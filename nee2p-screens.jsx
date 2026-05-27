@@ -4,6 +4,15 @@
 //   • CreatedScreen has a Cancel button instead of the "simulate" button
 //   • Chat typing indicator only shows when the actual peer is typing
 //   • ChatScreen receives a goBack handler for the back arrow
+//
+// ─── Multi-agent ownership map (see .claude/agents/coordination/AGENTS.md §4) ───
+//   keyboard-layout: outer <div> sizing (height: '100%'), flex column wiring,
+//                    autoFocus policy, anything tied to soft-keyboard / visual
+//                    viewport. Look for `// No useViewportHeight()` markers.
+//   main-ux        : screen UX, copy, interaction flow, modals, sheets.
+//   webrtc-calls   : ChatScreen call overlay / call modal / call sheet.
+//   i18n           : wrapping user-facing strings in t('key'); never structural.
+// Edit your zone only. For shared areas, leave a `// TODO <owner>:` and ping.
 
 const { GradientMesh, Glass, GlassButton, Logo, StatusDot, HashDisplay, Icon, usePalette, useViewportHeight, LangToggle } = window;
 const md5 = window.md5;
@@ -377,6 +386,7 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
                          rememberMe, setRememberMe,
                          busy, error, onCancel, onSubmit }) {
   const p = usePalette(palette);
+  // ─── viewport / keyboard handling (owner: keyboard-layout) ───
   // No useViewportHeight() here: .app-frame is already sized to var(--vvh)
   // via CSS, so height: '100%' on the Shell follows the soft keyboard
   // automatically. Re-rendering CreatedScreen on every visualViewport.resize
@@ -760,6 +770,7 @@ function fmtLeft(ms) {
 // Step 1 — phrase input only (clean, no distractions)
 function JoinStep1({ palette, value, setValue, onBack, onNext }) {
   const p = usePalette(palette);
+  // ─── viewport / keyboard handling (owner: keyboard-layout) ───
   // No useViewportHeight() — .app-frame already follows the keyboard via
   // CSS var(--vvh). React state would only re-render and risk dropping focus.
   const [lang] = window.Nee2Pi18n.useLang();
@@ -865,6 +876,7 @@ function JoinStep2({ palette, value, password, setPassword,
                      rememberMe, setRememberMe,
                      onBack, onContinue, onCreateInstead, busy, error }) {
   const p = usePalette(palette);
+  // ─── viewport / keyboard handling (owner: keyboard-layout) ───
   // No useViewportHeight() — see JoinStep1 / CreatedScreen for rationale.
   const [lang] = window.Nee2Pi18n.useLang();
   const t = window.Nee2Pi18n.t;
@@ -1220,6 +1232,7 @@ function JoinScreen({ palette, value, setValue, password, setPassword,
 // ─────────────────────────────────────────────────────────────
 function PasswordScreen({ palette, perspective, password, setPassword, onBack, onContinue }) {
   const p = usePalette(palette);
+  // ─── viewport / keyboard handling (owner: keyboard-layout) ───
   // No useViewportHeight() — see CreatedScreen for rationale.
   const [lang] = window.Nee2Pi18n.useLang();
   const t = window.Nee2Pi18n.t;
@@ -3141,8 +3154,10 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
         </div>
       )}
 
-      {/* Transient call-event toast (peer rejected/ended/missed). Floats at
-          the top of the chat, auto-dismisses in ~3.5s. */}
+      {/* ─── WebRTC call UI: transient toast (owner: webrtc-calls) ───
+          Floats at the top of the chat for peer-side outcomes (rejected,
+          ended, missed, busy). Text comes pre-translated from nee2p-app.jsx
+          callToastForCode(); no i18n action needed here. */}
       {callToast && (
         <div style={{
           position: 'absolute', top: 'max(72px, env(safe-area-inset-top, 0px))',
@@ -3157,7 +3172,9 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
         }}>{callToast}</div>
       )}
 
-      {/* Incoming call — bottom sheet with caller name + Answer/Reject. */}
+      {/* ─── WebRTC call UI: incoming bottom sheet (owner: webrtc-calls) ───
+          TODO i18n: call.incoming.title ('Входящий звонок'),
+          call.incoming.reject ('Отклонить'), call.incoming.answer ('Ответить'). */}
       {callState === 'incoming' && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 220,
@@ -3213,7 +3230,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
         </div>
       )}
 
-      {/* Active / outgoing call overlay over the chat. */}
+      {/* ─── WebRTC call UI: active/outgoing/failed overlay mount (owner: webrtc-calls) ─── */}
       {(callState === 'outgoing' || callState === 'active' || callState === 'failed') && (
         <ActiveCallOverlay
           palette={palette}
@@ -3230,9 +3247,10 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
         />
       )}
 
-      {/* Network diagnostics modal — pre-flight (before call) or
-          post-failure (after a failed call). Pre-flight confirm triggers
-          onCall(), which actually initiates the WebRTC handshake. */}
+      {/* ─── WebRTC call UI: network diagnostics modal mount (owner: webrtc-calls) ───
+          Pre-flight (before call) or post-failure (after a failed call).
+          Pre-flight confirm triggers onCall(), which actually initiates the
+          WebRTC handshake. */}
       {diagOpen && (
         <NetworkDiagnosticsModal
           mode={diagMode}
@@ -3258,13 +3276,15 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// Active call overlay: shown while a call is ringing (outgoing), active, or
-// failed. Sits on top of the chat. Closing routes through onHangup so the
-// peer is notified.
+// ─── WebRTC call UI: error copy (owner: webrtc-calls) ───
 // Map a structured NeeCall error code → user-facing Russian message for the
 // active-call overlay. Returns null when the code shouldn't override the
 // generic "Нет соединения" header (e.g. peer-* codes are already shown as toasts).
+// TODO i18n: all return values here need wrapping under keys
+//   call.err.mic_denied, call.err.mic_error, call.err.unsupported,
+//   call.err.insecure_context, call.err.ice_failed, call.err.connection_failed,
+//   call.err.timeout, call.err.peer_busy, call.err.peer_unsupported,
+//   call.err.peer_rejected
 function callErrorCopy(code) {
   switch (code) {
     case 'mic-denied':
@@ -3295,6 +3315,14 @@ function callErrorCopy(code) {
   }
 }
 
+// ─── WebRTC call UI: active overlay (owner: webrtc-calls) ───
+// Shown while a call is ringing (outgoing), active, or failed.
+// Sits on top of the chat. Closing routes through onHangup so the peer is
+// notified.
+// TODO i18n: hardcoded Russian strings inside need wrapping —
+//   call.status.connecting ('Соединяемся…'), call.status.no_connection ('Нет соединения'),
+//   call.action.check_network ('Проверить сеть'), call.action.hangup ('Завершить'),
+//   call.action.mute_on/off, call.action.speaker_on/off, call.auto_dismiss_hint
 function ActiveCallOverlay({ palette, callState, callMuted, callOnSpeaker, callError,
                              peerLabel, peerFriendly,
                              onHangup, onToggleMute, onToggleSpeaker, onCheckNetwork }) {
@@ -3435,17 +3463,27 @@ function ActiveCallOverlay({ palette, callState, callMuted, callOnSpeaker, callE
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// Network diagnostics modal — runs NeeCall.diagnose() and displays a
-// human-readable checklist so the user can decide WHY a call failed (or
-// whether it's safe to try a fresh call).
+// ─── WebRTC call UI: network diagnostics modal (owner: webrtc-calls) ───
+// Runs NeeCall.diagnose() and displays a human-readable checklist so the
+// user can decide WHY a call failed (or whether it's safe to try a fresh call).
 //
 // Two modes:
 //   • mode='pre-flight'  — opens BEFORE a call; if everything looks ok the
-//                          user taps "Позвонить" (onConfirm) to actually
-//                          initiate the call. Blocked → no confirm button.
+//                          user taps the confirm button to actually initiate
+//                          the call. Blocked → no confirm button.
 //   • mode='post-failure'— opens AFTER a failed call; informational only,
-//                          single "Закрыть" button.
+//                          single Close button.
+//
+// TODO i18n: this component has many hardcoded RU strings —
+//   call.diag.title, call.diag.probing, call.diag.row_webrtc,
+//   call.diag.row_https, call.diag.row_mic, call.diag.mic_granted,
+//   call.diag.mic_denied, call.diag.mic_prompt, call.diag.mic_unknown,
+//   call.diag.row_stun, call.diag.stun_ok, call.diag.stun_blocked,
+//   call.diag.nat_label, call.diag.nat_cone, call.diag.nat_symmetric,
+//   call.diag.nat_open, call.diag.nat_unknown, call.diag.recommendations,
+//   call.diag.footer_explainer, call.diag.run_failed,
+//   call.diag.cancel, call.diag.confirm_ready, call.diag.confirm_degraded,
+//   call.diag.confirm_running, call.diag.confirm_disabled_hint, call.diag.close
 function NetworkDiagnosticsModal({ onClose, mode = 'post-failure', onConfirm }) {
   // Try to seed from cache so the modal opens with results instantly when
   // possible. If cache is empty we render the spinner while diagnose() runs.
