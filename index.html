@@ -74,7 +74,18 @@
   input, textarea { -webkit-user-select: text; user-select: text; }
 
   #stage {
-    position: fixed; inset: 0;
+    /* Pinned to the *visible* viewport, not the layout viewport. On iOS the
+       soft keyboard can scroll the visual viewport down within the layout
+       viewport (offsetTop > 0); without --vvtop, #stage stays at top:0 and
+       a strip of body background shows between the app-frame's bottom CTA
+       and the top of the keyboard. Updating only CSS variables (no React
+       state) keeps inputs from being remounted on every visualViewport
+       scroll/resize tick. */
+    position: fixed;
+    top:    var(--vvtop, 0px);
+    left:   0;
+    right:  0;
+    height: var(--vvh, 100dvh);
     display: flex; align-items: stretch; justify-content: center;
   }
 
@@ -206,26 +217,36 @@
 <noscript><div style="padding:24px;color:#fff;font-family:sans-serif">JavaScript нужен для работы.</div></noscript>
 
 <script>
-// --vvh (visual viewport height): keeps .app-frame height in sync with the
-// soft keyboard. When the keyboard slides up, visualViewport.height shrinks —
-// we write that value into --vvh so child screens with height:100% follow.
-// Falls back to window.innerHeight when visualViewport isn't available.
+// --vvh + --vvtop: track the visual viewport so #stage stays glued to it.
+//   --vvh   = visualViewport.height   (shrinks when the soft keyboard opens)
+//   --vvtop = visualViewport.offsetTop (iOS: > 0 when the visible viewport
+//             is scrolled within the layout viewport because the keyboard
+//             pushed it). Without --vvtop, the app-frame sits at top:0 of
+//             the layout viewport and a strip of body background appears
+//             between its bottom CTA and the keyboard.
 //
-// NOTE: we listen only to `resize`, not `scroll`. iOS fires `scroll` on the
-// visualViewport very frequently while a tap is being processed (rubber-band,
-// IME warm-up). Reacting to every scroll re-renders the React tree mid-tap
-// and was observed to (a) swallow the very tap that should open the keyboard
-// on a fresh input and (b) cause flicker once the keyboard is open.
+// Safety: we update ONLY CSS variables here — no React state, no DOM
+// re-mounts. The earlier React-hook version of this (with `scroll`) caused
+// (a) the first tap on a fresh input to be swallowed and (b) flicker
+// during typing, because each scroll tick re-rendered the React tree and
+// remounted the <input>. CSS-only updates are free of that side effect.
 (function () {
-  function updateVvh() {
-    var h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-    document.documentElement.style.setProperty('--vvh', h + 'px');
+  var doc = document.documentElement;
+  function updateVv() {
+    var vv = window.visualViewport;
+    var h  = vv ? vv.height    : window.innerHeight;
+    var t  = vv ? vv.offsetTop : 0;
+    doc.style.setProperty('--vvh',   h + 'px');
+    doc.style.setProperty('--vvtop', t + 'px');
   }
-  updateVvh();
+  updateVv();
   if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', updateVvh);
+    // `scroll` is what fires when offsetTop changes (keyboard push on iOS).
+    // `resize` is what fires when height changes (keyboard show/hide).
+    window.visualViewport.addEventListener('resize', updateVv);
+    window.visualViewport.addEventListener('scroll', updateVv);
   } else {
-    window.addEventListener('resize', updateVvh);
+    window.addEventListener('resize', updateVv);
   }
 })();
 </script>
