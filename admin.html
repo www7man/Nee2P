@@ -526,7 +526,7 @@ async function deleteRoom(btn) {
   if (!confirm(`Закрыть комнату ${id.slice(0,8)}…?\nВсе участники получат уведомление.`)) return;
   btn.disabled = true;
   try {
-    const r = await fetch(`${adminBase()}/room/${id}`, { method: 'DELETE', headers: { 'x-admin-key': getKey() } });
+    const r = await fetch(`${adminBase()}/room/${id}?delete=1`, { headers: { 'x-admin-key': getKey() } });
     const j = await r.json();
     if (j.ok) fetchStats(); else { alert('Ошибка: ' + (j.error||'unknown')); btn.disabled = false; }
   } catch { alert('Сервер недоступен'); btn.disabled = false; }
@@ -663,16 +663,16 @@ async function fetchTunnel() {
 // ── Tunnel actions ───────────────────────────────────────
 async function startTunnel() {
   try {
-    const resp = await fetch(`${adminBase()}/tunnel/start`, { method: 'POST', headers: { 'x-admin-key': getKey() } });
+    const resp = await fetch(`${adminBase()}/tunnel/start`, { headers: { 'x-admin-key': getKey() } });
     if (resp.status === 404 || resp.status === 405) {
       renderTunnel({ status: 'error', url: null, startedAt: null,
-        error: 'Сервер не обновлён — перезапустите server.js на сервере (новые endpoints ещё не загружены)',
+        error: 'Сервер не обновлён — перезапустите server.js на сервере',
         log: [] });
       return;
     }
     const json = await resp.json();
     if (json.ok) { renderTunnel(json.data || { status: 'starting', log: [] }); scheduleTunnelPoll(); }
-    else alert('Ошибка: ' + (json.error || 'unknown'));
+    else renderTunnel({ status: 'error', url: null, startedAt: null, error: json.error || 'unknown', log: [] });
   } catch {
     renderTunnel({ status: 'error', url: null, startedAt: null, error: 'Сервер недоступен', log: [] });
   }
@@ -682,9 +682,10 @@ async function stopTunnel() {
   clearTimeout(tunnelTimerId);
   clearInterval(uptimeTimer);
   try {
-    await fetch(`${adminBase()}/tunnel/stop`, { method: 'POST', headers: { 'x-admin-key': getKey() } });
+    await fetch(`${adminBase()}/tunnel/stop`, { headers: { 'x-admin-key': getKey() } });
   } catch {}
   renderTunnel({ status: 'stopped', url: null, startedAt: null, error: null, log: [] });
+  tunnelData = null;
 }
 
 async function copyTunnelUrl() {

@@ -688,9 +688,10 @@ const server = http.createServer((req, res) => {
   if (req.method === 'GET' && p === '/r/admin/stats') return handleAdminStats(req, res);
   if (req.method === 'OPTIONS' && p.startsWith('/r/admin/')) return handleAdminCors(req, res);
   if (req.method === 'DELETE' && p.startsWith('/r/admin/room/')) return handleAdminDeleteRoom(req, res, p);
-  if (req.method === 'GET'  && p === '/r/admin/tunnel')       return handleAdminTunnelStatus(req, res);
-  if (req.method === 'POST' && p === '/r/admin/tunnel/start') return handleAdminTunnelStart(req, res);
-  if (req.method === 'POST' && p === '/r/admin/tunnel/stop')  return handleAdminTunnelStop(req, res);
+  if (req.method === 'GET'  && p === '/r/admin/tunnel')        return handleAdminTunnelStatus(req, res);
+  if (req.method === 'GET'  && p === '/r/admin/tunnel/start') return handleAdminTunnelStart(req, res);
+  if (req.method === 'GET'  && p === '/r/admin/tunnel/stop')  return handleAdminTunnelStop(req, res);
+  if (req.method === 'GET'  && p.startsWith('/r/admin/room/') && url.searchParams.get('delete') === '1') return handleAdminDeleteRoom(req, res, p);
 
   // static
   if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -1306,7 +1307,8 @@ function handleAdminDeleteRoom(req, res, p) {
     res.writeHead(403, headers);
     return res.end(JSON.stringify({ ok: false, error: 'forbidden' }));
   }
-  const id = p.slice('/r/admin/room/'.length);
+  // strip optional ?delete=1 query param to get clean id
+  const id = p.slice('/r/admin/room/'.length).split('?')[0];
   if (!rooms.has(id)) {
     res.writeHead(404, headers);
     return res.end(JSON.stringify({ ok: false, error: 'not-found' }));
