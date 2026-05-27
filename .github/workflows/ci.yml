@@ -42,6 +42,12 @@ jobs:
       - name: Wire-format smoke test
         run: node tools/smoke-wire-format.js
 
+      - name: Signal wire-type smoke test (WebRTC call signaling)
+        run: node tools/smoke-signal-wire.js
+
+      - name: i18n catalog smoke test
+        run: node tools/smoke-i18n.js
+
       - name: Stop relay
         if: always()
         run: |
