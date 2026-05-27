@@ -232,6 +232,111 @@
       'call.diag.confirm_running_title': 'Идёт проверка…',
       'call.diag.confirm_blocked_title': 'Сначала решите красные ошибки',
 
+      // ── Time helpers (fmtAgo, fmtLeft, time-divider chips) ───────────────
+      'time.ago_s':        'с назад',
+      'time.ago_m':        'м назад',
+      'time.ago_h':        'ч назад',
+      'time.ago_d':        'д назад',
+      'time.left_min':     ' мин',
+      'time.left_h':       'ч ',
+      'time.left_m':       'м',
+      'time.left_d':       'д ',
+      'time.left_hh':      'ч',
+      'time.today_at':     'сегодня в ',
+      'time.yesterday_at': 'вчера в ',
+      'time.months_genitive': [
+        'января','февраля','марта','апреля','мая','июня',
+        'июля','августа','сентября','октября','ноября','декабря',
+      ],
+
+      // ── Slot / participant fallback labels ───────────────────────────────
+      'slot.participant':  'Участник',
+
+      // ── Waiting / share-card / share-screen status ───────────────────────
+      'created.opening_session':       'Открываем сессию…',
+      'created.waiting_peer':          'Ждём собеседника…',
+      'sharecard.peer_arrived_pwd':    'партнёр зашёл — ждёт пароль',
+      'sharecard.send_to_peer':        'отправь код партнёру',
+      'sharecard.copy_phrase_short':   'фразу',
+      'sharecard.copy_hash_short':     'хеш',
+      'sharecard.show_qr':             'показать QR',
+
+      // ── Chat bubble / burn / recording ───────────────────────────────────
+      'chat.reply_mine_to_mine': 'мой ответ на моё',
+      'chat.reply_plain':        'ответ',
+      'chat.reply_to_mine':      'ответ на своё',
+      'chat.burn_off':           'выкл',
+      'chat.burn_aria':          'Авто-удаление',
+      'chat.burn_title':         'Авто-удаление после прочтения',
+      'chat.rec_release_to_cancel': 'отпусти для отмены',
+      'chat.rec_slide_to_cancel':   '← смахни влево для отмены',
+
+      // ── Blob / attachment fallbacks ──────────────────────────────────────
+      'blob.file_fallback':         'файл',
+      'blob.undecryptable':         'вложение зашифровано прежним ключом',
+
+      // ── Message action menu ──────────────────────────────────────────────
+      'menu.copy':                  'Скопировать',
+      'menu.quote':                 'Процитировать',
+      'menu.delete':                'Удалить',
+
+      // ── Safety numbers modal ─────────────────────────────────────────────
+      'safety.source.unavailable':  'недоступно',
+      'safety.kem.available':       'доступен ✓',
+      'safety.kem.unavailable':     'недоступен (только pre-quantum)',
+      'safety.kem.missing_short':   'недоступен',
+      'safety.kdf.fallback':        'PBKDF2 (запасной)',
+      'safety.info.group':          'У каждого участника свой отпечаток. Переключайтесь между вкладками и сверяйте каждого голосом.',
+      'safety.info.pair':           'Ваш отпечаток соединения. Сверьте с партнёром — по голосу, не через этот чат.',
+      'safety.copy_short':          'копировать',
+      'safety.howto.step1':         'Позвоните партнёру по голосу или встретьтесь лично.',
+      'safety.howto.step2':         'По очереди прочитайте слова вслух — начиная с первого.',
+      'safety.howto.step3':         'Все 12 совпали? Соединение чистое, подмены ключей не было.',
+      'safety.session.expires':     'Истекает',
+      'safety.session.participants':'Участников',
+      'safety.session.id':          'Идентификатор',
+      'safety.crypto.argon_desc':   'Превращает пароль в ключ — перебор занял бы годы',
+      'safety.crypto.x25519_desc':  'Обмен ключами без передачи самих ключей по сети',
+      'safety.crypto.kem_desc':     'Защищает от будущих квантовых компьютеров',
+      'safety.crypto.aes_desc':     'Шифрует каждое сообщение и проверяет целостность',
+      'safety.link.trust':          'Страница безопасности',
+
+      // ── Info screen — 7 tenets ───────────────────────────────────────────
+      'info.tenet.e2e.title':       'End-to-end шифрование',
+      'info.tenet.e2e.body':        'Сообщения шифруются на устройстве отправителя и расшифровываются только на устройствах получателей. Между ними — нечитаемый поток.',
+      'info.tenet.nothing.title':   'Ничего не хранится',
+      'info.tenet.nothing.body':    'Серверов с историей переписки не существует. Всё живёт в оперативной памяти и исчезает вместе с сессией — ни базы, ни бэкапа, ни кэша.',
+      'info.tenet.noreg.title':     'Никакой регистрации',
+      'info.tenet.noreg.body':      'Нет аккаунтов, email, номеров. Сессия живёт под одноразовым кодом — и принадлежит только тем, кто знает фразу.',
+      'info.tenet.pwd.title':       'У каждого свой пароль',
+      'info.tenet.pwd.body':        'Войти можно, только установив личный пароль для своего слота. Забыл — переписка теряется навсегда, восстановить нельзя.',
+      'info.tenet.timer.title':     'Таймер самоуничтожения',
+      'info.tenet.timer.body':      'С момента запуска идёт обратный отсчёт. Когда таймер обнуляется, сессия и все ключи стираются из памяти устройств.',
+      'info.tenet.pq.title':        'Постквантовая защита',
+      'info.tenet.pq.body':         'Гибридное рукопожатие X25519 + ML-KEM-768 даёт прямую секретность сегодня и устойчивость к будущим квантовым атакам. 12 BIP-39 слов позволяют сверить ключи голосом.',
+      'info.tenet.nometa.title':    'Без метаданных',
+      'info.tenet.nometa.body':     'Не собираем кто, когда, с кем. Нет идентификаторов устройств, IP-логов, телеметрии, аналитики и внешних шрифтов — дружелюбно к Tor.',
+
+      // ── Expired / Share / Locked screens ─────────────────────────────────
+      'expired.reason_default':     'Таймер обнулился. Все сообщения и ключи стёрты с устройств.',
+      'share.status_both':          'оба в сессии',
+      'share.status_peer_in':       'второй внутри',
+      'share.status_waiting':       'ждём второго',
+      'share.enter_chat':           'Войти в чат',
+      'share.open_chat_alone':      'Открыть чат (партнёр потом)',
+
+      // ── Welcome clone modal — "why" cards + quickstart step labels ───────
+      'clone.why.verify.title':     'Убедиться',
+      'clone.why.verify.desc':      'Весь код открыт (MIT) — проверьте сами, что сервер не видит сообщения',
+      'clone.why.selfhost.title':   'Свой сервер',
+      'clone.why.selfhost.desc':    'Node.js, Docker или один клик в облако — полный контроль над данными',
+      'clone.why.contribute.title': 'Участвовать',
+      'clone.why.contribute.desc':  'CI, тесты, CONTRIBUTING.md — пул-реквесты и issues приветствуются',
+      'clone.step.clone':           'Клонировать',
+      'clone.step.install':         'Установить',
+      'clone.step.run':             'Запустить',
+      'clone.step.open':            'Открыть',
+
       // ── Common ────────────────────────────────────────────────────────────
       'common.cancel':     'Отмена',
       'common.close':      'Закрыть',
