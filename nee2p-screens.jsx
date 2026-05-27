@@ -377,7 +377,13 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
                          rememberMe, setRememberMe,
                          busy, error, onCancel, onSubmit }) {
   const p = usePalette(palette);
-  const vh = useViewportHeight();
+  // No useViewportHeight() here: .app-frame is already sized to var(--vvh)
+  // via CSS, so height: '100%' on the Shell follows the soft keyboard
+  // automatically. Re-rendering CreatedScreen on every visualViewport.resize
+  // re-created the inner `Shell` component as a fresh type each frame, which
+  // made React unmount/remount the <input> — focus was lost, the keyboard
+  // refused to open on the first tap (step 1) and flickered while typing
+  // (step 3). The CSS variable does all the resizing without any React work.
   const [lang] = window.Nee2Pi18n.useLang();
   const t = window.Nee2Pi18n.t;
   const [step, setStep] = React.useState(1);
@@ -453,7 +459,7 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
 
   // Common page shell
   const Shell = ({ children }) => (
-    <div className="no-scrollbar" style={{ height: vh, display: 'flex',
+    <div className="no-scrollbar" style={{ height: '100%', display: 'flex',
       flexDirection: 'column', padding: '20px 18px 24px',
       position: 'relative', overflowY: 'auto' }}>
       <NavRow />
@@ -753,7 +759,8 @@ function fmtLeft(ms) {
 // Step 1 — phrase input only (clean, no distractions)
 function JoinStep1({ palette, value, setValue, onBack, onNext }) {
   const p = usePalette(palette);
-  const vh = useViewportHeight();
+  // No useViewportHeight() — .app-frame already follows the keyboard via
+  // CSS var(--vvh). React state would only re-render and risk dropping focus.
   const [lang] = window.Nee2Pi18n.useLang();
   const t = window.Nee2Pi18n.t;
   const trimmed = (value || '').trim();
@@ -763,7 +770,7 @@ function JoinStep1({ palette, value, setValue, onBack, onNext }) {
   const finalHash = trimmed ? (isHash ? trimmed.toLowerCase() : md5(trimmed)) : '';
 
   return (
-    <div style={{ height: vh, display: 'flex', flexDirection: 'column',
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column',
       padding: '24px 18px', position: 'relative', overflow: 'hidden' }}>
 
       {/* Header */}
@@ -857,7 +864,7 @@ function JoinStep2({ palette, value, password, setPassword,
                      rememberMe, setRememberMe,
                      onBack, onContinue, onCreateInstead, busy, error }) {
   const p = usePalette(palette);
-  const vh = useViewportHeight();
+  // No useViewportHeight() — see JoinStep1 / CreatedScreen for rationale.
   const [lang] = window.Nee2Pi18n.useLang();
   const t = window.Nee2Pi18n.t;
   const [showPwd, setShowPwd] = React.useState(false);
@@ -911,7 +918,7 @@ function JoinStep2({ palette, value, password, setPassword,
 
   // ── loading ──
   if (peek.state === 'loading') return (
-    <div style={{ height: vh, display: 'flex', flexDirection: 'column', padding: '24px 18px' }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '24px 18px' }}>
       <Header />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', gap: 16 }}>
@@ -927,7 +934,7 @@ function JoinStep2({ palette, value, password, setPassword,
 
   // ── error ──
   if (peek.state === 'error') return (
-    <div style={{ height: vh, display: 'flex', flexDirection: 'column', padding: '24px 18px' }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '24px 18px' }}>
       <Header />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', gap: 14 }}>
@@ -943,7 +950,7 @@ function JoinStep2({ palette, value, password, setPassword,
 
   // ── missing ──
   if (peek.state === 'missing') return (
-    <div style={{ height: vh, display: 'flex', flexDirection: 'column', padding: '24px 18px' }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '24px 18px' }}>
       <Header />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', gap: 18,
@@ -999,7 +1006,7 @@ function JoinStep2({ palette, value, password, setPassword,
   const freeSlots = peek.groupMax - peek.claimed;
 
   return (
-    <div className="no-scrollbar" style={{ height: vh, display: 'flex', flexDirection: 'column',
+    <div className="no-scrollbar" style={{ height: '100%', display: 'flex', flexDirection: 'column',
       padding: '24px 18px', overflowY: 'auto' }}>
       <Header />
 
@@ -1212,7 +1219,7 @@ function JoinScreen({ palette, value, setValue, password, setPassword,
 // ─────────────────────────────────────────────────────────────
 function PasswordScreen({ palette, perspective, password, setPassword, onBack, onContinue }) {
   const p = usePalette(palette);
-  const vh = useViewportHeight();
+  // No useViewportHeight() — see CreatedScreen for rationale.
   const [lang] = window.Nee2Pi18n.useLang();
   const t = window.Nee2Pi18n.t;
   const [show, setShow] = React.useState(false);
@@ -1222,7 +1229,7 @@ function PasswordScreen({ palette, perspective, password, setPassword, onBack, o
   const valid = password.length >= 4;
 
   return (
-    <div style={{ height: vh, display: 'flex', flexDirection: 'column',
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column',
       padding: '24px 22px 30px', position: 'relative', overflow: 'hidden' }}>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
