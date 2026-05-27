@@ -848,7 +848,7 @@ async function handleSend(req, res) {
 
   const t = body.type;
   if (t === 'msg' || t === 'typing' || t === 'delete' || t === 'read' ||
-      t === 'kem-ct' || t === 'react' || t === 'sender-key') {
+      t === 'kem-ct' || t === 'react' || t === 'sender-key' || t === 'signal') {
     const id = handleOne(sess, room, body);
     return sendJSON(res, 200, { ok: true, id });
   }
@@ -1019,6 +1019,28 @@ function handleOne(sess, room, item) {
     };
     if (typeof item.senderKeyEpoch === 'number') ev.senderKeyEpoch = item.senderKeyEpoch;
     sendToSlot(room, toSlotNum, ev);
+    return null;
+  }
+
+  if (item.type === 'signal') {
+    // WebRTC signalling envelope (SDP offer/answer + ICE candidates).
+    // Broadcast-only — no history, no persistence. Treated like 'typing' /
+    // 'read' from a relay perspective: ephemeral, fan-out to the other slot(s).
+    // The payload (iv, ct) is AES-GCM-encrypted by the sender under the
+    // group sender-key — the relay sees opaque base64. Server enforces a
+    // small ciphertext cap so a buggy peer can't ship multi-MB SDP blobs.
+    if (typeof item.iv !== 'string' || typeof item.ct !== 'string') return null;
+    if (item.iv.length > 64 || item.ct.length > 16000) return null;
+    const ev = {
+      type: 'signal',
+      from: mySlotId,
+      iv: item.iv, ct: item.ct,
+    };
+    if (typeof item.ivCt === 'string' && item.ivCt.length > 0 && item.ivCt.length <= 64) {
+      ev.ivCt = item.ivCt;
+    }
+    if (typeof item.senderKeyEpoch === 'number') ev.senderKeyEpoch = item.senderKeyEpoch;
+    broadcastToOthers(room, mySlotNum, ev);
     return null;
   }
 
@@ -1497,7 +1519,7 @@ server.on('upgrade', (req, socket, head) => {
       // HTTP path exactly (one source of truth for fan-out semantics).
       if (m.type === 'msg' || m.type === 'typing' || m.type === 'delete' ||
           m.type === 'read' || m.type === 'kem-ct' || m.type === 'react' ||
-          m.type === 'sender-key') {
+          m.type === 'sender-key' || m.type === 'signal') {
         // Build a fake "sess" shim so handleOne can reach our slot number.
         const sessShim = { slot: mySlot };
         const id = handleOne(sessShim, myRoom, m);

@@ -336,6 +336,13 @@ window.addEventListener('error', function (e) {
   transport — kept in the repo for direct/dev use.
 -->
 <script src="http-client.js"></script>
+<!--
+  WebRTC peer-to-peer calls. Self-contained — no external dependencies.
+  Exposes window.NeeCall. Audio-only on MVP; DTLS-SRTP gives E2E media
+  encryption natively. Signalling rides the existing room channel as the
+  wire type 'signal' (broadcast-only, never stored in history server-side).
+-->
+<script src="webrtc.js"></script>
 
 <script>
 // Auto cache-bust: version = YYYYMMDDHH (UTC), changes every hour.

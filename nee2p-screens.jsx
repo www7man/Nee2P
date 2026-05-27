@@ -1719,7 +1719,12 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                        safetyFingerprint,
                        onSend, onDelete, onMarkRead, onReact, onBack, banner,
                        onAttach, onVoice, onBlobUrl, uploadProgress = 0,
-                       connStatus = 'live' }) {
+                       connStatus = 'live',
+                       callState = 'idle', callPeer = null,
+                       callMuted = false, callOnSpeaker = false, callError = null,
+                       callSupported = false,
+                       onCall, onAnswerCall, onRejectCall, onHangup,
+                       onToggleMute, onToggleSpeaker }) {
   // Local 1-Hz ticker — only ChatScreen re-renders, not all of App.
   const now = useNow(true);
   const expirySeconds = expiresAt ? Math.max(0, Math.floor((expiresAt - now) / 1000)) : 0;
@@ -2220,6 +2225,24 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
             )}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {/* Call button — visible when at least one peer is in the room.
+                  MVP is 2-party audio; group calls TBD. */}
+              {!isGroup && partnerClaimed && callSupported && (callState === 'idle' || callState === 'ended' || callState === 'failed') && (
+                <button onClick={() => { if (onCall) onCall(); }}
+                  title="Позвонить"
+                  aria-label="Позвонить"
+                  style={{
+                    width: 40, height: 40, borderRadius: 12, padding: 0, border: 'none',
+                    background: 'rgba(80,180,140,0.18)',
+                    boxShadow: 'inset 0 0 0 0.5px rgba(123,224,177,0.4)',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M5 4c0-.6.4-1 1-1h3.3c.5 0 .9.3 1 .8l1 4.2c.1.5-.1 1-.5 1.2l-2 1.2c1.2 2.5 3.2 4.5 5.7 5.7l1.2-2c.3-.4.8-.6 1.3-.5l4.2 1c.5.1.8.5.8 1V19c0 .6-.4 1-1 1h-2C9.5 20 4 14.5 4 7V5z"
+                      stroke="#7be0b1" strokeWidth="1.6" strokeLinejoin="round" fill="none"/>
+                  </svg>
+                </button>
+              )}
               {/* Invite button — always visible, opens ShareCodeCard as overlay */}
               <button onClick={() => setInviteOpen(true)}
                 title="Пригласить участника"
@@ -3094,6 +3117,78 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
         </div>
       )}
 
+      {/* Incoming call — bottom sheet with caller name + Answer/Reject. */}
+      {callState === 'incoming' && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 220,
+          background: 'rgba(0,0,0,0.55)',
+          backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          padding: '0 12px 0', paddingBottom: 'max(28px, env(safe-area-inset-bottom, 0px))',
+          animation: 'fade-up 0.18s ease',
+        }}>
+          <div style={{
+            width: '100%', maxWidth: 420, background: '#0f0f15',
+            boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.1), 0 32px 80px rgba(0,0,0,0.7)',
+            borderRadius: 24, padding: '20px 18px 18px',
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+              <div style={{
+                width: 72, height: 72, borderRadius: '50%',
+                background: `linear-gradient(135deg, ${p.b}, ${p.a})`,
+                boxShadow: `0 6px 24px ${p.glow}, inset 0 1px 0 rgba(255,255,255,0.4)`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: 'var(--ff-mono)', fontWeight: 700, fontSize: 26, color: '#fff',
+              }}>
+                {callPeer != null
+                  ? (slotUtil.slotLabel(callPeer, groupMax) || '·')
+                  : (partnerLetter || '·')}
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', letterSpacing: 0.3 }}>
+                  Входящий звонок
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 600, color: '#fff', marginTop: 4 }}>
+                  {callPeer != null && friendlyFor(callPeer) ? friendlyFor(callPeer) : (partnerFriendly || 'anonymous')}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 12, width: '100%', marginTop: 6 }}>
+                <button onClick={() => { if (onRejectCall) onRejectCall(); }}
+                  style={{
+                    flex: 1, minHeight: 50, borderRadius: 14, border: 'none', cursor: 'pointer',
+                    background: 'rgba(255,90,90,0.18)',
+                    boxShadow: 'inset 0 0 0 0.5px rgba(255,140,140,0.4)',
+                    color: '#ff9a9a', fontSize: 14, fontWeight: 600, fontFamily: 'inherit',
+                  }}>Отклонить</button>
+                <button onClick={() => { if (onAnswerCall) onAnswerCall(); }}
+                  style={{
+                    flex: 1, minHeight: 50, borderRadius: 14, border: 'none', cursor: 'pointer',
+                    background: 'rgba(80,180,140,0.25)',
+                    boxShadow: 'inset 0 0 0 0.5px rgba(123,224,177,0.6), 0 0 18px rgba(123,224,177,0.18)',
+                    color: '#a8efc8', fontSize: 14, fontWeight: 600, fontFamily: 'inherit',
+                  }}>Ответить</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Active / outgoing call overlay over the chat. */}
+      {(callState === 'outgoing' || callState === 'active' || callState === 'failed') && (
+        <ActiveCallOverlay
+          palette={palette}
+          callState={callState}
+          callMuted={callMuted}
+          callOnSpeaker={callOnSpeaker}
+          callError={callError}
+          peerLabel={callPeer != null ? slotUtil.slotLabel(callPeer, groupMax) : (partnerLetter || '·')}
+          peerFriendly={callPeer != null ? friendlyFor(callPeer) : partnerFriendly}
+          onHangup={onHangup}
+          onToggleMute={onToggleMute}
+          onToggleSpeaker={onToggleSpeaker}
+        />
+      )}
+
       {fullscreenUrl && (
         <div onPointerDown={() => setFullscreenUrl(null)} style={{
           position: 'absolute', inset: 0, zIndex: 80,
@@ -3107,6 +3202,129 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
           }} />
         </div>
       )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Active call overlay: shown while a call is ringing (outgoing), active, or
+// failed. Sits on top of the chat. Closing routes through onHangup so the
+// peer is notified.
+function ActiveCallOverlay({ palette, callState, callMuted, callOnSpeaker, callError,
+                             peerLabel, peerFriendly,
+                             onHangup, onToggleMute, onToggleSpeaker }) {
+  const p = usePalette(palette);
+  const [startedAt, setStartedAt] = React.useState(null);
+  const [now, setNow] = React.useState(Date.now());
+  React.useEffect(() => {
+    if (callState === 'active' && !startedAt) setStartedAt(Date.now());
+    if (callState === 'failed' || callState === 'ended' || callState === 'idle') {
+      // overlay unmounts when state leaves these branches
+    }
+  }, [callState]);
+  React.useEffect(() => {
+    if (callState !== 'active') return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [callState]);
+  const elapsedSec = startedAt ? Math.max(0, Math.floor((now - startedAt) / 1000)) : 0;
+  const mm = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
+  const ss = String(elapsedSec % 60).padStart(2, '0');
+
+  const status = callState === 'outgoing' ? 'Соединяемся…'
+    : callState === 'failed' ? 'Нет соединения'
+    : callState === 'active' ? `${mm}:${ss}` : '';
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 210,
+      background: 'linear-gradient(180deg, rgba(8,10,18,0.92), rgba(2,2,8,0.96))',
+      backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+      display: 'flex', flexDirection: 'column',
+      paddingTop: 'max(48px, env(safe-area-inset-top, 0px))',
+      paddingBottom: 'max(28px, env(safe-area-inset-bottom, 0px))',
+      animation: 'fade-up 0.2s ease',
+    }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: 18, padding: '0 24px' }}>
+        <div style={{
+          width: 124, height: 124, borderRadius: '50%',
+          background: `linear-gradient(135deg, ${p.b}, ${p.a})`,
+          boxShadow: `0 10px 40px ${p.glow}, inset 0 1px 0 rgba(255,255,255,0.4)`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: 'var(--ff-mono)', fontWeight: 700, fontSize: 44, color: '#fff',
+          animation: callState === 'outgoing' ? 'pulse-dot 1.6s ease-in-out infinite' : 'none',
+        }}>{peerLabel || '·'}</div>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 22, fontWeight: 600, color: '#fff' }}>
+            {peerFriendly || 'anonymous'}
+          </div>
+          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', marginTop: 8,
+            fontFamily: callState === 'active' ? 'var(--ff-mono)' : 'inherit',
+            letterSpacing: callState === 'active' ? 0.5 : 0.3 }}>
+            {status}
+          </div>
+          {callError && callState === 'failed' && (
+            <div style={{ fontSize: 12, color: '#ffb088', marginTop: 6 }}>
+              {callError === 'unsupported'
+                ? 'Звонки не поддерживаются на этом устройстве'
+                : 'Не удалось установить соединение'}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center',
+        gap: 22, padding: '0 24px 8px' }}>
+        <button onClick={() => { if (onToggleMute) onToggleMute(); }}
+          aria-label={callMuted ? 'Включить микрофон' : 'Выключить микрофон'}
+          title={callMuted ? 'Включить микрофон' : 'Выключить микрофон'}
+          style={{
+            width: 60, height: 60, borderRadius: '50%', border: 'none', cursor: 'pointer',
+            background: callMuted ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.08)',
+            boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.18)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <rect x="9" y="3" width="6" height="12" rx="3" stroke="#fff" strokeWidth="1.8"/>
+            <path d="M5 11a7 7 0 0 0 14 0M12 18v3" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"/>
+            {callMuted && <path d="M4 4l16 16" stroke="#ff7a7a" strokeWidth="2" strokeLinecap="round"/>}
+          </svg>
+        </button>
+
+        <button onClick={() => { if (onHangup) onHangup(); }}
+          aria-label="Завершить"
+          title="Завершить"
+          style={{
+            width: 72, height: 72, borderRadius: '50%', border: 'none', cursor: 'pointer',
+            background: 'linear-gradient(135deg, #e84a4a, #b22222)',
+            boxShadow: '0 8px 24px rgba(232,74,74,0.45), inset 0 1px 0 rgba(255,255,255,0.25)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" style={{ transform: 'rotate(135deg)' }}>
+            <path d="M5 4c0-.6.4-1 1-1h3.3c.5 0 .9.3 1 .8l1 4.2c.1.5-.1 1-.5 1.2l-2 1.2c1.2 2.5 3.2 4.5 5.7 5.7l1.2-2c.3-.4.8-.6 1.3-.5l4.2 1c.5.1.8.5.8 1V19c0 .6-.4 1-1 1h-2C9.5 20 4 14.5 4 7V5z"
+              stroke="#fff" strokeWidth="1.6" strokeLinejoin="round" fill="none"/>
+          </svg>
+        </button>
+
+        <button onClick={() => { if (onToggleSpeaker) onToggleSpeaker(); }}
+          aria-label={callOnSpeaker ? 'Динамик выключить' : 'Динамик включить'}
+          title={callOnSpeaker ? 'Динамик выключить' : 'Динамик включить'}
+          style={{
+            width: 60, height: 60, borderRadius: '50%', border: 'none', cursor: 'pointer',
+            background: callOnSpeaker ? 'rgba(80,180,140,0.25)' : 'rgba(255,255,255,0.08)',
+            boxShadow: callOnSpeaker
+              ? 'inset 0 0 0 0.5px rgba(123,224,177,0.5)'
+              : 'inset 0 0 0 0.5px rgba(255,255,255,0.18)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M4 9v6h4l5 4V5L8 9H4z" stroke={callOnSpeaker ? '#7be0b1' : '#fff'} strokeWidth="1.8" strokeLinejoin="round"/>
+            <path d="M16 8a5 5 0 0 1 0 8M19 5a8 8 0 0 1 0 14"
+              stroke={callOnSpeaker ? '#7be0b1' : '#fff'} strokeWidth="1.6" strokeLinecap="round"/>
+          </svg>
+        </button>
+      </div>
     </div>
   );
 }

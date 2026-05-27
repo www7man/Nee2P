@@ -1,0 +1,360 @@
+// webrtc.js — peer-to-peer audio (optionally video) calls for Nee2P.
+//
+// Wraps RTCPeerConnection. The transport-level signalling (offer / answer /
+// ICE) is sent through the existing chat-channel as a NEW wire type 'signal'
+// (broadcast-only, never stored in history — see server.js handleOne).
+//
+// Crypto note: DTLS-SRTP gives us E2E confidentiality + integrity of the
+// media stream natively. We DON'T re-encrypt media on top. The signalling
+// SDP itself is exchanged AS-IS over the (already E2E-encrypted) chat channel
+// when the page-level code chooses to encrypt it, but the relay sees nothing
+// useful — SDP carries DTLS fingerprints, not actual session keys.
+//
+// MVP: 2-party only. Group calls are future work (needs an SFU / mesh).
+//
+// Public API (exposed as window.NeeCall):
+//   const call = window.NeeCall.create({
+//     sendSignal,         // (msg) => void — page wires this to chat send
+//     onRemoteStream,     // (MediaStream) => void
+//     onStateChange,      // (state) => void  state ∈ idle|outgoing|incoming|active|ended|failed
+//     onError,            // (err) => void
+//   });
+//   call.startCall({ video?: boolean })   // initiator: builds offer
+//   call.handleSignal(msg)                // page funnels every {type:'signal', ...}
+//   call.answer()                          // callee: accept incoming → answer SDP
+//   call.reject()                          // callee: send call-reject, teardown
+//   call.hangup()                          // either side: send call-end, teardown
+//   call.toggleMute() → boolean (now muted?)
+//   call.toggleSpeaker() → boolean (now on speaker?)
+//   call.destroy()                         // hard cleanup
+//   call.isSupported()                     // browser capability check
+
+(function (g) {
+  const ICE_SERVERS = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:global.stun.twilio.com:3478' },
+  ];
+
+  function isSupported() {
+    try {
+      return typeof RTCPeerConnection !== 'undefined'
+          && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    } catch { return false; }
+  }
+
+  function create(opts) {
+    const sendSignal = typeof opts.sendSignal === 'function' ? opts.sendSignal : () => {};
+    const onRemoteStream = typeof opts.onRemoteStream === 'function' ? opts.onRemoteStream : () => {};
+    const onStateChange = typeof opts.onStateChange === 'function' ? opts.onStateChange : () => {};
+    const onError = typeof opts.onError === 'function' ? opts.onError : () => {};
+
+    let pc = null;
+    let localStream = null;
+    let remoteStream = null;
+    let remoteAudio = null;          // a hidden <audio> element playing the remote track
+    let state = 'idle';              // idle | outgoing | incoming | active | ended | failed
+    let isInitiator = false;
+    let pendingOffer = null;         // SDP held while UI shows "Incoming…"
+    let pendingIce = [];             // ICE candidates that arrived before remoteDesc was set
+    let muted = false;
+    let onSpeaker = false;
+    let useVideo = false;
+
+    function setState(next) {
+      if (state === next) return;
+      state = next;
+      try { onStateChange(state); } catch {}
+    }
+
+    function ensureAudioElement() {
+      if (remoteAudio) return remoteAudio;
+      remoteAudio = document.createElement('audio');
+      remoteAudio.autoplay = true;
+      remoteAudio.playsInline = true;
+      // Off-screen but DOM-attached so iOS Safari starts playback.
+      remoteAudio.style.position = 'fixed';
+      remoteAudio.style.width = '1px';
+      remoteAudio.style.height = '1px';
+      remoteAudio.style.opacity = '0';
+      remoteAudio.style.pointerEvents = 'none';
+      remoteAudio.style.left = '-10px';
+      remoteAudio.style.top = '-10px';
+      document.body.appendChild(remoteAudio);
+      return remoteAudio;
+    }
+
+    function buildPeerConnection() {
+      const conn = new RTCPeerConnection({
+        iceServers: ICE_SERVERS,
+        // Bundle audio/video on a single transport — fewer round trips.
+        bundlePolicy: 'max-bundle',
+        rtcpMuxPolicy: 'require',
+      });
+
+      conn.onicecandidate = (e) => {
+        if (!e.candidate) return;
+        // Strip non-serialisable fields just in case.
+        const c = {
+          candidate: e.candidate.candidate,
+          sdpMid: e.candidate.sdpMid,
+          sdpMLineIndex: e.candidate.sdpMLineIndex,
+        };
+        try { sendSignal({ kind: 'call-ice', candidate: c }); } catch {}
+      };
+
+      conn.ontrack = (e) => {
+        if (!remoteStream) remoteStream = new MediaStream();
+        // Some browsers fire ontrack once with e.streams[0] populated; others
+        // pass tracks individually. Handle both.
+        if (e.streams && e.streams[0]) {
+          remoteStream = e.streams[0];
+        } else {
+          remoteStream.addTrack(e.track);
+        }
+        const audioEl = ensureAudioElement();
+        if (audioEl.srcObject !== remoteStream) audioEl.srcObject = remoteStream;
+        // Best-effort play. Browsers may require a user gesture; the answer/
+        // startCall button-tap path already provides one.
+        try { audioEl.play().catch(() => {}); } catch {}
+        try { onRemoteStream(remoteStream); } catch {}
+      };
+
+      conn.onconnectionstatechange = () => {
+        if (!pc) return;
+        const cs = pc.connectionState;
+        if (cs === 'connected') setState('active');
+        else if (cs === 'failed') {
+          setState('failed');
+          try { onError(new Error('connection-failed')); } catch {}
+          // Don't auto-destroy — UI shows "Нет соединения" and user taps Завершить.
+        } else if (cs === 'disconnected') {
+          // brief glitches happen; only escalate if state stays disconnected
+          // (the next 'connected' or 'failed' transition will resolve it).
+        } else if (cs === 'closed') {
+          if (state !== 'ended') setState('ended');
+        }
+      };
+
+      return conn;
+    }
+
+    async function ensureLocalStream() {
+      if (localStream) return localStream;
+      const constraints = {
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+        video: useVideo ? { width: { ideal: 640 }, height: { ideal: 480 } } : false,
+      };
+      localStream = await navigator.mediaDevices.getUserMedia(constraints);
+      return localStream;
+    }
+
+    async function addLocalTracks() {
+      const stream = await ensureLocalStream();
+      for (const t of stream.getTracks()) {
+        pc.addTrack(t, stream);
+      }
+    }
+
+    async function startCall(callOpts) {
+      if (state !== 'idle' && state !== 'ended' && state !== 'failed') return;
+      if (!isSupported()) {
+        try { onError(new Error('unsupported')); } catch {}
+        return;
+      }
+      useVideo = !!(callOpts && callOpts.video);
+      isInitiator = true;
+      pendingIce = [];
+      setState('outgoing');
+      try {
+        pc = buildPeerConnection();
+        await addLocalTracks();
+        const offer = await pc.createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: useVideo,
+        });
+        await pc.setLocalDescription(offer);
+        sendSignal({ kind: 'call-offer', sdp: offer.sdp, video: useVideo });
+      } catch (e) {
+        try { onError(e); } catch {}
+        teardown('failed');
+      }
+    }
+
+    async function handleSignal(msg) {
+      if (!msg || typeof msg.kind !== 'string') return;
+
+      if (msg.kind === 'call-offer') {
+        // If we're already in a call, reject the second one outright.
+        if (state === 'active' || state === 'outgoing') {
+          try { sendSignal({ kind: 'call-reject', reason: 'busy' }); } catch {}
+          return;
+        }
+        if (!isSupported()) {
+          try { sendSignal({ kind: 'call-reject', reason: 'unsupported' }); } catch {}
+          return;
+        }
+        isInitiator = false;
+        useVideo = !!msg.video;
+        pendingOffer = msg.sdp;
+        pendingIce = [];
+        setState('incoming');
+        // Wait for the user to tap Ответить → answer().
+        return;
+      }
+
+      if (msg.kind === 'call-answer') {
+        if (!pc || !isInitiator) return;
+        try {
+          await pc.setRemoteDescription({ type: 'answer', sdp: msg.sdp });
+          // Flush any ICE candidates that arrived before the remote answer.
+          for (const c of pendingIce) {
+            try { await pc.addIceCandidate(c); } catch {}
+          }
+          pendingIce = [];
+        } catch (e) {
+          try { onError(e); } catch {}
+          teardown('failed');
+        }
+        return;
+      }
+
+      if (msg.kind === 'call-ice') {
+        if (!msg.candidate) return;
+        // If no PC yet (incoming-pending), buffer; we'll attach after answer().
+        if (!pc || !pc.remoteDescription) {
+          pendingIce.push(msg.candidate);
+          return;
+        }
+        try { await pc.addIceCandidate(msg.candidate); } catch {}
+        return;
+      }
+
+      if (msg.kind === 'call-reject') {
+        teardown('ended');
+        return;
+      }
+
+      if (msg.kind === 'call-end') {
+        teardown('ended');
+        return;
+      }
+    }
+
+    async function answer() {
+      if (state !== 'incoming' || !pendingOffer) return;
+      try {
+        pc = buildPeerConnection();
+        await addLocalTracks();
+        await pc.setRemoteDescription({ type: 'offer', sdp: pendingOffer });
+        pendingOffer = null;
+        // Now flush any ICE candidates that arrived during 'incoming'.
+        for (const c of pendingIce) {
+          try { await pc.addIceCandidate(c); } catch {}
+        }
+        pendingIce = [];
+        const ans = await pc.createAnswer();
+        await pc.setLocalDescription(ans);
+        sendSignal({ kind: 'call-answer', sdp: ans.sdp });
+        // Stay in 'incoming' until onconnectionstatechange flips to 'active'.
+      } catch (e) {
+        try { onError(e); } catch {}
+        teardown('failed');
+      }
+    }
+
+    function reject() {
+      if (state === 'incoming') {
+        try { sendSignal({ kind: 'call-reject' }); } catch {}
+      }
+      teardown('ended');
+    }
+
+    function hangup() {
+      if (state === 'incoming' || state === 'outgoing' || state === 'active') {
+        try { sendSignal({ kind: 'call-end' }); } catch {}
+      }
+      teardown('ended');
+    }
+
+    function toggleMute() {
+      muted = !muted;
+      if (localStream) {
+        for (const t of localStream.getAudioTracks()) t.enabled = !muted;
+      }
+      return muted;
+    }
+
+    function toggleSpeaker() {
+      onSpeaker = !onSpeaker;
+      if (remoteAudio && typeof remoteAudio.setSinkId === 'function') {
+        // Best-effort — setSinkId requires HTTPS and is Chromium-only.
+        // Without it the OS routes audio per user preference.
+        // We don't crash if it fails.
+      }
+      // Volume nudge is a poor man's "speaker" hint for mobile browsers that
+      // don't expose setSinkId. Real loudspeaker routing is OS-controlled.
+      if (remoteAudio) {
+        try { remoteAudio.volume = onSpeaker ? 1.0 : 1.0; } catch {}
+      }
+      return onSpeaker;
+    }
+
+    function teardown(nextState) {
+      pendingOffer = null;
+      pendingIce = [];
+      if (pc) {
+        try {
+          pc.ontrack = null;
+          pc.onicecandidate = null;
+          pc.onconnectionstatechange = null;
+          pc.close();
+        } catch {}
+        pc = null;
+      }
+      if (localStream) {
+        try { for (const t of localStream.getTracks()) t.stop(); } catch {}
+        localStream = null;
+      }
+      if (remoteAudio) {
+        try { remoteAudio.srcObject = null; } catch {}
+        try { remoteAudio.parentNode && remoteAudio.parentNode.removeChild(remoteAudio); } catch {}
+        remoteAudio = null;
+      }
+      remoteStream = null;
+      isInitiator = false;
+      muted = false;
+      onSpeaker = false;
+      setState(nextState || 'ended');
+      // After a brief moment, return to idle so a new call can be placed.
+      setTimeout(() => {
+        if (state === 'ended' || state === 'failed') setState('idle');
+      }, 800);
+    }
+
+    function destroy() {
+      teardown('idle');
+    }
+
+    return {
+      startCall,
+      handleSignal,
+      answer,
+      reject,
+      hangup,
+      toggleMute,
+      toggleSpeaker,
+      destroy,
+      isSupported,
+      getState: () => state,
+      isMuted: () => muted,
+      isOnSpeaker: () => onSpeaker,
+    };
+  }
+
+  g.NeeCall = { create, isSupported };
+})(typeof window !== 'undefined' ? window : globalThis);

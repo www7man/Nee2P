@@ -262,6 +262,18 @@ function App() {
   // the same Nee2P. origin so the user can close one before slot conflicts.
   const [twoTabsWarning, setTwoTabsWarning] = React.useState(false);
 
+  // ── WebRTC peer-to-peer call state (audio only on MVP) ───
+  // callState: idle | outgoing | incoming | active | ended | failed
+  // callPeer:  slot number of the other side once known.
+  const [callState, setCallState] = React.useState('idle');
+  const [callPeer, setCallPeer] = React.useState(null);
+  const [callMuted, setCallMuted] = React.useState(false);
+  const [callOnSpeaker, setCallOnSpeaker] = React.useState(false);
+  const [callError, setCallError] = React.useState(null);
+  // Hard cap call duration to "session lifetime"; the timer is purely UI.
+  // Tick lives in ChatScreen.
+  const neeCallRef = React.useRef(null);
+
   // FIX 8 — two-tabs detection via BroadcastChannel. If two tabs of Nee2P.
   // are open at the same origin, both will try to claim the same slot →
   // server-side conflicts. We can't HARD-stop the second tab (the user may
@@ -495,6 +507,17 @@ function App() {
   // ── helpers ───────────────────────────────────────────────
   const cleanupConnection = React.useCallback(() => {
     if (wsRef.current) { try { wsRef.current.close(); } catch {} wsRef.current = null; }
+    // Tear down any in-flight WebRTC call; the relay session is gone, so the
+    // peer connection has no chance of negotiating ICE renewal anyway.
+    if (neeCallRef.current) {
+      try { neeCallRef.current.destroy(); } catch {}
+      neeCallRef.current = null;
+    }
+    setCallState('idle');
+    setCallPeer(null);
+    setCallMuted(false);
+    setCallOnSpeaker(false);
+    setCallError(null);
     // Revoke any blob object URLs we minted so the browser can free the
     // backing Blob memory. (Closures inside this callback can't reference
     // refs declared later in the component without a guard — null-check just
@@ -975,6 +998,64 @@ function App() {
   // version without re-creating themselves whenever ingestMessage changes.
   const ingestMessageRef = React.useRef(ingestMessage);
   React.useEffect(() => { ingestMessageRef.current = ingestMessage; }, [ingestMessage]);
+
+  // Decrypt + dispatch a 'signal' wire envelope (WebRTC signalling). Mirrors
+  // the key-selection of ingestMessage but never touches chat history.
+  const ingestSignal = React.useCallback(async (item) => {
+    if (!item || typeof item.iv !== 'string' || typeof item.ct !== 'string') return;
+    const fromNum = coerceSlot(item.from);
+    if (fromNum === null) return;
+    if (fromNum === mySlotRef.current) return; // ignore self-echo (shouldn't happen)
+
+    // Pick key: prefer peer's sender-key when tagged; else legacy pairwise key.
+    let plainStr = '';
+    try {
+      if (typeof item.senderKeyEpoch === 'number') {
+        const peer = peerKeysRef.current.get(fromNum);
+        if (!peer || !peer.senderKey) return; // no key yet — drop (next signal will arrive after key sync)
+        plainStr = await Nee2PCrypto.decryptWithSenderKey(peer.senderKey, item.iv, item.ct);
+      } else {
+        const peer = peerKeysRef.current.get(fromNum);
+        if (peer && peer.pairwiseKey) {
+          plainStr = await Nee2PCrypto.decrypt(peer.pairwiseKey, item.iv, item.ct);
+        } else if (aesKeyRef.current) {
+          plainStr = await Nee2PCrypto.decrypt(aesKeyRef.current, item.iv, item.ct);
+        } else {
+          return;
+        }
+      }
+    } catch (e) {
+      // bad payload, drop silently
+      return;
+    }
+    let payload;
+    try { payload = JSON.parse(plainStr); }
+    catch { return; }
+    if (!payload || typeof payload.kind !== 'string') return;
+
+    // For incoming offers in 2-party mode we surface the caller slot to UI.
+    if (payload.kind === 'call-offer') setCallPeer(fromNum);
+
+    // Lazily instantiate NeeCall if it hasn't been created yet (callee path).
+    const inst = (function () {
+      if (neeCallRef.current) return neeCallRef.current;
+      if (!window.NeeCall || !window.NeeCall.isSupported || !window.NeeCall.isSupported()) {
+        // Tell the caller we can't accept — they'll see 'ended'.
+        try { sendSignal({ kind: 'call-reject', reason: 'unsupported' }); } catch {}
+        return null;
+      }
+      const created = window.NeeCall.create({
+        sendSignal: (p) => { sendSignal(p); },
+        onRemoteStream: () => {},
+        onStateChange: (s) => { setCallState(s); },
+        onError: (e) => { setCallError(e && e.message ? e.message : String(e || 'call-error')); },
+      });
+      neeCallRef.current = created;
+      return created;
+    })();
+    if (!inst) return;
+    inst.handleSignal(payload);
+  }, [sendSignal]);
 
   // Get-or-create the per-peer state object held in peerKeysRef.
   function ensurePeer(slotNum) {
@@ -1514,6 +1595,12 @@ function App() {
             // pairwise key. Unwrap → cache → replay buffered msgs from them.
             enqueue(() => applySenderKey(m.from, m.iv, m.ct, m.senderKeyEpoch, m.epoch));
           },
+          onSignal: (m) => {
+            // WebRTC signalling envelope from a peer. Decrypt with the right
+            // sender key (mirrors ingestMessage's pickKeyForItem path) and
+            // hand to NeeCall.
+            enqueue(() => ingestSignal(m));
+          },
           onMsg: (m) => { enqueue(() => ingestMessage(m)); },
           onMsgBatch: (m) => {
             if (!Array.isArray(m.items)) return;
@@ -1567,7 +1654,7 @@ function App() {
       });
       wsRef.current = client;
     });
-  }, [ingestMessage, ingestDelete, ingestReact, resetAll,
+  }, [ingestMessage, ingestDelete, ingestReact, ingestSignal, resetAll,
       applyPeerPubKey, applyKemCt, applySenderKey, rotateMySenderKey,
       forgetSessionRecord]);
 
@@ -1801,6 +1888,106 @@ function App() {
     local.at = Date.now();                  // client-side ingest ts (see ingestMessage)
     setMessages(prev => [...prev, local]);
   };
+
+  // ── WebRTC call signalling ────────────────────────────────
+  // Encrypt + send a signalling payload (offer/answer/ICE/etc.) through the
+  // same group sender-key the chat uses. Server stores nothing; broadcast only.
+  const sendSignal = React.useCallback(async (payload) => {
+    if (!wsRef.current) return;
+    const sk = mySenderKeyRef.current;
+    if (!sk && !aesKeyRef.current) return;
+    let iv, ct, senderKeyEpoch = null;
+    const plaintext = JSON.stringify(payload || {});
+    try {
+      if (sk) {
+        const enc = await Nee2PCrypto.encryptWithSenderKey(sk, plaintext);
+        iv = enc.iv; ct = enc.ct;
+        senderKeyEpoch = mySenderKeyEpochRef.current;
+      } else {
+        const enc = await Nee2PCrypto.encrypt(aesKeyRef.current, plaintext);
+        iv = enc.iv; ct = enc.ct;
+      }
+    } catch (e) {
+      console.warn('signal encrypt failed:', e && e.message);
+      return;
+    }
+    const wireMsg = { type: 'signal', iv, ct };
+    if (senderKeyEpoch !== null) wireMsg.senderKeyEpoch = senderKeyEpoch;
+    try { wsRef.current.send(wireMsg); } catch {}
+  }, []);
+
+  // Lazily instantiate NeeCall on first need. We don't create it eagerly so a
+  // user who never opens a call doesn't pay the RTCPeerConnection import cost.
+  const getNeeCall = React.useCallback(() => {
+    if (neeCallRef.current) return neeCallRef.current;
+    if (!window.NeeCall || !window.NeeCall.isSupported || !window.NeeCall.isSupported()) {
+      return null;
+    }
+    const inst = window.NeeCall.create({
+      sendSignal: (p) => { sendSignal(p); },
+      onRemoteStream: () => {},  // NeeCall manages the hidden <audio> internally
+      onStateChange: (s) => { setCallState(s); },
+      onError: (e) => { setCallError(e && e.message ? e.message : String(e || 'call-error')); },
+    });
+    neeCallRef.current = inst;
+    return inst;
+  }, [sendSignal]);
+
+  // Outbound: start the call to the (only) peer in a 2-party room.
+  const startCall = React.useCallback(async () => {
+    setCallError(null);
+    const inst = getNeeCall();
+    if (!inst) {
+      setCallError('unsupported');
+      return;
+    }
+    // 2-party only on MVP — callPeer is the single other slot.
+    const ps = mySlotRef.current === 0 ? 1 : 0;
+    setCallPeer(ps);
+    await inst.startCall({ video: false });
+  }, [getNeeCall]);
+
+  const answerCall = React.useCallback(async () => {
+    const inst = neeCallRef.current;
+    if (!inst) return;
+    await inst.answer();
+  }, []);
+
+  const rejectCall = React.useCallback(() => {
+    const inst = neeCallRef.current;
+    if (!inst) return;
+    inst.reject();
+  }, []);
+
+  const hangupCall = React.useCallback(() => {
+    const inst = neeCallRef.current;
+    if (!inst) return;
+    inst.hangup();
+  }, []);
+
+  const toggleCallMute = React.useCallback(() => {
+    const inst = neeCallRef.current;
+    if (!inst) return;
+    setCallMuted(inst.toggleMute());
+  }, []);
+
+  const toggleCallSpeaker = React.useCallback(() => {
+    const inst = neeCallRef.current;
+    if (!inst) return;
+    setCallOnSpeaker(inst.toggleSpeaker());
+  }, []);
+
+  // When the call goes idle/ended/failed, reset peer + flags so the UI cleans up.
+  React.useEffect(() => {
+    if (callState === 'idle') {
+      setCallPeer(null);
+      setCallMuted(false);
+      setCallOnSpeaker(false);
+    }
+    if (callState === 'incoming' && navigator.vibrate) {
+      try { navigator.vibrate([300, 100, 300]); } catch {}
+    }
+  }, [callState]);
 
   // ── attachments / voice ───────────────────────────────────
   // Upload progress is a simple counter — every pending op +1, every settled
@@ -2312,6 +2499,18 @@ function App() {
         onBlobUrl={getBlobObjectURL}
         uploadProgress={uploadProgress}
         connStatus={connStatus}
+        callState={callState}
+        callPeer={callPeer}
+        callMuted={callMuted}
+        callOnSpeaker={callOnSpeaker}
+        callError={callError}
+        callSupported={!!(window.NeeCall && window.NeeCall.isSupported && window.NeeCall.isSupported())}
+        onCall={startCall}
+        onAnswerCall={answerCall}
+        onRejectCall={rejectCall}
+        onHangup={hangupCall}
+        onToggleMute={toggleCallMute}
+        onToggleSpeaker={toggleCallSpeaker}
         onBack={() => {
           if (!confirm('Выйти из чата? Сессия останется активной — сможешь вернуться по фразе+паролю.')) return;
           cleanupConnection();
