@@ -80,16 +80,14 @@ const TUNNEL_LOG_MAX = 30;
 const NPX_BIN = path.join(path.dirname(process.execPath), 'npx');
 
 // ── Supported tunnel providers ─────────────────────────────────────────────────
-// Each entry describes: how to spawn the process, what URL pattern to look for,
-// and whether the provider needs working DNS (cloudflared SRV lookup) or not.
-// SSH-based providers (localhost.run, serveo) and localtunnel use plain TCP/WSS
-// → unaffected by V2Box DNS hijacking.
+// dnsCheck: true  → run 198.18.x.x pre-check (cloudflared needs real DNS SRV)
+// dnsCheck: false → SSH / WSS transport, V2Box DNS hijack doesn't affect them
 const TUNNEL_PROVIDERS = {
   cloudflared: {
     label:    'Cloudflare',
     domain:   '*.trycloudflare.com',
     urlRe:    /https:\/\/[a-z0-9-]+\.trycloudflare\.com/,
-    dnsCheck: true,   // needs _v2-origintunneld._tcp.argotunnel.com SRV
+    dnsCheck: true,
     makeProc: (port) => spawn(
       process.env.CLOUDFLARED_PATH || 'cloudflared',
       ['tunnel', '--protocol', 'http2', '--url', `http://127.0.0.1:${port}`],
@@ -97,47 +95,53 @@ const TUNNEL_PROVIDERS = {
     ),
     notFoundHint: 'Установите cloudflared: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/',
   },
+
   localtunnel: {
     label:    'localtunnel',
     domain:   '*.loca.lt',
+    // localtunnel v2 outputs: "your url is: https://xxx.loca.lt"
     urlRe:    /https:\/\/[a-z0-9-]+\.loca\.lt/,
-    dnsCheck: false,  // WSS over HTTPS, no SRV lookup
+    dnsCheck: false,
+    // Use the npm package API directly in a child Node process — avoids npx
+    // download delay and is reliable regardless of npx/PATH quirks.
+    // Requires: localtunnel in node_modules (listed in package.json).
     makeProc: (port) => spawn(
-      NPX_BIN, ['--yes', 'localtunnel', '--port', String(port)],
-      { stdio: ['ignore', 'pipe', 'pipe'] }
+      process.execPath,
+      ['-e', [
+        "const lt=require('localtunnel');",
+        `lt({port:${port}}).then(t=>{`,
+        "  process.stdout.write(t.url+'\\n');",
+        "  t.on('error',()=>process.exit(1));",
+        "  t.on('close',()=>process.exit(0));",
+        "  process.on('SIGTERM',()=>t.close());",
+        "}).catch(e=>{process.stderr.write(e.message+'\\n');process.exit(1);});",
+      ].join('')],
+      { stdio: ['ignore', 'pipe', 'pipe'], cwd: __dirname }
     ),
-    notFoundHint: 'npx не найден — нужен Node.js ≥ 16.',
+    notFoundHint: 'localtunnel не установлен — запустите: npm install localtunnel',
   },
-  'localhost.run': {
-    label:    'localhost.run',
-    domain:   '*.localhost.run',
-    urlRe:    /https?:\/\/[a-z0-9-]+\.localhost\.run/,
-    dnsCheck: false,  // pure SSH TCP:22
+
+  pinggy: {
+    label:    'pinggy.io',
+    domain:   '*.run.pinggy-free.link',
+    // Pinggy free plan outputs two lines: http and https URLs.
+    // e.g. "https://xxxx-1-2-3-4.run.pinggy-free.link"
+    // Prefer the https:// line — it appears last so first-match picks http,
+    // but we match https specifically to ensure HTTPS in the URL shown.
+    urlRe:    /https:\/\/[a-z0-9-]+\.run\.pinggy-free\.link/,
+    dnsCheck: false,
+    // Port 443 → passes through VPN and most firewalls.
+    // No account needed. Session lasts 60 min (reconnect to refresh).
     makeProc: (port) => spawn(
       'ssh',
-      ['-R', `80:127.0.0.1:${port}`,
+      ['-p', '443',
+       '-R', `0:127.0.0.1:${port}`,
        '-o', 'StrictHostKeyChecking=no',
        '-o', 'UserKnownHostsFile=/dev/null',
-       '-o', 'ServerAliveInterval=15',
+       '-o', 'ServerAliveInterval=20',
        '-o', 'ConnectTimeout=20',
-       'nokey@localhost.run'],
-      { stdio: ['ignore', 'pipe', 'pipe'] }
-    ),
-    notFoundHint: 'ssh не найден.',
-  },
-  serveo: {
-    label:    'serveo.net',
-    domain:   '*.serveo.net',
-    urlRe:    /https?:\/\/[a-z0-9-]+\.serveo\.net/,
-    dnsCheck: false,  // pure SSH TCP:22
-    makeProc: (port) => spawn(
-      'ssh',
-      ['-R', `80:127.0.0.1:${port}`,
-       '-o', 'StrictHostKeyChecking=no',
-       '-o', 'UserKnownHostsFile=/dev/null',
-       '-o', 'ServerAliveInterval=15',
-       '-o', 'ConnectTimeout=20',
-       'serveo.net'],
+       '-o', 'ExitOnForwardFailure=yes',
+       'a.pinggy.io'],
       { stdio: ['ignore', 'pipe', 'pipe'] }
     ),
     notFoundHint: 'ssh не найден.',

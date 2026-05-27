@@ -588,10 +588,9 @@ function renderTunnel(d) {
 
   // Provider labels for display
   const PROV_LABELS = {
-    'cloudflared':   'Cloudflare',
-    'localtunnel':   'localtunnel',
-    'localhost.run': 'localhost.run',
-    'serveo':        'serveo.net',
+    'cloudflared': 'Cloudflare',
+    'localtunnel': 'localtunnel',
+    'pinggy':      'pinggy.io',
   };
   const provLabel = PROV_LABELS[d.provider] || d.provider || 'Cloudflare';
 
@@ -616,7 +615,8 @@ function renderTunnel(d) {
         <div class="t-qr-note">
           <p>Отсканируй QR с телефона чтобы быстро открыть сессию.</p>
           <p style="margin-top:4px">Ссылка временная — работает до остановки туннеля.</p>
-          <p>Изменится при перезапуске.</p>
+          ${d.provider === 'localtunnel' ? '<p style="margin-top:4px;color:var(--yellow)">⚠ loca.lt: при первом открытии нажми кнопку «Visit Site» — это не авторизация.</p>' : ''}
+          ${d.provider === 'pinggy' ? '<p style="margin-top:4px;color:var(--yellow)">⚠ pinggy: бесплатная сессия 60 мин. При истечении запусти заново.</p>' : ''}
         </div>
       </div>
       <button class="btn danger" onclick="stopTunnel()">■ Остановить туннель</button>`;
@@ -650,15 +650,14 @@ function renderTunnel(d) {
         </div>
         <div style="background:rgba(123,97,255,0.07);border:1px solid rgba(123,97,255,0.2);border-radius:8px;padding:12px 14px;font-size:12px;line-height:1.6;color:var(--muted)">
           <strong style="color:var(--text)">Варианты:</strong><br>
-          • <b>Автофикс</b> — патчим V2Box config.json, argotunnel.com пойдёт напрямую.<br>
-          • <b>SSH-туннель</b> — localhost.run / serveo работают через TCP:22, VPN не мешает.<br>
+          • <b>Исправить V2Box</b> — патчим config.json, argotunnel.com пойдёт напрямую.<br>
+          • <b>pinggy.io</b> — SSH на порту 443, не зависит от DNS, без аккаунта.<br>
           • <b>localtunnel</b> — WSS через HTTPS, тоже не зависит от DNS SRV.
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn green-btn" id="fixDnsBtn" onclick="fixV2BoxDns()">🔧 Исправить V2Box DNS</button>
-          <button class="btn accent" onclick="startTunnel('localhost.run')">▶ localhost.run</button>
+          <button class="btn accent" onclick="startTunnel('pinggy')">▶ pinggy.io</button>
           <button class="btn accent" onclick="startTunnel('localtunnel')">▶ localtunnel</button>
-          <button class="btn accent" onclick="startTunnel('serveo')">▶ serveo.net</button>
           <button class="btn" onclick="stopTunnel()">Сбросить</button>
         </div>
       ` : `
@@ -683,7 +682,7 @@ function renderTunnel(d) {
           <div class="t-prov-domain">*.trycloudflare.com</div>
           <div class="t-prov-badges">
             <span class="t-prov-badge green">быстрый</span>
-            <span class="t-prov-badge muted">бинарник</span>
+            <span class="t-prov-badge muted">cloudflared</span>
           </div>
           <button class="t-prov-btn green" onclick="startTunnel('cloudflared')">▶ Запустить</button>
         </div>
@@ -692,27 +691,18 @@ function renderTunnel(d) {
           <div class="t-prov-domain">*.loca.lt</div>
           <div class="t-prov-badges">
             <span class="t-prov-badge purple">VPN ОК</span>
-            <span class="t-prov-badge muted">npx</span>
+            <span class="t-prov-badge muted">Node.js</span>
           </div>
           <button class="t-prov-btn purple" onclick="startTunnel('localtunnel')">▶ Запустить</button>
         </div>
         <div class="t-prov-card vpn-safe">
-          <div class="t-prov-name">localhost.run</div>
-          <div class="t-prov-domain">*.localhost.run</div>
+          <div class="t-prov-name">pinggy.io</div>
+          <div class="t-prov-domain">*.run.pinggy-free.link</div>
           <div class="t-prov-badges">
             <span class="t-prov-badge purple">VPN ОК</span>
-            <span class="t-prov-badge muted">SSH</span>
+            <span class="t-prov-badge muted">SSH :443</span>
           </div>
-          <button class="t-prov-btn purple" onclick="startTunnel('localhost.run')">▶ Запустить</button>
-        </div>
-        <div class="t-prov-card vpn-safe">
-          <div class="t-prov-name">serveo.net</div>
-          <div class="t-prov-domain">*.serveo.net</div>
-          <div class="t-prov-badges">
-            <span class="t-prov-badge purple">VPN ОК</span>
-            <span class="t-prov-badge muted">SSH</span>
-          </div>
-          <button class="t-prov-btn purple" onclick="startTunnel('serveo')">▶ Запустить</button>
+          <button class="t-prov-btn purple" onclick="startTunnel('pinggy')">▶ Запустить</button>
         </div>
       </div>`;
   }
