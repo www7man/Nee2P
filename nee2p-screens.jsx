@@ -331,29 +331,6 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
               );
             })()}
 
-            {/* divider */}
-            <div style={{ height: 0.5, background: 'rgba(255,255,255,0.07)', margin: '14px 0 14px' }} />
-
-            {/* ── облако за минуту ── */}
-            <div style={{
-              fontSize: 9.5, fontWeight: 600, letterSpacing: 1.6, textTransform: 'uppercase',
-              color: 'rgba(255,255,255,0.28)', fontFamily: 'var(--ff-mono)', marginBottom: 10,
-            }}>Или в облаке за минуту</div>
-            <div style={{ display: 'flex', gap: 7 }}>
-              {[
-                { label: '▲ Render',  href: 'https://render.com/deploy?repo=https://github.com/www7man/Nee2P', color: 'rgba(0,214,143,0.15)', border: 'rgba(0,214,143,0.25)' },
-                { label: '🚂 Railway', href: 'https://railway.app/new/template?template=https%3A%2F%2Fgithub.com%2Fwww7man%2FNee2P', color: 'rgba(160,100,255,0.12)', border: 'rgba(160,100,255,0.22)' },
-              ].map(({ label, href, color, border }) => (
-                <a key={href} href={href} target="_blank" rel="noopener noreferrer" style={{
-                  flex: 1, padding: '10px 8px', borderRadius: 11, textDecoration: 'none',
-                  background: color, boxShadow: `inset 0 0 0 0.5px ${border}`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.75)',
-                  letterSpacing: -0.1,
-                }}>{label}</a>
-              ))}
-            </div>
-
             {/* ── footer ── */}
             <div style={{
               marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
