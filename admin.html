@@ -168,6 +168,30 @@
 
   .t-error-msg { font-size: 13px; color: var(--red); background: rgba(248,113,113,0.08); border-radius: 6px; padding: 10px 14px; line-height: 1.6; word-break: break-word; }
 
+  /* ── Provider grid ── */
+  .t-providers { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .t-prov-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 8px; cursor: pointer; transition: border-color .15s, background .15s; }
+  .t-prov-card:hover { border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.06); }
+  .t-prov-card.primary { border-color: rgba(52,211,153,0.3); }
+  .t-prov-card.primary:hover { border-color: rgba(52,211,153,0.55); background: rgba(52,211,153,0.06); }
+  .t-prov-card.vpn-safe { border-color: rgba(123,97,255,0.25); }
+  .t-prov-card.vpn-safe:hover { border-color: rgba(123,97,255,0.5); background: rgba(123,97,255,0.06); }
+  .t-prov-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .t-prov-domain { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: -4px; }
+  .t-prov-badges { display: flex; gap: 4px; flex-wrap: wrap; }
+  .t-prov-badge { font-size: 9px; font-weight: 600; letter-spacing: .05em; padding: 2px 6px; border-radius: 4px; }
+  .t-prov-badge.green  { background: rgba(52,211,153,0.15); color: var(--green); }
+  .t-prov-badge.purple { background: rgba(123,97,255,0.18); color: #b5a7ff; }
+  .t-prov-badge.muted  { background: rgba(255,255,255,0.07); color: var(--muted); }
+  .t-prov-btn { margin-top: auto; padding: 6px 10px; font-size: 12px; font-weight: 500; border-radius: 6px; border: none; cursor: pointer; font-family: var(--font); transition: background .15s; }
+  .t-prov-btn.green  { background: rgba(52,211,153,0.18); color: var(--green); }
+  .t-prov-btn.green:hover  { background: rgba(52,211,153,0.3); }
+  .t-prov-btn.purple { background: rgba(123,97,255,0.18); color: #b5a7ff; }
+  .t-prov-btn.purple:hover { background: rgba(123,97,255,0.3); }
+  .t-prov-btn.base   { background: rgba(255,255,255,0.07); color: var(--text); }
+  .t-prov-btn.base:hover   { background: rgba(255,255,255,0.13); }
+  .t-provider-tag { font-size: 10px; font-weight: 600; letter-spacing: .06em; padding: 2px 7px; border-radius: 4px; background: rgba(52,211,153,0.15); color: var(--green); margin-left: 8px; vertical-align: middle; }
+
   /* ── Log section ── */
   .log-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
   .log-toggle { padding: 10px 16px; font-size: 12px; color: var(--muted); cursor: pointer; user-select: none; display: flex; align-items: center; gap: 6px; transition: color .15s; }
@@ -562,10 +586,20 @@ function renderTunnel(d) {
   // Uptime counter
   clearInterval(uptimeTimer);
 
+  // Provider labels for display
+  const PROV_LABELS = {
+    'cloudflared':   'Cloudflare',
+    'localtunnel':   'localtunnel',
+    'localhost.run': 'localhost.run',
+    'serveo':        'serveo.net',
+  };
+  const provLabel = PROV_LABELS[d.provider] || d.provider || 'Cloudflare';
+
   if (d.status === 'running') {
     card.innerHTML = `
       <div style="display:flex;align-items:center;gap:0">
         <div class="t-status running"><div class="t-dot on pulse"></div>АКТИВЕН</div>
+        <span class="t-provider-tag">${provLabel}</span>
         <div class="t-uptime" id="tunnelUptime">—</div>
       </div>
       <div class="t-url-block">
@@ -598,28 +632,89 @@ function renderTunnel(d) {
 
   } else if (d.status === 'starting') {
     card.innerHTML = `
-      <div class="t-status starting"><div class="t-spinner"></div>ЗАПУСКАЕТСЯ</div>
-      <div class="muted" style="font-size:13px">Получение URL от Cloudflare…</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="t-status starting"><div class="t-spinner"></div>ЗАПУСКАЕТСЯ</div>
+        <span class="t-provider-tag" style="background:rgba(251,191,36,0.15);color:var(--yellow)">${provLabel}</span>
+      </div>
+      <div class="muted" style="font-size:13px">Получение публичного URL…</div>
       <button class="btn" style="width:fit-content" onclick="stopTunnel()">Отменить</button>`;
 
   } else if (d.status === 'error') {
+    const isDnsHijack = d.error === 'dns-hijacked';
     card.innerHTML = `
       <div class="t-status error"><div class="t-dot err"></div>ОШИБКА</div>
-      <div class="t-error-msg">${d.error || 'Неизвестная ошибка'}</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn accent" onclick="startTunnel()">↻ Повторить</button>
-        <button class="btn" onclick="stopTunnel()">Сбросить</button>
-      </div>`;
+      ${isDnsHijack ? `
+        <div class="t-error-msg">
+          V2Box VPN перехватывает DNS — <code>argotunnel.com</code> возвращает поддельные IP <code>198.18.x.x</code>.<br>
+          cloudflared не может достучаться до edge Cloudflare → туннель не поднимается.
+        </div>
+        <div style="background:rgba(123,97,255,0.07);border:1px solid rgba(123,97,255,0.2);border-radius:8px;padding:12px 14px;font-size:12px;line-height:1.6;color:var(--muted)">
+          <strong style="color:var(--text)">Варианты:</strong><br>
+          • <b>Автофикс</b> — патчим V2Box config.json, argotunnel.com пойдёт напрямую.<br>
+          • <b>SSH-туннель</b> — localhost.run / serveo работают через TCP:22, VPN не мешает.<br>
+          • <b>localtunnel</b> — WSS через HTTPS, тоже не зависит от DNS SRV.
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn green-btn" id="fixDnsBtn" onclick="fixV2BoxDns()">🔧 Исправить V2Box DNS</button>
+          <button class="btn accent" onclick="startTunnel('localhost.run')">▶ localhost.run</button>
+          <button class="btn accent" onclick="startTunnel('localtunnel')">▶ localtunnel</button>
+          <button class="btn accent" onclick="startTunnel('serveo')">▶ serveo.net</button>
+          <button class="btn" onclick="stopTunnel()">Сбросить</button>
+        </div>
+      ` : `
+        <div class="t-error-msg">${d.error || 'Неизвестная ошибка'}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn accent" onclick="startTunnel('${d.provider || 'cloudflared'}')">↻ Повторить</button>
+          <button class="btn" onclick="stopTunnel()">Сбросить</button>
+        </div>
+      `}`;
 
   } else {
-    // stopped
+    // stopped — show provider grid
     card.innerHTML = `
       <div class="t-status stopped"><div class="t-dot"></div>ОСТАНОВЛЕН</div>
       <div class="t-desc">
-        <p>Создаёт временный публичный URL <code>*.trycloudflare.com</code> для вашего сервера.</p>
-        <p>Не требует аккаунта Cloudflare и настройки DNS.</p>
+        <p>Создаёт временный публичный URL для тестирования с телефона или передачи внешнему пользователю.</p>
+        <p>SSH-туннели работают даже через VPN — не зависят от DNS SRV-записей.</p>
       </div>
-      <button class="btn green-btn lg" onclick="startTunnel()">▶ Запустить туннель</button>`;
+      <div class="t-providers">
+        <div class="t-prov-card primary">
+          <div class="t-prov-name">Cloudflare</div>
+          <div class="t-prov-domain">*.trycloudflare.com</div>
+          <div class="t-prov-badges">
+            <span class="t-prov-badge green">быстрый</span>
+            <span class="t-prov-badge muted">бинарник</span>
+          </div>
+          <button class="t-prov-btn green" onclick="startTunnel('cloudflared')">▶ Запустить</button>
+        </div>
+        <div class="t-prov-card vpn-safe">
+          <div class="t-prov-name">localtunnel</div>
+          <div class="t-prov-domain">*.loca.lt</div>
+          <div class="t-prov-badges">
+            <span class="t-prov-badge purple">VPN ОК</span>
+            <span class="t-prov-badge muted">npx</span>
+          </div>
+          <button class="t-prov-btn purple" onclick="startTunnel('localtunnel')">▶ Запустить</button>
+        </div>
+        <div class="t-prov-card vpn-safe">
+          <div class="t-prov-name">localhost.run</div>
+          <div class="t-prov-domain">*.localhost.run</div>
+          <div class="t-prov-badges">
+            <span class="t-prov-badge purple">VPN ОК</span>
+            <span class="t-prov-badge muted">SSH</span>
+          </div>
+          <button class="t-prov-btn purple" onclick="startTunnel('localhost.run')">▶ Запустить</button>
+        </div>
+        <div class="t-prov-card vpn-safe">
+          <div class="t-prov-name">serveo.net</div>
+          <div class="t-prov-domain">*.serveo.net</div>
+          <div class="t-prov-badges">
+            <span class="t-prov-badge purple">VPN ОК</span>
+            <span class="t-prov-badge muted">SSH</span>
+          </div>
+          <button class="t-prov-btn purple" onclick="startTunnel('serveo')">▶ Запустить</button>
+        </div>
+      </div>`;
   }
 
   // Log section
@@ -661,20 +756,28 @@ async function fetchTunnel() {
 }
 
 // ── Tunnel actions ───────────────────────────────────────
-async function startTunnel() {
+async function startTunnel(provider = 'cloudflared') {
+  // Optimistically show starting state while request is in flight
+  renderTunnel({ status: 'starting', url: null, startedAt: null, error: null, provider, log: [] });
   try {
-    const resp = await fetch(`${adminBase()}/tunnel/start`, { headers: { 'x-admin-key': getKey() } });
+    const url  = `${adminBase()}/tunnel/start?provider=${encodeURIComponent(provider)}`;
+    const resp = await fetch(url, { headers: { 'x-admin-key': getKey() } });
     if (resp.status === 404 || resp.status === 405) {
-      renderTunnel({ status: 'error', url: null, startedAt: null,
-        error: 'Сервер не обновлён — перезапустите server.js на сервере',
-        log: [] });
+      renderTunnel({ status: 'error', url: null, startedAt: null, provider,
+        error: 'Сервер не обновлён — перезапустите server.js на сервере', log: [] });
       return;
     }
     const json = await resp.json();
-    if (json.ok) { renderTunnel(json.data || { status: 'starting', log: [] }); scheduleTunnelPoll(); }
-    else renderTunnel({ status: 'error', url: null, startedAt: null, error: json.error || 'unknown', log: [] });
+    if (json.ok) {
+      renderTunnel({ ...(json.data || {}), status: json.data?.status || 'starting', provider, log: [] });
+      scheduleTunnelPoll();
+    } else {
+      renderTunnel({ status: 'error', url: null, startedAt: null, provider,
+        error: json.error || 'unknown', log: [] });
+    }
   } catch {
-    renderTunnel({ status: 'error', url: null, startedAt: null, error: 'Сервер недоступен', log: [] });
+    renderTunnel({ status: 'error', url: null, startedAt: null, provider,
+      error: 'Сервер недоступен', log: [] });
   }
 }
 
@@ -691,6 +794,34 @@ async function stopTunnel() {
 async function copyTunnelUrl() {
   if (!tunnelData || !tunnelData.url) return;
   try { await navigator.clipboard.writeText(tunnelData.url); } catch {}
+}
+
+// ── Fix V2Box DNS hijack ─────────────────────────────────
+async function fixV2BoxDns() {
+  const btn = document.getElementById('fixDnsBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Применяю…'; }
+  try {
+    const resp = await fetch(`${adminBase()}/tunnel/fix-v2box`, { headers: { 'x-admin-key': getKey() } });
+    const json = await resp.json();
+    if (json.ok) {
+      // Reset tunnel to stopped state
+      tunnelData = null;
+      renderTunnel({ status: 'stopped', url: null, startedAt: null, error: null, log: [] });
+      // Prepend success banner inside the card
+      const card = document.getElementById('tunnelCard');
+      const banner = document.createElement('div');
+      banner.style.cssText = 'background:rgba(52,211,153,0.12);border:1px solid rgba(52,211,153,0.3);border-radius:8px;padding:12px 16px;font-size:13px;color:var(--green);margin-bottom:14px;line-height:1.5';
+      banner.textContent = '✓ ' + (json.message || 'Готово');
+      card.prepend(banner);
+      setTimeout(() => banner.remove(), 9000);
+    } else {
+      alert('Ошибка: ' + (json.error || 'unknown'));
+      if (btn) { btn.disabled = false; btn.textContent = '🔧 Исправить V2Box DNS'; }
+    }
+  } catch {
+    alert('Сервер недоступен');
+    if (btn) { btn.disabled = false; btn.textContent = '🔧 Исправить V2Box DNS'; }
+  }
 }
 
 // ── Log toggle ───────────────────────────────────────────

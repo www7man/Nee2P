@@ -46,7 +46,8 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
-const { spawn } = require('child_process');
+const { spawn, execSync } = require('child_process');
+const dns = require('dns');
 const webpush = require('web-push');
 
 // Process-level error guards. Goal: keep relay running on transient errors
@@ -65,16 +66,84 @@ const PORT = Number(process.env.PORT) || 8787;
 const HOST = process.env.HOST || '0.0.0.0';
 const ROOT = __dirname;
 
-// ── Cloudflare Quick Tunnel state ─────────────────────────────────────────────
+// ── Quick Tunnel state ────────────────────────────────────────────────────────
 let tunnelProc      = null;
 let tunnelUrl       = null;
 let tunnelStatus    = 'stopped';  // 'stopped' | 'starting' | 'running' | 'error'
 let tunnelError     = null;
 let tunnelStartedAt = null;
+let tunnelProvider  = 'cloudflared';
 let tunnelLog       = [];
 const TUNNEL_LOG_MAX = 30;
-const CLOUDFLARED   = process.env.CLOUDFLARED_PATH || 'cloudflared';
-const CF_URL_RE     = /https:\/\/[a-z0-9-]+\.trycloudflare\.com/;
+
+// npx lives next to the node binary (works for Homebrew / nvm / system Node).
+const NPX_BIN = path.join(path.dirname(process.execPath), 'npx');
+
+// ── Supported tunnel providers ─────────────────────────────────────────────────
+// Each entry describes: how to spawn the process, what URL pattern to look for,
+// and whether the provider needs working DNS (cloudflared SRV lookup) or not.
+// SSH-based providers (localhost.run, serveo) and localtunnel use plain TCP/WSS
+// → unaffected by V2Box DNS hijacking.
+const TUNNEL_PROVIDERS = {
+  cloudflared: {
+    label:    'Cloudflare',
+    domain:   '*.trycloudflare.com',
+    urlRe:    /https:\/\/[a-z0-9-]+\.trycloudflare\.com/,
+    dnsCheck: true,   // needs _v2-origintunneld._tcp.argotunnel.com SRV
+    makeProc: (port) => spawn(
+      process.env.CLOUDFLARED_PATH || 'cloudflared',
+      ['tunnel', '--protocol', 'http2', '--url', `http://127.0.0.1:${port}`],
+      { stdio: ['ignore', 'pipe', 'pipe'] }
+    ),
+    notFoundHint: 'Установите cloudflared: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/',
+  },
+  localtunnel: {
+    label:    'localtunnel',
+    domain:   '*.loca.lt',
+    urlRe:    /https:\/\/[a-z0-9-]+\.loca\.lt/,
+    dnsCheck: false,  // WSS over HTTPS, no SRV lookup
+    makeProc: (port) => spawn(
+      NPX_BIN, ['--yes', 'localtunnel', '--port', String(port)],
+      { stdio: ['ignore', 'pipe', 'pipe'] }
+    ),
+    notFoundHint: 'npx не найден — нужен Node.js ≥ 16.',
+  },
+  'localhost.run': {
+    label:    'localhost.run',
+    domain:   '*.localhost.run',
+    urlRe:    /https?:\/\/[a-z0-9-]+\.localhost\.run/,
+    dnsCheck: false,  // pure SSH TCP:22
+    makeProc: (port) => spawn(
+      'ssh',
+      ['-R', `80:127.0.0.1:${port}`,
+       '-o', 'StrictHostKeyChecking=no',
+       '-o', 'UserKnownHostsFile=/dev/null',
+       '-o', 'ServerAliveInterval=15',
+       '-o', 'ConnectTimeout=20',
+       'nokey@localhost.run'],
+      { stdio: ['ignore', 'pipe', 'pipe'] }
+    ),
+    notFoundHint: 'ssh не найден.',
+  },
+  serveo: {
+    label:    'serveo.net',
+    domain:   '*.serveo.net',
+    urlRe:    /https?:\/\/[a-z0-9-]+\.serveo\.net/,
+    dnsCheck: false,  // pure SSH TCP:22
+    makeProc: (port) => spawn(
+      'ssh',
+      ['-R', `80:127.0.0.1:${port}`,
+       '-o', 'StrictHostKeyChecking=no',
+       '-o', 'UserKnownHostsFile=/dev/null',
+       '-o', 'ServerAliveInterval=15',
+       '-o', 'ConnectTimeout=20',
+       'serveo.net'],
+      { stdio: ['ignore', 'pipe', 'pipe'] }
+    ),
+    notFoundHint: 'ssh не найден.',
+  },
+};
+
 function tunnelLogPush(line) { tunnelLog.push(line); if (tunnelLog.length > TUNNEL_LOG_MAX) tunnelLog.shift(); }
 process.on('exit', () => { try { if (tunnelProc) tunnelProc.kill(); } catch {} });
 
@@ -691,6 +760,7 @@ const server = http.createServer((req, res) => {
   if (req.method === 'GET'  && p === '/r/admin/tunnel')        return handleAdminTunnelStatus(req, res);
   if (req.method === 'GET'  && p === '/r/admin/tunnel/start') return handleAdminTunnelStart(req, res);
   if (req.method === 'GET'  && p === '/r/admin/tunnel/stop')  return handleAdminTunnelStop(req, res);
+  if (req.method === 'GET'  && p === '/r/admin/tunnel/fix-v2box') return handleAdminFixV2BoxDns(req, res);
   if (req.method === 'GET'  && p.startsWith('/r/admin/room/') && url.searchParams.get('delete') === '1') return handleAdminDeleteRoom(req, res, p);
 
   // static
@@ -1326,37 +1396,63 @@ function handleAdminTunnelStatus(req, res) {
   if (!adminAuthOk(req)) { res.writeHead(403, ADMIN_JSON); return res.end(JSON.stringify({ ok: false, error: 'forbidden' })); }
   res.writeHead(200, ADMIN_JSON);
   res.end(JSON.stringify({ ok: true, data: {
-    status: tunnelStatus,
-    url: tunnelUrl,
+    status:    tunnelStatus,
+    url:       tunnelUrl,
     startedAt: tunnelStartedAt,
-    error: tunnelError,
-    log: tunnelLog,
-    pid: tunnelProc ? tunnelProc.pid : null,
+    error:     tunnelError,
+    provider:  tunnelProvider,
+    log:       tunnelLog,
+    pid:       tunnelProc ? tunnelProc.pid : null,
   }}));
 }
 
-function handleAdminTunnelStart(req, res) {
+async function handleAdminTunnelStart(req, res) {
   if (!adminAuthOk(req)) { res.writeHead(403, ADMIN_JSON); return res.end(JSON.stringify({ ok: false, error: 'forbidden' })); }
   if (tunnelStatus === 'running' || tunnelStatus === 'starting') {
     res.writeHead(200, ADMIN_JSON);
-    return res.end(JSON.stringify({ ok: true, data: { status: tunnelStatus, url: tunnelUrl } }));
+    return res.end(JSON.stringify({ ok: true, data: { status: tunnelStatus, url: tunnelUrl, provider: tunnelProvider } }));
   }
-  tunnelUrl = null; tunnelError = null; tunnelLog = []; tunnelStatus = 'starting'; tunnelStartedAt = null;
 
-  tunnelProc = spawn(CLOUDFLARED, ['tunnel', '--url', `http://localhost:${PORT}`], { stdio: ['ignore', 'pipe', 'pipe'] });
+  // ── Provider selection ─────────────────────────────────────────────────────
+  const qp   = new URL(req.url, 'http://x').searchParams;
+  const pkey = qp.get('provider') || 'cloudflared';
+  const prov = TUNNEL_PROVIDERS[pkey];
+  if (!prov) {
+    res.writeHead(400, ADMIN_JSON);
+    return res.end(JSON.stringify({ ok: false, error: `unknown-provider: ${pkey}` }));
+  }
+
+  // ── DNS pre-check (cloudflared only) ──────────────────────────────────────
+  // V2Box/Xray intercepts DNS and returns fake 198.18.0.0/15 IPs.
+  // cloudflared needs _v2-origintunneld._tcp.argotunnel.com SRV → HTTP 530.
+  // SSH/WSS providers are not affected → skip check.
+  if (prov.dnsCheck) {
+    try {
+      const addrs = await dns.promises.resolve4('argotunnel.com');
+      if (addrs.length > 0 && addrs.every(a => /^198\.18\./.test(a))) {
+        tunnelStatus = 'error';
+        tunnelError  = 'dns-hijacked';
+        res.writeHead(200, ADMIN_JSON);
+        return res.end(JSON.stringify({ ok: false, error: 'dns-hijacked' }));
+      }
+    } catch { /* other DNS error — let cloudflared surface it */ }
+  }
+
+  tunnelUrl = null; tunnelError = null; tunnelLog = []; tunnelStatus = 'starting';
+  tunnelStartedAt = null; tunnelProvider = pkey;
+
+  tunnelProc = prov.makeProc(PORT);
 
   tunnelProc.on('error', (err) => {
     tunnelStatus = 'error';
-    tunnelError = err.code === 'ENOENT'
-      ? `cloudflared не найден. Установите: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/`
-      : err.message;
-    tunnelProc = null;
+    tunnelError  = err.code === 'ENOENT' ? `${prov.label}: ${prov.notFoundHint}` : err.message;
+    tunnelProc   = null;
   });
 
   function parseLine(line) {
     tunnelLogPush(line);
     if (!tunnelUrl) {
-      const m = line.match(CF_URL_RE);
+      const m = line.match(prov.urlRe);
       if (m) { tunnelUrl = m[0]; tunnelStatus = 'running'; tunnelStartedAt = Date.now(); }
     }
   }
@@ -1367,13 +1463,13 @@ function handleAdminTunnelStart(req, res) {
   tunnelProc.on('close', (code) => {
     if (tunnelStatus !== 'stopped') {
       tunnelStatus = (code === 0 || code === null) ? 'stopped' : 'error';
-      if (code && code !== 0 && !tunnelError) tunnelError = `process exited with code ${code}`;
+      if (code && code !== 0 && !tunnelError) tunnelError = `${prov.label}: process exited with code ${code}`;
     }
     tunnelProc = null;
   });
 
   res.writeHead(200, ADMIN_JSON);
-  res.end(JSON.stringify({ ok: true, data: { status: 'starting' } }));
+  res.end(JSON.stringify({ ok: true, data: { status: 'starting', provider: pkey } }));
 }
 
 function handleAdminTunnelStop(req, res) {
@@ -1382,6 +1478,104 @@ function handleAdminTunnelStop(req, res) {
   tunnelStatus = 'stopped'; tunnelUrl = null; tunnelError = null; tunnelStartedAt = null;
   res.writeHead(200, ADMIN_JSON);
   res.end(JSON.stringify({ ok: true }));
+}
+
+// ── Admin: patch V2Box config.json to bypass argotunnel.com through DNS/VPN ──
+async function handleAdminFixV2BoxDns(req, res) {
+  if (!adminAuthOk(req)) { res.writeHead(403, ADMIN_JSON); return res.end(JSON.stringify({ ok: false, error: 'forbidden' })); }
+
+  const V2BOX_CONFIG = path.join(os.homedir(),
+    'Library/Group Containers/group.hossin.asaadi.V2Box/config.json');
+
+  // ── Read ──────────────────────────────────────────────────────────────────
+  let cfg;
+  try { cfg = JSON.parse(fs.readFileSync(V2BOX_CONFIG, 'utf8')); }
+  catch (e) {
+    res.writeHead(200, ADMIN_JSON);
+    return res.end(JSON.stringify({ ok: false, error: `Не удалось прочитать V2Box config.json: ${e.message}` }));
+  }
+
+  let changed = false;
+
+  // ── 1. Per-domain DNS server: 8.8.8.8 handles argotunnel.com directly ────
+  if (!cfg.dns) cfg.dns = {};
+  if (!Array.isArray(cfg.dns.servers)) cfg.dns.servers = [];
+  const hasDnsServer = cfg.dns.servers.some(
+    s => typeof s === 'object' && Array.isArray(s.domains) && s.domains.includes('domain:argotunnel.com')
+  );
+  if (!hasDnsServer) {
+    cfg.dns.servers.unshift({ address: '8.8.8.8', domains: ['domain:argotunnel.com'], skipFallback: true });
+    changed = true;
+  }
+
+  // ── 2. Routing rules ──────────────────────────────────────────────────────
+  if (!cfg.routing) cfg.routing = {};
+  if (!Array.isArray(cfg.routing.rules)) cfg.routing.rules = [];
+  const rules = cfg.routing.rules;
+
+  // 2a. DNS bypass: argotunnel.com DNS queries → direct (BEFORE dnsQuery→proxy)
+  const hasDnsRule = rules.some(r =>
+    r.outboundTag === 'direct' &&
+    Array.isArray(r.inboundTag) && r.inboundTag.includes('dnsQuery') &&
+    Array.isArray(r.domain) && r.domain.includes('domain:argotunnel.com')
+  );
+  if (!hasDnsRule) {
+    const proxyDnsIdx = rules.findIndex(r =>
+      Array.isArray(r.inboundTag) && r.inboundTag.includes('dnsQuery') && r.outboundTag !== 'direct'
+    );
+    const dnsBypass = { outboundTag: 'direct', type: 'field',
+      inboundTag: ['dnsQuery'], domain: ['domain:argotunnel.com'] };
+    if (proxyDnsIdx >= 0) rules.splice(proxyDnsIdx, 0, dnsBypass);
+    else rules.unshift(dnsBypass);
+    changed = true;
+  }
+
+  // 2b. TCP bypass: argotunnel.com TCP → direct (insert before directSocks rule)
+  const hasTcpRule = rules.some(r =>
+    r.outboundTag === 'direct' && !r.inboundTag &&
+    Array.isArray(r.domain) && r.domain.includes('domain:argotunnel.com')
+  );
+  if (!hasTcpRule) {
+    const directSocksIdx = rules.findIndex(r =>
+      Array.isArray(r.inboundTag) && r.inboundTag.includes('directSocks')
+    );
+    const tcpBypass = { outboundTag: 'direct', type: 'field', domain: ['domain:argotunnel.com'] };
+    if (directSocksIdx >= 0) rules.splice(directSocksIdx, 0, tcpBypass);
+    else rules.push(tcpBypass);
+    changed = true;
+  }
+
+  if (!changed) {
+    res.writeHead(200, ADMIN_JSON);
+    return res.end(JSON.stringify({
+      ok: true, alreadyFixed: true,
+      message: 'Правила уже применены. Переподключитесь в V2Box, затем запустите туннель.'
+    }));
+  }
+
+  // ── Write back ────────────────────────────────────────────────────────────
+  try { fs.writeFileSync(V2BOX_CONFIG, JSON.stringify(cfg, null, 2), 'utf8'); }
+  catch (e) {
+    res.writeHead(200, ADMIN_JSON);
+    return res.end(JSON.stringify({ ok: false, error: `Не удалось записать config.json: ${e.message}` }));
+  }
+
+  // ── Kill PacketTunnel → macOS/V2Box restart it with new config ────────────
+  let killed = false;
+  try {
+    const pidStr = execSync('pgrep -f PacketTunnel', { encoding: 'utf8' }).trim();
+    const pid = parseInt(pidStr.split('\n')[0], 10);
+    if (pid > 0) { process.kill(pid, 'SIGTERM'); killed = true; }
+  } catch { /* PacketTunnel not running or pgrep failed */ }
+
+  tunnelStatus = 'stopped'; tunnelError = null;
+  res.writeHead(200, ADMIN_JSON);
+  res.end(JSON.stringify({
+    ok: true, killed,
+    message: killed
+      ? 'Конфиг обновлён, VPN-процесс перезапущен. Подождите ~5 сек, затем нажмите «Запустить туннель».'
+      : 'Конфиг обновлён. Откройте V2Box → переподключитесь вручную, затем запустите туннель снова.'
+  }));
 }
 
 function handleVapidPubkey(req, res) {
