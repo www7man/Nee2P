@@ -135,7 +135,7 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
             { icon: <Icon.Bolt   size={12} color="var(--tx-60)" />, label: 'Что нового',   href: 'updates.html' },
           ].map(({ icon, label, href }) => (
             <a key={href} href={href} style={{
-              flex: 1, height: 36, cursor: 'pointer',
+              flex: 1, height: 44, cursor: 'pointer',
               borderRadius: 12, background: 'transparent',
               textDecoration: 'none',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -479,7 +479,6 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
       <div style={{ marginTop: 20 }}>
         <Glass radius={18} padding="10px 14px" strong>
           <input
-            autoFocus
             value={phrase}
             onChange={(e) => setPhrase((e.target.value || '').toLowerCase())}
             onKeyDown={(e) => e.key === 'Enter' && handleNext1()}
@@ -3416,13 +3415,27 @@ function ActiveCallOverlay({ palette, callState, callMuted, callOnSpeaker, callE
 
 // ─────────────────────────────────────────────────────────────
 // Network diagnostics modal — runs NeeCall.diagnose() and displays a
-// human-readable checklist so the user can decide WHY a call failed and
-// what to try next (e.g. switch networks before the next attempt).
-function NetworkDiagnosticsModal({ onClose }) {
-  const [report, setReport] = React.useState(null);
-  const [running, setRunning] = React.useState(true);
+// human-readable checklist so the user can decide WHY a call failed (or
+// whether it's safe to try a fresh call).
+//
+// Two modes:
+//   • mode='pre-flight'  — opens BEFORE a call; if everything looks ok the
+//                          user taps "Позвонить" (onConfirm) to actually
+//                          initiate the call. Blocked → no confirm button.
+//   • mode='post-failure'— opens AFTER a failed call; informational only,
+//                          single "Закрыть" button.
+function NetworkDiagnosticsModal({ onClose, mode = 'post-failure', onConfirm }) {
+  // Try to seed from cache so the modal opens with results instantly when
+  // possible. If cache is empty we render the spinner while diagnose() runs.
+  const cached = React.useMemo(() => {
+    try { return (window.NeeCall && window.NeeCall.getCachedDiagnose && window.NeeCall.getCachedDiagnose()) || null; }
+    catch { return null; }
+  }, []);
+  const [report, setReport] = React.useState(cached);
+  const [running, setRunning] = React.useState(!cached);
 
   React.useEffect(() => {
+    if (cached) return; // skip re-run; already have a fresh result
     let cancelled = false;
     (async () => {
       try {
@@ -3438,7 +3451,12 @@ function NetworkDiagnosticsModal({ onClose }) {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [cached]);
+
+  const readiness = report && !report.error ? report.readiness : null;
+  const canConfirm = mode === 'pre-flight'
+    && !running && report && !report.error
+    && (readiness === 'ready' || readiness === 'degraded');
 
   const Row = ({ ok, neutral, label, hint }) => (
     <div style={{
