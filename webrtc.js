@@ -1,7 +1,12 @@
 // webrtc.js — peer-to-peer audio (optionally video) calls for Nee2P.
 //
+// Owner: webrtc-calls agent (see .claude/agents/intros/webrtc-calls.md).
+// This module is self-contained; external code talks to it only via the
+// `window.NeeCall` global documented below. Stable public API — changes to
+// the surface require a deprecation cycle.
+//
 // Wraps RTCPeerConnection. The transport-level signalling (offer / answer /
-// ICE) is sent through the existing chat-channel as a NEW wire type 'signal'
+// ICE) is sent through the existing chat-channel as a wire type 'signal'
 // (broadcast-only, never stored in history — see server.js handleOne).
 //
 // Crypto note: DTLS-SRTP gives us E2E confidentiality + integrity of the
@@ -10,26 +15,58 @@
 // when the page-level code chooses to encrypt it, but the relay sees nothing
 // useful — SDP carries DTLS fingerprints, not actual session keys.
 //
+// IP-leak warning: P2P WebRTC reveals each participant's public IP to the
+// other side (by the WebRTC standard). See SECURITY.md for the disclosure.
+//
 // MVP: 2-party only. Group calls are future work (needs an SFU / mesh).
 //
-// Public API (exposed as window.NeeCall):
-//   const call = window.NeeCall.create({
-//     sendSignal,         // (msg) => void — page wires this to chat send
-//     onRemoteStream,     // (MediaStream) => void
-//     onStateChange,      // (state) => void  state ∈ idle|outgoing|incoming|active|ended|failed
-//     onError,            // (err) => void
-//   });
-//   call.startCall({ video?: boolean })   // initiator: builds offer
-//   call.handleSignal(msg)                // page funnels every {type:'signal', ...}
-//   call.answer()                          // callee: accept incoming → answer SDP
-//   call.reject()                          // callee: send call-reject, teardown
-//   call.hangup()                          // either side: send call-end, teardown
-//   call.toggleMute() → boolean (now muted?)
-//   call.toggleSpeaker() → boolean (now on speaker?)
-//   call.destroy()                         // hard cleanup
-//   call.isSupported()                     // browser capability check
+// ─── Public API ───────────────────────────────────────────────────────────
+//
+// window.NeeCall.isSupported() → boolean
+//   True if the browser exposes RTCPeerConnection + getUserMedia.
+//
+// window.NeeCall.create({ sendSignal, onRemoteStream, onStateChange, onError }) → call
+//   Creates a per-conversation call controller.
+//     sendSignal(msg)     — caller wires this to the encrypted chat channel.
+//                            Receives objects like {kind:'call-offer', sdp}.
+//     onRemoteStream(s)   — fired when the peer's MediaStream is attached.
+//     onStateChange(s)    — s ∈ idle|outgoing|incoming|active|ended|failed.
+//     onError(err)        — err.code ∈ mic-denied|mic-error|ice-failed|
+//                            connection-failed|peer-busy|peer-rejected|
+//                            peer-ended|peer-missed|peer-unsupported|
+//                            timeout|unsupported.
+//   Returns a controller with:
+//     startCall({video?})  — initiator path (creates offer)
+//     handleSignal(msg)    — page funnels every {type:'signal', kind, ...}
+//     answer() / reject()  — callee path
+//     hangup()             — either side
+//     toggleMute()         — returns new muted flag
+//     toggleSpeaker()      — returns new speaker flag
+//     destroy()            — hard cleanup
+//     isSupported(), getState(), getReason(), isMuted(), isOnSpeaker()
+//
+// window.NeeCall.diagnose({force?}) → Promise<report>
+//   Pre-flight network check. Returns:
+//     { supported, secureContext, micPermission, stunReachable, natType,
+//       readiness: 'ready'|'degraded'|'blocked', warnings: [...] }
+//   Result is cached for 60s; pass {force:true} to bypass cache.
+//
+// window.NeeCall.getCachedDiagnose() → report | null
+//   Returns the last diagnose result if still fresh (≤60s), else null.
+//
+// window.NeeCall.debug = true   — opt-in console.log diagnostics
+//   Off by default to keep the production console clean. Flip in DevTools
+//   to surface [NeeCall] iceConnectionState/connectionState transitions.
 
 (function (g) {
+  // Opt-in console debug. Off by default — production users get a clean
+  // console. Flip `window.NeeCall.debug = true` in DevTools to surface
+  // ICE/connection state transitions when troubleshooting.
+  function debug() {
+    if (!g.NeeCall || !g.NeeCall.debug) return;
+    try { console.log.apply(console, ['[NeeCall]'].concat([].slice.call(arguments))); } catch {}
+  }
+
   // STUN pool — mix of independent providers (different anycast networks) so
   // that if one is blocked or slow, others still respond. Diversity also
   // enables symmetric-NAT detection (we compare srflx ports across providers).
@@ -337,7 +374,7 @@
 
       conn.oniceconnectionstatechange = () => {
         if (!pc) return;
-        try { console.log('[NeeCall] iceConnectionState =', pc.iceConnectionState); } catch {}
+        debug('iceConnectionState =', pc.iceConnectionState);
         // Some browsers stop at iceConnectionState='connected' without ever
         // hitting connectionState='connected'. Treat ICE connected as enough.
         if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
@@ -371,7 +408,7 @@
       conn.onconnectionstatechange = () => {
         if (!pc) return;
         const cs = pc.connectionState;
-        try { console.log('[NeeCall] connectionState =', cs); } catch {}
+        debug('connectionState =', cs);
         if (cs === 'connected') {
           clearOutgoingTimeout();
           setState('active');
