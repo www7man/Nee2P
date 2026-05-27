@@ -46,7 +46,11 @@
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
-          credentials: 'omit',
+          // 'same-origin' (not 'omit') so that tunnel-service bypass cookies
+          // (e.g. pinggy's PinggyFreeValidationCookie) are sent with every
+          // API request.  All our requests are same-origin by construction, so
+          // this never leaks credentials to a third-party host.
+          credentials: 'same-origin',
           cache: 'no-store',
         }, 12000);
         if (!r.ok) {
@@ -283,7 +287,7 @@
           'Authorization': 'Bearer ' + token,
         },
         body,
-        credentials: 'omit',
+        credentials: 'same-origin',
         cache: 'no-store',
       }, 60000);
       if (!r.ok) {
@@ -301,7 +305,7 @@
       const r = await fetchWithTimeout(u, {
         method: 'GET',
         headers: { 'Authorization': 'Bearer ' + token },
-        credentials: 'omit',
+        credentials: 'same-origin',
         cache: 'no-store',
       }, 60000);
       if (!r.ok) throw new Error('http-' + r.status);
@@ -338,7 +342,7 @@
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ room: String(hash).toLowerCase() }),
-        credentials: 'omit',
+        credentials: 'same-origin',
         cache: 'no-store',
         signal: ctrl.signal,
       });
