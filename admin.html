@@ -664,10 +664,18 @@ async function fetchTunnel() {
 async function startTunnel() {
   try {
     const resp = await fetch(`${adminBase()}/tunnel/start`, { method: 'POST', headers: { 'x-admin-key': getKey() } });
+    if (resp.status === 404 || resp.status === 405) {
+      renderTunnel({ status: 'error', url: null, startedAt: null,
+        error: 'Сервер не обновлён — перезапустите server.js на сервере (новые endpoints ещё не загружены)',
+        log: [] });
+      return;
+    }
     const json = await resp.json();
     if (json.ok) { renderTunnel(json.data || { status: 'starting', log: [] }); scheduleTunnelPoll(); }
     else alert('Ошибка: ' + (json.error || 'unknown'));
-  } catch { alert('Сервер недоступен'); }
+  } catch {
+    renderTunnel({ status: 'error', url: null, startedAt: null, error: 'Сервер недоступен', log: [] });
+  }
 }
 
 async function stopTunnel() {
