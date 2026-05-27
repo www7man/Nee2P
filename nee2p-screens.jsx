@@ -12,8 +12,10 @@ const md5 = window.md5;
 function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
                          savedRooms, onRestoreSaved }) {
   const p = usePalette(palette);
+  const [lang] = window.Nee2Pi18n.useLang();
+  const t = window.Nee2Pi18n.t;
 
-  const phrases = ['один код', 'один секрет', 'ключи стираются', 'ни следа'];
+  const phrases = t('welcome.phrases');
   const [phraseIdx, setPhraseIdx] = React.useState(0);
   React.useEffect(() => {
     const id = setInterval(() => setPhraseIdx(i => (i + 1) % phrases.length), 2600);
@@ -58,7 +60,7 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
           textAlign: 'center', color: 'var(--tx-100)', whiteSpace: 'nowrap',
           animation: 'welcome-rise 0.9s 0.25s ease both',
         }}>
-          Это безопасно.
+          {t('welcome.tagline')}
         </h1>
 
         <div style={{
@@ -82,8 +84,7 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
           fontWeight: 300,
           animation: 'welcome-rise 0.9s 0.55s ease both',
         }}>
-          Технология с открытым исходным кодом<br/>
-          для безопасных переписок и передачи данных.
+          {t('welcome.desc')}
         </p>
 
         {/* open-source badge — opens clone modal */}
@@ -102,7 +103,7 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
           <span style={{
             fontSize: 10.5, fontWeight: 600, letterSpacing: 0.4,
             color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase',
-          }}>Открытый исходный код</span>
+          }}>{t('welcome.opensource')}</span>
           <Icon.Arrow size={10} color="rgba(255,255,255,0.35)" />
         </button>
       </div>
@@ -112,17 +113,17 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
         <GlassButton primary palette={palette} onClick={onCreate}
           icon={<Icon.Plus size={18} color={p.text} />}
           style={{ height: 54, borderRadius: 18 }}>
-          Создать сессию
+          {t('welcome.create')}
         </GlassButton>
         <GlassButton palette={palette} onClick={onJoin}
           icon={<Icon.Key size={16} color="rgba(255,255,255,0.85)" />}
           style={{ height: 54, borderRadius: 18 }}>
-          Подключиться к сессии
+          {t('welcome.join')}
         </GlassButton>
         <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
           {[
-            { icon: <Icon.Shield size={12} color="var(--tx-60)" />, label: 'Безопасность', href: 'trust.html' },
-            { icon: <Icon.Bolt   size={12} color="var(--tx-60)" />, label: 'Что нового',   href: 'updates.html' },
+            { icon: <Icon.Shield size={12} color="var(--tx-60)" />, label: t('welcome.security'), href: 'trust.html' },
+            { icon: <Icon.Bolt   size={12} color="var(--tx-60)" />, label: t('welcome.updates'),  href: 'updates.html' },
           ].map(({ icon, label, href }) => (
             <a key={href} href={href} style={{
               flex: 1, height: 44, cursor: 'pointer',
@@ -377,6 +378,8 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
                          busy, error, onCancel, onSubmit }) {
   const p = usePalette(palette);
   const vh = useViewportHeight();
+  const [lang] = window.Nee2Pi18n.useLang();
+  const t = window.Nee2Pi18n.t;
   const [step, setStep] = React.useState(1);
   const [showPwd, setShowPwd] = React.useState(false);
 
@@ -462,8 +465,8 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
   if (step === 1) return (
     <Shell>
       <TitleBlock
-        title="Секретная фраза"
-        hint="Фраза — ваш общий секрет. Она обрабатывается в браузере через Argon2id; на сервер уходит только MD5-хеш — восстановить фразу по нему невозможно."
+        title={t('created.step1.title')}
+        hint={t('created.step1.hint')}
       />
 
       <div style={{ marginTop: 20 }}>
@@ -472,7 +475,7 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
             value={phrase}
             onChange={(e) => setPhrase((e.target.value || '').toLowerCase())}
             onKeyDown={(e) => e.key === 'Enter' && handleNext1()}
-            placeholder="например: пушкин-кафе-22"
+            placeholder={t('created.step1.placeholder')}
             maxLength={120}
             inputMode="text"
             enterKeyHint="next"
@@ -498,7 +501,7 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
               fontFamily: 'inherit', textTransform: 'uppercase',
               boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12)',
             }}>
-            ⤵ случайный код
+            {t('created.step1.random')}
           </button>
           <div style={{ fontSize: 10, color: 'var(--tx-40)',
             letterSpacing: 0.4, textTransform: 'uppercase' }}>
@@ -513,7 +516,7 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
         icon={<Icon.Arrow size={15} color={p.text} dir="right" />}
         iconRight
         onClick={handleNext1}>
-        {(phrase || '').trim() ? 'Далее' : 'Сгенерировать и продолжить'}
+        {(phrase || '').trim() ? t('common.next') : t('created.step1.next_generate')}
       </GlassButton>
     </Shell>
   );
@@ -522,8 +525,8 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
   if (step === 2) return (
     <Shell>
       <TitleBlock
-        title="Параметры сессии"
-        hint="Срок жизни — когда сессия самоуничтожится. Число мест — сколько человек может подключиться. После создания изменить нельзя."
+        title={t('created.step2.title')}
+        hint={t('created.step2.hint')}
       />
 
       {/* TTL chooser */}
@@ -531,7 +534,7 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
         <div style={{ fontSize: 10, color: 'var(--tx-40)', letterSpacing: 1.4,
           textTransform: 'uppercase', marginBottom: 10,
           fontFamily: "'Geist Mono', monospace", textAlign: 'center' }}>
-          активна · сколько времени
+          {t('created.step2.ttl_label')}
         </div>
         <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
           {ttlOptions.map(o => (
@@ -557,7 +560,7 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
           <div style={{ fontSize: 10, color: 'var(--tx-40)', letterSpacing: 1.4,
             textTransform: 'uppercase', marginBottom: 10,
             fontFamily: "'Geist Mono', monospace", textAlign: 'center' }}>
-            участников · максимум
+            {t('created.step2.slots_label')}
           </div>
           <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
             {groupOptions.map(n => (
@@ -579,7 +582,7 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
           {groupMax === 2 && (
             <div style={{ marginTop: 8, textAlign: 'center',
               fontSize: 11, color: 'var(--tx-40)', letterSpacing: -0.05 }}>
-              2 — личная переписка (по умолчанию)
+              {t('created.step2.slots_two')}
             </div>
           )}
         </div>
@@ -591,7 +594,7 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
         icon={<Icon.Arrow size={15} color={p.text} dir="right" />}
         iconRight
         onClick={() => setStep(3)}>
-        Далее
+        {t('common.next')}
       </GlassButton>
     </Shell>
   );
@@ -600,8 +603,8 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
   return (
     <Shell>
       <TitleBlock
-        title="Пароль входа"
-        hint="Защищает вход с этого устройства. Каждый участник задаёт свой пароль — по сети он не передаётся и не участвует в шифровании сообщений."
+        title={t('created.step3.title')}
+        hint={t('created.step3.hint')}
       />
 
       {/* Hash preview — subtle confirmation of the phrase */}
@@ -611,7 +614,7 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
             <div style={{ fontSize: 9, color: 'var(--tx-30)', letterSpacing: 1.2,
               textTransform: 'uppercase', textAlign: 'center', marginBottom: 8,
               fontFamily: "'Geist Mono', monospace" }}>
-              идентификатор сессии · MD5
+              {t('created.step3.hash_label')}
             </div>
             <HashDisplay hash={hash} palette={palette} />
           </Glass>
@@ -624,7 +627,7 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
           <div style={{ fontSize: 10, color: 'var(--tx-40)', letterSpacing: 1.4,
             textTransform: 'uppercase', marginBottom: 6,
             fontFamily: "'Geist Mono', monospace" }}>
-            твой пароль · мин 4 символа
+            {t('created.step3.pwd_label')}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Icon.Lock size={16} color="rgba(255,255,255,0.7)" />
@@ -634,7 +637,7 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && canSubmit && onSubmit()}
-              placeholder="придумай"
+              placeholder={t('created.step3.pwd_placeholder')}
               enterKeyHint="go"
               autoComplete="new-password"
               autoCapitalize="none"
@@ -677,7 +680,7 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
           ? <Icon.Plus size={16} color={p.text} />
           : <Icon.Lock size={14} color="var(--tx-40)" />}
         onClick={onSubmit}>
-        {busy ? 'создаём…' : (canSubmit ? 'Создать сессию' : 'введите пароль')}
+        {busy ? t('created.step3.busy') : (canSubmit ? t('welcome.create') : t('created.step3.need_pwd'))}
       </GlassButton>
     </Shell>
   );
@@ -691,6 +694,8 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
 // Default off — the user has to actively check it.
 function RememberMeToggle({ palette, checked, onChange }) {
   const p = usePalette(palette);
+  const [lang] = window.Nee2Pi18n.useLang();
+  const t = window.Nee2Pi18n.t;
   return (
     <div style={{ marginTop: 10 }}>
       <Glass radius={14} padding="10px 12px">
@@ -711,14 +716,13 @@ function RememberMeToggle({ palette, checked, onChange }) {
               fontSize: 13, fontWeight: 600, color: 'var(--tx-100)',
               letterSpacing: -0.1, lineHeight: 1.35,
             }}>
-              Запомнить на этом устройстве
+              {t('pwd.remember')}
             </div>
             <div style={{
               marginTop: 4, fontSize: 11, color: 'var(--tx-60)',
               lineHeight: 1.45, letterSpacing: -0.05,
             }}>
-              После закрытия вкладки сессия откроется автоматически.
-              Фраза и пароль будут зашифрованы в браузере.
+              {t('pwd.remember_desc')}
             </div>
           </div>
         </label>
@@ -750,6 +754,8 @@ function fmtLeft(ms) {
 function JoinStep1({ palette, value, setValue, onBack, onNext }) {
   const p = usePalette(palette);
   const vh = useViewportHeight();
+  const [lang] = window.Nee2Pi18n.useLang();
+  const t = window.Nee2Pi18n.t;
   const trimmed = (value || '').trim();
   const validInput = trimmed.length > 0;
   const hashRegex = /^[a-f0-9]{32}$/i;
@@ -778,10 +784,10 @@ function JoinStep1({ palette, value, setValue, onBack, onNext }) {
       {/* Title */}
       <div style={{ textAlign: 'center', marginTop: 36, animation: 'welcome-rise 0.5s ease both' }}>
         <div style={{ fontSize: 28, fontWeight: 300, letterSpacing: -1, color: '#fff', lineHeight: 1.1 }}>
-          Подключиться
+          {t('join.title')}
         </div>
         <div style={{ marginTop: 8, fontSize: 13, color: 'var(--tx-60)', lineHeight: 1.55 }}>
-          Введите секретную фразу сессии
+          {t('join.subtitle')}
         </div>
       </div>
 
@@ -791,7 +797,7 @@ function JoinStep1({ palette, value, setValue, onBack, onNext }) {
           <textarea
             value={value}
             onChange={(e) => setValue((e.target.value || '').toLowerCase())}
-            placeholder="любая фраза или 32 символа хеша"
+            placeholder={t('join.placeholder')}
             rows={3}
             inputMode="text"
             enterKeyHint="next"
@@ -830,7 +836,7 @@ function JoinStep1({ palette, value, setValue, onBack, onNext }) {
               height: 30, padding: '0 12px', border: 'none', cursor: 'pointer',
               borderRadius: 10, background: 'rgba(255,255,255,0.05)',
               color: 'var(--tx-60)', fontSize: 11, fontFamily: 'inherit', letterSpacing: 0.3,
-            }}>стереть</button>
+            }}>{t('join.clear')}</button>
           </div>
         )}
       </div>
@@ -840,7 +846,7 @@ function JoinStep1({ palette, value, setValue, onBack, onNext }) {
       <GlassButton primary={validInput} palette={palette} disabled={!validInput}
         icon={<Icon.Arrow size={16} color={validInput ? p.text : 'var(--tx-40)'} />}
         onClick={() => validInput && onNext()}>
-        {validInput ? 'Найти сессию' : 'введите фразу'}
+        {validInput ? t('join.find') : t('join.enter_phrase')}
       </GlassButton>
     </div>
   );
@@ -852,6 +858,8 @@ function JoinStep2({ palette, value, password, setPassword,
                      onBack, onContinue, onCreateInstead, busy, error }) {
   const p = usePalette(palette);
   const vh = useViewportHeight();
+  const [lang] = window.Nee2Pi18n.useLang();
+  const t = window.Nee2Pi18n.t;
   const [showPwd, setShowPwd] = React.useState(false);
   const trimmed = (value || '').trim();
   const hashRegex = /^[a-f0-9]{32}$/i;
@@ -912,7 +920,7 @@ function JoinStep2({ palette, value, password, setPassword,
           border: '2px solid rgba(255,255,255,0.08)',
           borderTopColor: p.a, animation: 'spin 0.8s linear infinite',
         }} />
-        <div style={{ fontSize: 13, color: 'var(--tx-60)' }}>Проверяем сессию…</div>
+        <div style={{ fontSize: 13, color: 'var(--tx-60)' }}>{t('join.checking')}</div>
       </div>
     </div>
   );
@@ -924,12 +932,12 @@ function JoinStep2({ palette, value, password, setPassword,
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', gap: 14 }}>
         <div style={{ fontSize: 36 }}>📡</div>
-        <div style={{ fontSize: 15, fontWeight: 500, color: '#fff' }}>Нет соединения</div>
+        <div style={{ fontSize: 15, fontWeight: 500, color: '#fff' }}>{t('common.no_conn')}</div>
         <div style={{ fontSize: 12, color: 'var(--tx-60)', textAlign: 'center', lineHeight: 1.55 }}>
-          Проверьте сеть и попробуйте снова
+          {t('join.net_retry')}
         </div>
       </div>
-      <GlassButton palette={palette} onClick={onBack}>← Назад</GlassButton>
+      <GlassButton palette={palette} onClick={onBack}>← {t('common.back')}</GlassButton>
     </div>
   );
 
@@ -950,11 +958,11 @@ function JoinStep2({ palette, value, password, setPassword,
 
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 22, fontWeight: 500, letterSpacing: -0.5, color: '#fff' }}>
-            Сессия не найдена
+            {t('join.not_found')}
           </div>
           <div style={{ marginTop: 8, fontSize: 13, color: 'var(--tx-60)', lineHeight: 1.6,
             maxWidth: 260, margin: '8px auto 0' }}>
-            Нет активной сессии с этой фразой.<br/>Можно создать новую и поделиться ссылкой.
+            {t('join.no_session')}<br/>{t('join.suggest_create')}
           </div>
         </div>
 
@@ -971,13 +979,13 @@ function JoinStep2({ palette, value, password, setPassword,
         <GlassButton primary palette={palette}
           icon={<Icon.Plus size={16} color={p.text} />}
           onClick={() => onCreateInstead && onCreateInstead(value)}>
-          Создать с этой фразой
+          {t('join.create_with_phrase')}
         </GlassButton>
 
         <button onClick={onBack} style={{
           background: 'none', border: 'none', cursor: 'pointer',
           fontSize: 12, color: 'var(--tx-60)', fontFamily: 'inherit', padding: '8px 16px',
-        }}>← Изменить фразу</button>
+        }}>← {t('join.change_phrase')}</button>
       </div>
     </div>
   );
@@ -1010,14 +1018,14 @@ function JoinStep2({ palette, value, password, setPassword,
           </div>
           <div>
             <div style={{ fontSize: 17, fontWeight: 600, color: '#fff', letterSpacing: -0.3 }}>
-              Сессия найдена
+              {t('join.found')}
             </div>
             <div style={{ fontSize: 11, color: 'var(--tx-60)', marginTop: 2 }}>
               {peek.paired
-                ? 'все участники вошли'
+                ? t('join.all_in')
                 : full
-                  ? 'все слоты заняты'
-                  : 'ждёт участников'}
+                  ? t('join.all_slots_taken')
+                  : t('join.waiting_for_users')}
             </div>
           </div>
         </div>
@@ -1026,7 +1034,7 @@ function JoinStep2({ palette, value, password, setPassword,
         <Glass radius={18} padding="0">
           {[
             {
-              label: 'участников',
+              label: t('join.label_slots'),
               value: (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ display: 'flex', gap: 5 }}>
@@ -1051,16 +1059,16 @@ function JoinStep2({ palette, value, password, setPassword,
               ),
             },
             {
-              label: 'онлайн сейчас',
+              label: t('join.label_online'),
               value: (
                 <span style={{ fontSize: 12, fontWeight: 600,
                   color: peek.online > 0 ? '#3dff9a' : 'var(--tx-60)' }}>
-                  {peek.online > 0 ? `${peek.online} из ${peek.groupMax}` : 'никого'}
+                  {peek.online > 0 ? `${peek.online} ${t('join.online_of')} ${peek.groupMax}` : t('join.nobody')}
                 </span>
               ),
             },
             !full && {
-              label: 'свободно мест',
+              label: t('join.label_free'),
               value: (
                 <span style={{ fontSize: 12, fontWeight: 600, color: '#fff' }}>
                   {freeSlots}
@@ -1068,7 +1076,7 @@ function JoinStep2({ palette, value, password, setPassword,
               ),
             },
             ageSince > 0 && {
-              label: 'создана',
+              label: t('join.label_created'),
               value: (
                 <span style={{ fontSize: 12, color: 'var(--tx-80)' }}>
                   {fmtAgo(ageSince)}
@@ -1076,7 +1084,7 @@ function JoinStep2({ palette, value, password, setPassword,
               ),
             },
             {
-              label: 'истекает через',
+              label: t('join.label_expires'),
               value: (
                 <span style={{ fontSize: 12, fontWeight: lowTime ? 600 : 400,
                   color: lowTime ? '#ff8a8a' : 'var(--tx-80)' }}>
@@ -1103,8 +1111,8 @@ function JoinStep2({ palette, value, password, setPassword,
             background: 'rgba(255,90,90,0.07)', border: '0.5px solid rgba(255,100,100,0.18)',
             fontSize: 12, color: '#ff9a9a', textAlign: 'center', lineHeight: 1.55,
           }}>
-            Все слоты заняты — войти не получится.<br/>
-            <span style={{ opacity: 0.7 }}>Попробуйте другую фразу или создайте новую сессию.</span>
+            {t('join.full_msg')}<br/>
+            <span style={{ opacity: 0.7 }}>{t('join.full_hint')}</span>
           </div>
         )}
 
@@ -1113,7 +1121,7 @@ function JoinStep2({ palette, value, password, setPassword,
           <Glass radius={18} padding="12px 14px" strong>
             <div style={{ fontSize: 10, color: 'var(--tx-40)', letterSpacing: 1.4,
               textTransform: 'uppercase', marginBottom: 6, fontFamily: 'var(--ff-mono)' }}>
-              твой пароль · мин 4 символа
+              {t('created.step3.pwd_label')}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <Icon.Lock size={16} color="rgba(255,255,255,0.7)" />
@@ -1122,7 +1130,7 @@ function JoinStep2({ palette, value, password, setPassword,
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && valid && onContinue()}
-                placeholder="твой секрет"
+                placeholder={t('join.pwd_placeholder')}
                 enterKeyHint="go"
                 autoComplete="current-password"
                 autoCapitalize="none" autoCorrect="off" spellCheck={false}
@@ -1155,14 +1163,14 @@ function JoinStep2({ palette, value, password, setPassword,
         )}
 
         {full ? (
-          <GlassButton palette={palette} onClick={onBack}>← Изменить фразу</GlassButton>
+          <GlassButton palette={palette} onClick={onBack}>← {t('join.change_phrase')}</GlassButton>
         ) : (
           <GlassButton primary={valid} palette={palette} disabled={!valid}
             icon={valid
               ? <Icon.Arrow size={16} color={p.text} />
               : <Icon.Lock size={14} color="var(--tx-40)" />}
             onClick={onContinue}>
-            {busy ? 'подключение…' : valid ? 'Подключиться' : 'нужен пароль'}
+            {busy ? t('join.connecting') : valid ? t('join.connect') : t('join.need_pwd')}
           </GlassButton>
         )}
       </div>
@@ -1205,9 +1213,12 @@ function JoinScreen({ palette, value, setValue, password, setPassword,
 function PasswordScreen({ palette, perspective, password, setPassword, onBack, onContinue }) {
   const p = usePalette(palette);
   const vh = useViewportHeight();
+  const [lang] = window.Nee2Pi18n.useLang();
+  const t = window.Nee2Pi18n.t;
   const [show, setShow] = React.useState(false);
   const strength = Math.min(4, Math.floor(password.length / 3));
-  const strengthLabel = ['слишком короткий', 'слабый', 'нормально', 'хорошо', 'надёжный'][strength];
+  const strengthLabels = t('pwd.strength');
+  const strengthLabel = Array.isArray(strengthLabels) ? strengthLabels[strength] : '';
   const valid = password.length >= 4;
 
   return (
@@ -1232,7 +1243,7 @@ function PasswordScreen({ palette, perspective, password, setPassword, onBack, o
         <Glass radius={9999} padding="6px 12px">
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', letterSpacing: 0.6,
             textTransform: 'uppercase' }}>
-            шаг 2 из 2 · ваш секрет
+            {t('pwd.step_label')}
           </span>
         </Glass>
       </div>
@@ -1240,15 +1251,15 @@ function PasswordScreen({ palette, perspective, password, setPassword, onBack, o
       <div style={{ textAlign: 'center', marginTop: 18 }}>
         <div style={{ fontFamily: "'Instrument Serif', serif", fontStyle: 'italic',
           fontSize: 36, lineHeight: 1.05, fontWeight: 400, letterSpacing: -0.6 }}>
-          Придумайте<br/>
+          {t('pwd.headline_top')}<br/>
           <span style={{ background: p.accent, WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-            секретный ключ
+            {t('pwd.headline_bottom')}
           </span>
         </div>
         <div style={{ marginTop: 10, fontSize: 13, color: 'rgba(255,255,255,0.55)',
           maxWidth: 260, margin: '10px auto 0', lineHeight: 1.45 }}>
-          Только вы это знаете.<br/>Если забудете — сессия исчезнет.
+          {t('pwd.subtitle')}
         </div>
       </div>
 
@@ -1256,7 +1267,7 @@ function PasswordScreen({ palette, perspective, password, setPassword, onBack, o
         <Glass radius={22} padding="16px 18px" strong>
           <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', letterSpacing: 0.6,
             textTransform: 'uppercase', marginBottom: 6 }}>
-            вы — {perspective === 'A' ? '⬤ сторона A' : '○ сторона B'}
+            {t('pwd.you_are')} {perspective === 'A' ? `⬤ ${t('pwd.side_a')}` : `○ ${t('pwd.side_b')}`}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Icon.Lock size={18} color="rgba(255,255,255,0.7)" />
@@ -1265,7 +1276,7 @@ function PasswordScreen({ palette, perspective, password, setPassword, onBack, o
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && valid && onContinue()}
-              placeholder="ваш секрет"
+              placeholder={t('pwd.placeholder_old')}
               autoFocus
               style={{
                 flex: 1, background: 'transparent', border: 'none', outline: 'none',
@@ -1312,7 +1323,7 @@ function PasswordScreen({ palette, perspective, password, setPassword, onBack, o
               <Icon.Flame size={14} color="#ff9a4d" />
             </div>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', lineHeight: 1.5 }}>
-              <b style={{ color: '#fff', fontWeight: 600 }}>Ничего не хранится.</b> Оба секрета открывают сессию. Потеряете любой — переписка исчезнет навсегда.
+              <b style={{ color: '#fff', fontWeight: 600 }}>{t('pwd.warn_strong')}</b> {t('pwd.warn_body')}
             </div>
           </div>
         </Glass>
@@ -1322,7 +1333,7 @@ function PasswordScreen({ palette, perspective, password, setPassword, onBack, o
 
       <GlassButton primary={valid} palette={palette} disabled={!valid} onClick={onContinue}
         icon={valid ? <Icon.Arrow size={16} color={p.text} /> : <Icon.Lock size={16} color="rgba(255,255,255,0.5)" />}>
-        {valid ? 'Запечатать и продолжить' : 'мин. 4 символа'}
+        {valid ? t('pwd.seal_continue') : t('pwd.min_4')}
       </GlassButton>
     </div>
   );
@@ -1714,6 +1725,8 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                        callToast = null, callSupported = false,
                        onCall, onAnswerCall, onRejectCall, onHangup,
                        onToggleMute, onToggleSpeaker }) {
+  const [lang] = window.Nee2Pi18n.useLang();
+  const t = window.Nee2Pi18n.t;
   // Local 1-Hz ticker — only ChatScreen re-renders, not all of App.
   const now = useNow(true);
   const expirySeconds = expiresAt ? Math.max(0, Math.floor((expiresAt - now) / 1000)) : 0;
@@ -2215,7 +2228,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                   </div>
                   <div style={{ fontSize: 11, color: partnerOnline ? '#3dff9a' : 'rgba(255,255,255,0.5)',
                     lineHeight: 1.2, marginTop: 2, letterSpacing: 0.2 }}>
-                    {partnerOnline ? (partnerTyping ? 'online · печатает' : 'online') : 'offline'}
+                    {partnerOnline ? (partnerTyping ? `${t('chat.online')} · ${t('chat.typing')}` : t('chat.online')) : t('chat.offline')}
                   </div>
                 </div>
               </>
@@ -2230,8 +2243,8 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                   MVP is 2-party audio; group calls TBD. */}
               {!isGroup && partnerClaimed && callSupported && (callState === 'idle' || callState === 'ended' || callState === 'failed') && (
                 <button onClick={() => { setDiagMode('pre-flight'); setDiagOpen(true); }}
-                  title={partnerOnline ? 'Позвонить' : 'Собеседник может быть не в сети — попробовать'}
-                  aria-label="Позвонить"
+                  title={partnerOnline ? t('chat.call') : t('chat.call_offline_hint')}
+                  aria-label={t('chat.call')}
                   style={{
                     width: 40, height: 40, borderRadius: 12, padding: 0, border: 'none',
                     background: 'rgba(80,180,140,0.18)',
@@ -2248,8 +2261,8 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
               )}
               {/* Invite button — always visible, opens ShareCodeCard as overlay */}
               <button onClick={() => setInviteOpen(true)}
-                title="Пригласить участника"
-                aria-label="Пригласить"
+                title={t('chat.invite_title')}
+                aria-label={t('chat.invite')}
                 style={{
                   width: 40, height: 40, borderRadius: 12, padding: 0, border: 'none',
                   background: 'rgba(255,255,255,0.06)',
@@ -2271,8 +2284,8 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
               {/* Safety fingerprint nudge — shown once when keys are ready */}
               {fpNudge && (
                 <button onClick={() => { setSafetyOpen(true); setFpNudge(false); }}
-                  title="Проверьте ключи"
-                  aria-label="Проверьте ключи"
+                  title={t('chat.check_keys')}
+                  aria-label={t('chat.check_keys')}
                   style={{
                     width: 40, height: 40, borderRadius: 12, border: 'none', cursor: 'pointer',
                     background: 'rgba(80,180,140,0.22)',
@@ -2285,8 +2298,8 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
               )}
               <button
                 onClick={() => setSafetyOpen(true)}
-                title="Безопасность сессии"
-                aria-label="Безопасность сессии"
+                title={t('chat.security')}
+                aria-label={t('chat.security')}
                 style={{
                   width: 40, height: 40, borderRadius: 12, padding: 0,
                   border: '0.5px solid rgba(255,255,255,0.12)',
@@ -2305,8 +2318,8 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                   round-trip needed, search stays private. */}
               <button
                 onClick={() => setSearchOpen(v => !v)}
-                title="Поиск по сообщениям"
-                aria-label="Поиск"
+                title={t('chat.search_title')}
+                aria-label={t('chat.search')}
                 style={{
                   width: 40, height: 40, borderRadius: 12, padding: 0,
                   border: '0.5px solid rgba(255,255,255,0.12)',
@@ -2374,15 +2387,15 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
               boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.18)',
             }}>
               <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>{connStatus === 'lost'
-                ? 'соединение потеряно — переподключаемся…'
-                : 'соединение нестабильно — переподключаемся…'}
+                ? t('chat.conn_lost')
+                : t('chat.conn_unstable')}
               </span>
               {connStatus === 'lost' && (
                 <button onClick={() => window.location.reload()} style={{
                   flexShrink: 0, padding: '3px 10px', border: 'none', cursor: 'pointer',
                   borderRadius: 8, background: 'rgba(255,255,255,0.2)',
                   color: '#fff', fontSize: 11, fontWeight: 600, fontFamily: 'inherit',
-                }}>Перезагрузить</button>
+                }}>{t('chat.reload')}</button>
               )}
             </div>
           </div>
@@ -2409,7 +2422,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11,
               color: 'rgba(255,255,255,0.55)', letterSpacing: 0.4 }}>
               <Icon.Lock size={11} color="rgba(255,255,255,0.55)" />
-              <span>сессия открыта</span>
+              <span>{t('chat.session_open')}</span>
               <span style={{ fontFamily: "'Geist Mono', monospace", letterSpacing: 0.5,
                 color: 'rgba(255,255,255,0.4)' }}>
                 {sessionHash ? `${sessionHash.slice(0,4)}…${sessionHash.slice(-4)}` : ''}
@@ -2445,7 +2458,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
               value={searchQ}
               onChange={(e) => setSearchQ(e.target.value)}
               onKeyDown={(e) => e.key === 'Escape' && setSearchOpen(false)}
-              placeholder="искать в чате"
+              placeholder={t('chat.search_placeholder')}
               autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false}
               style={{
                 flex: 1, background: 'transparent', border: 'none', outline: 'none',
@@ -2484,7 +2497,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                 boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 0.5px rgba(255,255,255,0.10)',
               }}
             >
-              Загрузить ещё ({messages.length - renderWindow})
+              {t('chat.load_more')} ({messages.length - renderWindow})
             </button>
           </div>
         )}
@@ -2879,7 +2892,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
             <button
               type="button"
               onPointerUp={onPaperclip}
-              aria-label="Прикрепить файл"
+              aria-label={t('chat.file_attach')}
               style={{
                 width: 40, height: 40, borderRadius: 14, border: 'none', cursor: 'pointer',
                 background: 'rgba(255,255,255,0.06)',
@@ -2974,7 +2987,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                 autoComplete="off"
                 autoCorrect="off"
                 autoCapitalize="sentences"
-                placeholder="whisper something…"
+                placeholder={t('chat.placeholder')}
                 style={{
                   flex: 1, background: 'transparent', border: 'none', outline: 'none',
                   color: '#fff', fontSize: 15, fontFamily: 'inherit',
@@ -3010,7 +3023,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                 onPointerUp={onMicPointerUp}
                 onPointerCancel={onMicPointerCancel}
                 onContextMenu={(e) => e.preventDefault()}
-                aria-label={recording ? 'Запись…' : 'Удержать для записи голоса'}
+                aria-label={recording ? t('chat.recording') : t('chat.hold_record')}
                 style={{
                   width: 40, height: 40, borderRadius: 16, border: 'none',
                   cursor: micDenied ? 'not-allowed' : 'pointer',
