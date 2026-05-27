@@ -48,6 +48,9 @@ jobs:
       - name: i18n catalog smoke test
         run: node tools/smoke-i18n.js
 
+      - name: trust.html ↔ crypto.js sync smoke test
+        run: node tools/smoke-trust-crypto-sync.js
+
       - name: Stop relay
         if: always()
         run: |
