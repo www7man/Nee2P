@@ -301,25 +301,58 @@ const Icon = {
 // Language toggle pill — opens a small dropdown menu listing all available
 // languages by their native name (English, Русский, …). Click an item to
 // switch; click outside or press Escape to close. Reads/writes window.Nee2Pi18n.
+//
+// IMPORTANT: the dropdown is rendered through ReactDOM.createPortal into
+// document.body. Reason: the WelcomeScreen header sits inside elements with
+// `animation: welcome-rise …` whose `transform` keyframes persist as
+// `matrix(1,0,0,1,0,0)` even after the animation completes (because of
+// `animation-fill-mode: both`). Per CSS spec, any non-`none` transform makes
+// the element a containing block for `position: fixed` descendants — so
+// `position: fixed` alone is NOT enough to escape it. Portalling out of the
+// DOM subtree breaks the parent containing block AND the stacking context in
+// one move, which is what we actually need.
 function LangToggle({ style = {} }) {
   const i18n = window.Nee2Pi18n;
   const [lang, setLang] = i18n ? i18n.useLang() : [React.useState('en')[0], () => {}];
   const [open, setOpen] = React.useState(false);
+  const [menuPos, setMenuPos] = React.useState(null); // { top, right } in viewport px
   const wrapRef = React.useRef(null);
+  const btnRef = React.useRef(null);
+
+  // Recompute the menu's viewport-fixed position. Called on open and on any
+  // window resize / scroll / visualViewport change while the menu is open.
+  const updatePos = React.useCallback(() => {
+    const btn = btnRef.current;
+    if (!btn) return;
+    const r = btn.getBoundingClientRect();
+    setMenuPos({
+      top: Math.round(r.bottom + 6),
+      right: Math.round(window.innerWidth - r.right),
+    });
+  }, []);
 
   React.useEffect(() => {
     if (!open) return;
+    updatePos();
     const onDoc = (e) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+      // Don't close on clicks inside the wrapper OR inside the menu itself
+      // (which is fixed-positioned outside the wrapper's DOM subtree).
+      const inWrap = wrapRef.current && wrapRef.current.contains(e.target);
+      const inMenu = e.target.closest && e.target.closest('[data-lang-menu]');
+      if (!inWrap && !inMenu) setOpen(false);
     };
     const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
     document.addEventListener('pointerdown', onDoc, true);
     document.addEventListener('keydown', onKey);
+    window.addEventListener('resize', updatePos);
+    window.addEventListener('scroll', updatePos, true);
     return () => {
       document.removeEventListener('pointerdown', onDoc, true);
       document.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', updatePos);
+      window.removeEventListener('scroll', updatePos, true);
     };
-  }, [open]);
+  }, [open, updatePos]);
 
   const langs = (i18n && i18n.LANGS) || ['en'];
   const names = (i18n && i18n.LANG_NAMES) || {};
@@ -327,6 +360,7 @@ function LangToggle({ style = {} }) {
   return (
     <div ref={wrapRef} style={{ position: 'relative', display: 'inline-block', ...style }}>
       <button
+        ref={btnRef}
         onClick={() => setOpen(o => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -348,17 +382,18 @@ function LangToggle({ style = {} }) {
         {lang}
       </button>
 
-      {open && (
+      {open && menuPos && ReactDOM.createPortal(
         <div
           role="listbox"
+          data-lang-menu=""
           style={{
-            position: 'absolute', top: 'calc(100% + 6px)', right: 0,
+            position: 'fixed', top: menuPos.top, right: menuPos.right,
             minWidth: 132, padding: 4,
             borderRadius: 12,
             background: 'rgba(20,20,28,0.96)',
             backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
             boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.12), 0 18px 38px rgba(0,0,0,0.6)',
-            zIndex: 1000,
+            zIndex: 99999,
             animation: 'fade-up 0.16s ease both',
           }}
         >
@@ -391,7 +426,8 @@ function LangToggle({ style = {} }) {
               </button>
             );
           })}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
