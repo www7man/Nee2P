@@ -451,318 +451,309 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
                          busy, error, onCancel, onSubmit }) {
   const p = usePalette(palette);
   // ─── viewport / keyboard handling (owner: keyboard-layout) ───
-  // No useViewportHeight() here: .app-frame is already sized to var(--vvh)
-  // via CSS, so height: '100%' on the Shell follows the soft keyboard
-  // automatically. Re-rendering CreatedScreen on every visualViewport.resize
-  // re-created the inner `Shell` component as a fresh type each frame, which
-  // made React unmount/remount the <input> — focus was lost, the keyboard
-  // refused to open on the first tap (step 1) and flickered while typing
-  // (step 3). The CSS variable does all the resizing without any React work.
+  // Single outer <div> sized via height: '100%' (no useViewportHeight,
+  // no inner sub-components declared inside this function — both used to
+  // remount <input> on every visualViewport tick and swallow taps / cause
+  // flicker). All three steps render through one return; only the middle
+  // "Content" section branches on `step`.
   const [lang] = window.Nee2Pi18n.useLang();
   const t = window.Nee2Pi18n.t;
   const [step, setStep] = React.useState(1);
   const [showPwd, setShowPwd] = React.useState(false);
 
-  const source = (phrase || '').trim().toLowerCase();
-  const hash = source ? md5(source) : '';
+  const trimmed = (phrase || '').trim();
+  const hasPhrase = trimmed.length > 0;
+  const hash = hasPhrase ? md5(trimmed.toLowerCase()) : '';
   const canSubmit = hash && password.length >= 4 && !busy;
 
-  // Back: step 1 exits, steps 2-3 go to previous step
+  // Step 1 exits the flow, 2/3 go back one step.
   const handleBack = () => step === 1 ? onCancel() : setStep(s => s - 1);
-
-  // Step 1 → 2: if phrase is empty, generate and STAY so user reads it; advance on second tap
+  // Step 1 → 2: if phrase is empty, generate one and STAY so the user
+  // can read it; advance only on the second tap.
   const handleNext1 = () => {
-    if (!(phrase || '').trim()) {
-      onGenerateSeed && onGenerateSeed();
-      return; // stay on step 1 — user sees the generated phrase before continuing
-    }
+    if (!hasPhrase) { onGenerateSeed && onGenerateSeed(); return; }
     setStep(2);
   };
 
-  // ── shared sub-components ──────────────────────────────────
+  // Per-step copy + CTA wiring. Kept as a plain data lookup (not a sub-
+  // component) so React component identity stays stable across re-renders.
+  const META = {
+    1: { title: t('created.step1.title'), hint: t('created.step1.hint') },
+    2: { title: t('created.step2.title'), hint: t('created.step2.hint') },
+    3: { title: t('created.step3.title'), hint: t('created.step3.hint') },
+  };
 
-  // Back button + logo header row
-  const NavRow = () => (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-      <div onClick={handleBack} style={{
-        width: 44, height: 44, borderRadius: 14,
-        background: 'rgba(255,255,255,0.06)',
-        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-        border: '0.5px solid rgba(255,255,255,0.12)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+  return (
+    <div className="no-scrollbar" style={{
+      height: '100%',
+      display: 'flex', flexDirection: 'column',
+      padding: 'max(16px, env(safe-area-inset-top)) 18px max(20px, env(safe-area-inset-bottom))',
+      position: 'relative',
+      overflowY: 'auto',
+    }}>
+
+      {/* ── Header: back + progress dots + spacer ── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        marginBottom: 22,
       }}>
-        <Icon.Arrow size={16} color="#fff" dir="left" />
+        <button onClick={handleBack} aria-label="back" style={{
+          width: 44, height: 44, borderRadius: 14, padding: 0,
+          background: 'rgba(255,255,255,0.06)',
+          backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+          border: '0.5px solid rgba(255,255,255,0.12)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer', flexShrink: 0,
+        }}>
+          <Icon.Arrow size={16} color="#fff" dir="left" />
+        </button>
+
+        <div style={{ display: 'flex', gap: 6 }}>
+          {[1, 2, 3].map(n => (
+            <div key={n} style={{
+              height: 4, borderRadius: 9999,
+              width: n === step ? 30 : 8,
+              background: n < step
+                ? 'rgba(255,255,255,0.5)'
+                : n === step
+                  ? (p.accent || '#fff')
+                  : 'rgba(255,255,255,0.12)',
+              transition: 'width 0.3s ease, background 0.3s ease',
+            }} />
+          ))}
+        </div>
+
+        <div style={{ width: 44, flexShrink: 0 }} />
       </div>
-      <Logo size={9} palette={palette} />
-      <div style={{ width: 44 }} />
-    </div>
-  );
 
-  // Progress pills: filled → active → empty
-  const StepDots = () => (
-    <div style={{ display: 'flex', gap: 5, justifyContent: 'center', marginTop: 10 }}>
-      {[1, 2, 3].map(n => (
-        <div key={n} style={{
-          height: 5, borderRadius: 9999,
-          width: n === step ? 22 : 6,
-          background: n < step
-            ? 'rgba(255,255,255,0.35)'
-            : n === step
-              ? (p.accent || '#7be0b1')
-              : 'rgba(255,255,255,0.12)',
-          transition: 'width 0.3s ease, background 0.3s ease',
-        }} />
-      ))}
-    </div>
-  );
-
-  // Title block shared by all steps
-  const TitleBlock = ({ title, hint }) => (
-    <div style={{ textAlign: 'center', marginTop: 14 }}>
-      <div style={{ fontFamily: "'Instrument Serif', serif", fontStyle: 'italic',
-        fontSize: 30, lineHeight: 1.05, fontWeight: 400, letterSpacing: -0.5 }}>
-        {title}
+      {/* ── Title + hint (shared layout, copy from META[step]) ── */}
+      <div style={{ textAlign: 'center', marginBottom: 24 }}>
+        <h1 style={{
+          margin: 0,
+          fontFamily: "'Instrument Serif', serif", fontStyle: 'italic',
+          fontSize: 32, lineHeight: 1.1, fontWeight: 400, letterSpacing: -0.6,
+          color: 'var(--tx-100)',
+        }}>
+          {META[step].title}
+        </h1>
+        <p style={{
+          margin: '10px auto 0', maxWidth: 300,
+          fontSize: 13, color: 'var(--tx-60)',
+          lineHeight: 1.55, letterSpacing: -0.05,
+        }}>
+          {META[step].hint}
+        </p>
       </div>
-      <StepDots />
-      <div style={{ marginTop: 10, fontSize: 12, color: 'var(--tx-60)',
-        lineHeight: 1.5, letterSpacing: -0.05, maxWidth: 280, margin: '10px auto 0' }}>
-        {hint}
-      </div>
-    </div>
-  );
 
-  // Common page shell
-  const Shell = ({ children }) => (
-    <div className="no-scrollbar" style={{ height: '100%', display: 'flex',
-      flexDirection: 'column', padding: '20px 18px 24px',
-      position: 'relative', overflowY: 'auto' }}>
-      <NavRow />
-      {children}
-    </div>
-  );
+      {/* ── Content per step ── */}
 
-  // ── STEP 1 — Секретная фраза ───────────────────────────────
-  if (step === 1) return (
-    <Shell>
-      <TitleBlock
-        title={t('created.step1.title')}
-        hint={t('created.step1.hint')}
-      />
+      {step === 1 && (
+        <div>
+          <Glass radius={18} padding="14px 16px" strong>
+            <input
+              value={phrase}
+              onChange={(e) => setPhrase((e.target.value || '').toLowerCase())}
+              onKeyDown={(e) => e.key === 'Enter' && handleNext1()}
+              placeholder={t('created.step1.placeholder')}
+              maxLength={120}
+              inputMode="text"
+              enterKeyHint="next"
+              autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false}
+              style={{
+                width: '100%', background: 'transparent', border: 'none', outline: 'none',
+                color: 'var(--tx-100)', fontSize: 16, fontWeight: 500,
+                letterSpacing: -0.1, padding: '4px 0', fontFamily: 'inherit',
+              }}
+            />
+          </Glass>
 
-      <div style={{ marginTop: 20 }}>
-        <Glass radius={18} padding="10px 14px" strong>
-          <input
-            value={phrase}
-            onChange={(e) => setPhrase((e.target.value || '').toLowerCase())}
-            onKeyDown={(e) => e.key === 'Enter' && handleNext1()}
-            placeholder={t('created.step1.placeholder')}
-            maxLength={120}
-            inputMode="text"
-            enterKeyHint="next"
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="none"
-            spellCheck={false}
-            style={{
-              width: '100%', background: 'transparent', border: 'none', outline: 'none',
-              color: 'var(--tx-100)', fontSize: 15, fontWeight: 500,
-              letterSpacing: -0.1, padding: '4px 0', fontFamily: 'inherit',
-            }}
-          />
-        </Glass>
-
-        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between', gap: 10 }}>
-          <button onClick={() => onGenerateSeed && onGenerateSeed()}
-            style={{
-              height: 28, padding: '0 12px', border: 'none', cursor: 'pointer',
+          <div style={{
+            marginTop: 10, display: 'flex', alignItems: 'center',
+            justifyContent: 'space-between', gap: 10,
+          }}>
+            <button onClick={() => onGenerateSeed && onGenerateSeed()} style={{
+              height: 32, padding: '0 14px', border: 'none', cursor: 'pointer',
               borderRadius: 9999, background: 'rgba(255,255,255,0.06)',
-              color: 'var(--tx-80)', fontSize: 10.5, fontWeight: 600, letterSpacing: 0.6,
+              color: 'var(--tx-80)', fontSize: 11, fontWeight: 600, letterSpacing: 0.6,
               fontFamily: 'inherit', textTransform: 'uppercase',
               boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12)',
             }}>
-            {t('created.step1.random')}
-          </button>
-          <div style={{ fontSize: 10, color: 'var(--tx-40)',
-            letterSpacing: 0.4, textTransform: 'uppercase' }}>
-            {(phrase || '').length} / 120
+              {t('created.step1.random')}
+            </button>
+            <div style={{
+              fontSize: 10, color: 'var(--tx-40)',
+              letterSpacing: 0.4, textTransform: 'uppercase',
+              fontFamily: 'var(--ff-mono)',
+            }}>
+              {trimmed.length} / 120
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      <div style={{ flex: 1, minHeight: 20 }} />
+      {step === 2 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
 
-      <GlassButton primary palette={palette}
-        icon={<Icon.Arrow size={15} color={p.text} dir="right" />}
-        iconRight
-        onClick={handleNext1}>
-        {(phrase || '').trim() ? t('common.next') : t('created.step1.next_generate')}
-      </GlassButton>
-    </Shell>
-  );
-
-  // ── STEP 2 — Параметры сессии ──────────────────────────────
-  if (step === 2) return (
-    <Shell>
-      <TitleBlock
-        title={t('created.step2.title')}
-        hint={t('created.step2.hint')}
-      />
-
-      {/* TTL chooser */}
-      <div style={{ marginTop: 22 }}>
-        <div style={{ fontSize: 10, color: 'var(--tx-40)', letterSpacing: 1.4,
-          textTransform: 'uppercase', marginBottom: 10,
-          fontFamily: "'Geist Mono', monospace", textAlign: 'center' }}>
-          {t('created.step2.ttl_label')}
-        </div>
-        <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
-          {ttlOptions.map(o => (
-            <button key={o.id} onClick={() => setTtlId(o.id)}
-              style={{
-                border: 'none', cursor: 'pointer',
-                background: ttlId === o.id ? p.accent : 'rgba(255,255,255,0.06)',
-                color: ttlId === o.id ? p.text : 'var(--tx-80)',
-                padding: '8px 14px', borderRadius: 9999,
-                fontSize: 13, fontWeight: 600, letterSpacing: 0.2, fontFamily: 'inherit',
-                boxShadow: ttlId === o.id
-                  ? `0 4px 12px ${p.glow}, inset 0 1px 0 rgba(255,255,255,0.4)`
-                  : 'inset 0 1px 0 rgba(255,255,255,0.12)',
-                transition: 'background 0.25s ease, color 0.25s ease',
-              }}>{o.label}</button>
-          ))}
-        </div>
-      </div>
-
-      {/* Group size chooser */}
-      {Array.isArray(groupOptions) && typeof setGroupMax === 'function' && (
-        <div style={{ marginTop: 20 }}>
-          <div style={{ fontSize: 10, color: 'var(--tx-40)', letterSpacing: 1.4,
-            textTransform: 'uppercase', marginBottom: 10,
-            fontFamily: "'Geist Mono', monospace", textAlign: 'center' }}>
-            {t('created.step2.slots_label')}
+          {/* TTL chooser */}
+          <div>
+            <div style={{
+              fontSize: 10, color: 'var(--tx-40)', letterSpacing: 1.4,
+              textTransform: 'uppercase', marginBottom: 12,
+              fontFamily: 'var(--ff-mono)', textAlign: 'center',
+            }}>
+              {t('created.step2.ttl_label')}
+            </div>
+            <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+              {ttlOptions.map(o => {
+                const on = ttlId === o.id;
+                return (
+                  <button key={o.id} onClick={() => setTtlId(o.id)} style={{
+                    border: 'none', cursor: 'pointer',
+                    minHeight: 36, padding: '8px 16px', borderRadius: 9999,
+                    background: on ? p.accent : 'rgba(255,255,255,0.06)',
+                    color:      on ? p.text   : 'var(--tx-80)',
+                    fontSize: 13, fontWeight: 600, letterSpacing: 0.2, fontFamily: 'inherit',
+                    boxShadow: on
+                      ? `0 4px 12px ${p.glow}, inset 0 1px 0 rgba(255,255,255,0.4)`
+                      : 'inset 0 1px 0 rgba(255,255,255,0.12)',
+                    transition: 'background 0.25s ease, color 0.25s ease',
+                  }}>{o.label}</button>
+                );
+              })}
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
-            {groupOptions.map(n => (
-              <button key={n} onClick={() => setGroupMax(n)}
-                style={{
-                  border: 'none', cursor: 'pointer',
-                  background: groupMax === n ? p.accent : 'rgba(255,255,255,0.06)',
-                  color: groupMax === n ? p.text : 'var(--tx-80)',
-                  padding: '8px 16px', borderRadius: 9999, minWidth: 44,
-                  fontSize: 14, fontWeight: 700, letterSpacing: 0.2,
-                  fontFamily: "'Geist Mono', monospace",
-                  boxShadow: groupMax === n
-                    ? `0 4px 12px ${p.glow}, inset 0 1px 0 rgba(255,255,255,0.4)`
-                    : 'inset 0 1px 0 rgba(255,255,255,0.12)',
-                  transition: 'background 0.25s ease, color 0.25s ease',
-                }}>{n}</button>
-            ))}
-          </div>
-          {groupMax === 2 && (
-            <div style={{ marginTop: 8, textAlign: 'center',
-              fontSize: 11, color: 'var(--tx-40)', letterSpacing: -0.05 }}>
-              {t('created.step2.slots_two')}
+
+          {/* Group size chooser */}
+          {Array.isArray(groupOptions) && typeof setGroupMax === 'function' && (
+            <div>
+              <div style={{
+                fontSize: 10, color: 'var(--tx-40)', letterSpacing: 1.4,
+                textTransform: 'uppercase', marginBottom: 12,
+                fontFamily: 'var(--ff-mono)', textAlign: 'center',
+              }}>
+                {t('created.step2.slots_label')}
+              </div>
+              <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+                {groupOptions.map(n => {
+                  const on = groupMax === n;
+                  return (
+                    <button key={n} onClick={() => setGroupMax(n)} style={{
+                      border: 'none', cursor: 'pointer',
+                      minWidth: 48, minHeight: 36, padding: '8px 14px', borderRadius: 9999,
+                      background: on ? p.accent : 'rgba(255,255,255,0.06)',
+                      color:      on ? p.text   : 'var(--tx-80)',
+                      fontSize: 14, fontWeight: 700, letterSpacing: 0.2,
+                      fontFamily: 'var(--ff-mono)',
+                      boxShadow: on
+                        ? `0 4px 12px ${p.glow}, inset 0 1px 0 rgba(255,255,255,0.4)`
+                        : 'inset 0 1px 0 rgba(255,255,255,0.12)',
+                      transition: 'background 0.25s ease, color 0.25s ease',
+                    }}>{n}</button>
+                  );
+                })}
+              </div>
+              {groupMax === 2 && (
+                <div style={{
+                  marginTop: 10, textAlign: 'center',
+                  fontSize: 11, color: 'var(--tx-40)', letterSpacing: -0.05,
+                }}>
+                  {t('created.step2.slots_two')}
+                </div>
+              )}
             </div>
           )}
         </div>
       )}
 
+      {step === 3 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* NOTE: hash preview block was removed by user request — the phrase
+              identity is implicit at this point in the flow, and the hash was
+              taking vertical space without adding actionable information. */}
+
+          <Glass radius={18} padding="14px 16px" strong>
+            <div style={{
+              fontSize: 10, color: 'var(--tx-40)', letterSpacing: 1.4,
+              textTransform: 'uppercase', marginBottom: 8,
+              fontFamily: 'var(--ff-mono)',
+            }}>
+              {t('created.step3.pwd_label')}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Icon.Lock size={16} color="rgba(255,255,255,0.7)" />
+              <input
+                autoFocus
+                type={showPwd ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && canSubmit && onSubmit()}
+                placeholder={t('created.step3.pwd_placeholder')}
+                enterKeyHint="go"
+                autoComplete="new-password"
+                autoCapitalize="none" autoCorrect="off" spellCheck={false}
+                style={{
+                  flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                  color: '#fff', fontSize: 18, fontWeight: 600,
+                  fontFamily: showPwd ? 'var(--ff-mono)' : 'inherit',
+                  letterSpacing: showPwd ? 0.5 : 4, padding: '4px 0',
+                }}
+              />
+              <button onClick={() => setShowPwd(v => !v)} aria-label="toggle visibility" style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                width: 36, height: 36, display: 'flex',
+                alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}>
+                <Icon.Eye closed={!showPwd} size={16} color="rgba(255,255,255,0.7)" />
+              </button>
+            </div>
+          </Glass>
+
+          <RememberMeToggle palette={palette}
+            checked={!!rememberMe}
+            onChange={(v) => setRememberMe && setRememberMe(v)} />
+
+          {error && (
+            <Glass radius={14} padding="10px 14px">
+              <div style={{ fontSize: 12, color: '#ff8a8a', textAlign: 'center', letterSpacing: -0.05 }}>
+                {error}
+              </div>
+            </Glass>
+          )}
+        </div>
+      )}
+
+      {/* ── Spacer pushes CTA to the bottom (or just above the keyboard) ── */}
       <div style={{ flex: 1, minHeight: 20 }} />
 
-      <GlassButton primary palette={palette}
-        icon={<Icon.Arrow size={15} color={p.text} dir="right" />}
-        iconRight
-        onClick={() => setStep(3)}>
-        {t('common.next')}
-      </GlassButton>
-    </Shell>
-  );
-
-  // ── STEP 3 — Пароль ───────────────────────────────────────
-  return (
-    <Shell>
-      <TitleBlock
-        title={t('created.step3.title')}
-        hint={t('created.step3.hint')}
-      />
-
-      {/* Hash preview — subtle confirmation of the phrase */}
-      {hash && (
-        <div style={{ marginTop: 18 }}>
-          <Glass radius={16} padding="10px 12px">
-            <div style={{ fontSize: 9, color: 'var(--tx-30)', letterSpacing: 1.2,
-              textTransform: 'uppercase', textAlign: 'center', marginBottom: 8,
-              fontFamily: "'Geist Mono', monospace" }}>
-              {t('created.step3.hash_label')}
-            </div>
-            <HashDisplay hash={hash} palette={palette} />
-          </Glass>
-        </div>
+      {/* ── Footer CTA per step ── */}
+      {step === 1 && (
+        <GlassButton primary palette={palette}
+          icon={<Icon.Arrow size={15} color={p.text} dir="right" />}
+          iconRight onClick={handleNext1}>
+          {hasPhrase ? t('common.next') : t('created.step1.next_generate')}
+        </GlassButton>
       )}
-
-      {/* Password field */}
-      <div style={{ marginTop: 14 }}>
-        <Glass radius={18} padding="12px 14px" strong>
-          <div style={{ fontSize: 10, color: 'var(--tx-40)', letterSpacing: 1.4,
-            textTransform: 'uppercase', marginBottom: 6,
-            fontFamily: "'Geist Mono', monospace" }}>
-            {t('created.step3.pwd_label')}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Icon.Lock size={16} color="rgba(255,255,255,0.7)" />
-            <input
-              autoFocus
-              type={showPwd ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && canSubmit && onSubmit()}
-              placeholder={t('created.step3.pwd_placeholder')}
-              enterKeyHint="go"
-              autoComplete="new-password"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              style={{
-                flex: 1, background: 'transparent', border: 'none', outline: 'none',
-                color: '#fff', fontSize: 18, fontWeight: 600,
-                fontFamily: showPwd ? 'Geist Mono, ui-monospace, monospace' : 'inherit',
-                letterSpacing: showPwd ? 0.5 : 4, padding: '4px 0',
-              }}
-            />
-            <button onClick={() => setShowPwd(!showPwd)} style={{
-              background: 'none', border: 'none', cursor: 'pointer', padding: 4,
-            }}>
-              <Icon.Eye closed={!showPwd} size={16} color="rgba(255,255,255,0.7)" />
-            </button>
-          </div>
-        </Glass>
-      </div>
-
-      <RememberMeToggle palette={palette}
-        checked={!!rememberMe}
-        onChange={(v) => setRememberMe && setRememberMe(v)} />
-
-      {error && (
-        <div style={{ marginTop: 12 }}>
-          <Glass radius={14} padding="10px 14px">
-            <div style={{ fontSize: 12, color: '#ff8a8a', textAlign: 'center', letterSpacing: -0.05 }}>
-              {error}
-            </div>
-          </Glass>
-        </div>
+      {step === 2 && (
+        <GlassButton primary palette={palette}
+          icon={<Icon.Arrow size={15} color={p.text} dir="right" />}
+          iconRight onClick={() => setStep(3)}>
+          {t('common.next')}
+        </GlassButton>
       )}
-
-      <div style={{ flex: 1, minHeight: 14 }} />
-
-      <GlassButton primary={canSubmit} palette={palette} disabled={!canSubmit}
-        icon={canSubmit
-          ? <Icon.Plus size={16} color={p.text} />
-          : <Icon.Lock size={14} color="var(--tx-40)" />}
-        onClick={onSubmit}>
-        {busy ? t('created.step3.busy') : (canSubmit ? t('welcome.create') : t('created.step3.need_pwd'))}
-      </GlassButton>
-    </Shell>
+      {step === 3 && (
+        <GlassButton primary={canSubmit} palette={palette} disabled={!canSubmit}
+          icon={canSubmit
+            ? <Icon.Plus size={16} color={p.text} />
+            : <Icon.Lock size={14} color="var(--tx-40)" />}
+          onClick={onSubmit}>
+          {busy
+            ? t('created.step3.busy')
+            : canSubmit
+              ? t('welcome.create')
+              : t('created.step3.need_pwd')}
+        </GlassButton>
+      )}
+    </div>
   );
 }
 
