@@ -298,35 +298,102 @@ const Icon = {
   ),
 };
 
-// Language toggle pill — replaces the "без следов" badge in WelcomeScreen header.
-// Reads/writes window.Nee2Pi18n (i18n.js). Cycles through all available langs.
+// Language toggle pill — opens a small dropdown menu listing all available
+// languages by their native name (English, Русский, …). Click an item to
+// switch; click outside or press Escape to close. Reads/writes window.Nee2Pi18n.
 function LangToggle({ style = {} }) {
   const i18n = window.Nee2Pi18n;
-  const [lang, setLang] = i18n ? i18n.useLang() : [React.useState('ru')[0], () => {}];
-  const next = i18n
-    ? i18n.LANGS[(i18n.LANGS.indexOf(lang) + 1) % i18n.LANGS.length]
-    : 'en';
+  const [lang, setLang] = i18n ? i18n.useLang() : [React.useState('en')[0], () => {}];
+  const [open, setOpen] = React.useState(false);
+  const wrapRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('pointerdown', onDoc, true);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDoc, true);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const langs = (i18n && i18n.LANGS) || ['en'];
+  const names = (i18n && i18n.LANG_NAMES) || {};
+
   return (
-    <button
-      onClick={() => i18n && i18n.setLang(next)}
-      title={lang === 'ru' ? 'Switch to English' : 'Переключить на русский'}
-      style={{
-        height: 30, padding: '0 10px', border: 'none', cursor: 'pointer',
-        borderRadius: 9999,
-        background: 'rgba(255,255,255,0.025)',
-        boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.07)',
-        display: 'inline-flex', alignItems: 'center', gap: 6,
-        fontSize: 9.5, fontWeight: 600, letterSpacing: 1.6, textTransform: 'uppercase',
-        color: 'var(--tx-40)',
-        fontFamily: 'inherit',
-        WebkitTapHighlightColor: 'transparent',
-        userSelect: 'none',
-        ...style,
-      }}
-    >
-      <Icon.Globe size={12} color="var(--tx-40)" />
-      {lang}
-    </button>
+    <div ref={wrapRef} style={{ position: 'relative', display: 'inline-block', ...style }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        style={{
+          height: 30, padding: '0 10px', border: 'none', cursor: 'pointer',
+          borderRadius: 9999,
+          background: open ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.025)',
+          boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.07)',
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          fontSize: 9.5, fontWeight: 600, letterSpacing: 1.6, textTransform: 'uppercase',
+          color: 'var(--tx-40)',
+          fontFamily: 'inherit',
+          WebkitTapHighlightColor: 'transparent',
+          userSelect: 'none',
+          transition: 'background 0.18s ease',
+        }}
+      >
+        <Icon.Globe size={12} color="var(--tx-40)" />
+        {lang}
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          style={{
+            position: 'absolute', top: 'calc(100% + 6px)', right: 0,
+            minWidth: 132, padding: 4,
+            borderRadius: 12,
+            background: 'rgba(20,20,28,0.96)',
+            backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+            boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.12), 0 18px 38px rgba(0,0,0,0.6)',
+            zIndex: 1000,
+            animation: 'fade-up 0.16s ease both',
+          }}
+        >
+          {langs.map(code => {
+            const active = code === lang;
+            return (
+              <button
+                key={code}
+                role="option"
+                aria-selected={active}
+                onClick={() => { i18n && i18n.setLang(code); setOpen(false); }}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  width: '100%', padding: '8px 10px', border: 'none', cursor: 'pointer',
+                  borderRadius: 8, background: active ? 'rgba(255,255,255,0.08)' : 'transparent',
+                  color: active ? '#fff' : 'var(--tx-80)',
+                  fontFamily: 'inherit', fontSize: 13, fontWeight: 500, letterSpacing: -0.1,
+                  textAlign: 'left',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                <span>{names[code] || code.toUpperCase()}</span>
+                <span style={{
+                  fontSize: 9, fontWeight: 700, letterSpacing: 1.4, textTransform: 'uppercase',
+                  color: active ? 'var(--tx-60)' : 'var(--tx-40)',
+                  fontFamily: 'var(--ff-mono)',
+                }}>
+                  {active ? '✓' : code}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 

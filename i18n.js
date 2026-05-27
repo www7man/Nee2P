@@ -12,7 +12,13 @@
 // in TRANSLATIONS. The sub-agent doing translations works only in this file.
 
 (function (g) {
-  const LANGS = ['ru', 'en'];
+  const LANGS = ['en', 'ru'];
+
+  // Native display names for each lang, shown in the LangToggle dropdown.
+  const LANG_NAMES = {
+    en: 'English',
+    ru: 'Русский',
+  };
 
   const TRANSLATIONS = {
     ru: {
@@ -323,11 +329,10 @@
   };
 
   // ── State ────────────────────────────────────────────────────────────────
+  // Default lang is English. Browser-locale auto-detect was removed by user
+  // request — a stored choice wins, otherwise EN is the global default.
   const stored = typeof localStorage !== 'undefined' && localStorage.getItem('nee2p_lang');
-  const browserLang = typeof navigator !== 'undefined' && navigator.language
-    ? (navigator.language.toLowerCase().startsWith('ru') ? 'ru' : 'en')
-    : 'ru';
-  let currentLang = (stored && LANGS.includes(stored)) ? stored : browserLang;
+  let currentLang = (stored && LANGS.includes(stored)) ? stored : 'en';
 
   const listeners = new Set();
 
@@ -364,6 +369,6 @@
     return [lang, setLang];
   }
 
-  g.Nee2Pi18n = { t, setLang, getLang, onLangChange, useLang, LANGS, TRANSLATIONS };
+  g.Nee2Pi18n = { t, setLang, getLang, onLangChange, useLang, LANGS, LANG_NAMES, TRANSLATIONS };
 
 })(typeof window !== 'undefined' ? window : globalThis);
