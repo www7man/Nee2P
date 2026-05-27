@@ -1001,18 +1001,31 @@ function App() {
 
   // Decrypt + dispatch a 'signal' wire envelope (WebRTC signalling). Mirrors
   // the key-selection of ingestMessage but never touches chat history.
+  //
+  // Race: a peer can ship a 'call-offer' BEFORE their sender-key has reached
+  // us (sender-key + signal travel over the same channel and the latter can
+  // land on a faster path). If we drop, the call hangs forever. Instead we
+  // buffer under `sig:<fromSlot>` in pendingDecryptRef and replay from
+  // applySenderKey when the key arrives. Symmetric race for legacy/pairwise.
   const ingestSignal = React.useCallback(async (item) => {
     if (!item || typeof item.iv !== 'string' || typeof item.ct !== 'string') return;
     const fromNum = coerceSlot(item.from);
     if (fromNum === null) return;
     if (fromNum === mySlotRef.current) return; // ignore self-echo (shouldn't happen)
 
+    const bufferIt = () => {
+      const k = `sig:${fromNum}`;
+      const list = pendingDecryptRef.current.get(k) || [];
+      list.push(item);
+      pendingDecryptRef.current.set(k, list);
+    };
+
     // Pick key: prefer peer's sender-key when tagged; else legacy pairwise key.
     let plainStr = '';
     try {
       if (typeof item.senderKeyEpoch === 'number') {
         const peer = peerKeysRef.current.get(fromNum);
-        if (!peer || !peer.senderKey) return; // no key yet — drop (next signal will arrive after key sync)
+        if (!peer || !peer.senderKey) { bufferIt(); return; }
         plainStr = await Nee2PCrypto.decryptWithSenderKey(peer.senderKey, item.iv, item.ct);
       } else {
         const peer = peerKeysRef.current.get(fromNum);
@@ -1021,11 +1034,13 @@ function App() {
         } else if (aesKeyRef.current) {
           plainStr = await Nee2PCrypto.decrypt(aesKeyRef.current, item.iv, item.ct);
         } else {
-          return;
+          bufferIt(); return;
         }
       }
     } catch (e) {
-      // bad payload, drop silently
+      // Decryption failed: keep the bytes in case a new sender-key bumps in.
+      // (Wrong key with right shape will fail GCM auth tag check.)
+      bufferIt();
       return;
     }
     let payload;
@@ -1056,6 +1071,24 @@ function App() {
     if (!inst) return;
     inst.handleSignal(payload);
   }, [sendSignal]);
+
+  // Stable ref so applySenderKey can replay buffered signals without taking
+  // ingestSignal as a dep (which would re-create the connectAndClaim closure
+  // every time sendSignal does).
+  const ingestSignalRef = React.useRef(ingestSignal);
+  React.useEffect(() => { ingestSignalRef.current = ingestSignal; }, [ingestSignal]);
+
+  // Replay buffered signals for `slotNum` (called from applySenderKey).
+  const replayPendingSignalsFor = React.useCallback(async (slotNum) => {
+    if (slotNum === null || slotNum === undefined) return;
+    const k = `sig:${slotNum}`;
+    const list = pendingDecryptRef.current.get(k);
+    if (!list || list.length === 0) return;
+    pendingDecryptRef.current.delete(k);
+    for (const item of list) {
+      try { await ingestSignalRef.current(item); } catch {}
+    }
+  }, []);
 
   // Get-or-create the per-peer state object held in peerKeysRef.
   function ensurePeer(slotNum) {
@@ -1367,11 +1400,14 @@ function App() {
         peer.senderKey = raw;
         if (typeof senderKeyEpoch === 'number') peer.senderKeyEpoch = senderKeyEpoch;
         await replayPendingFor(fromNum);
+        // Also drain any buffered WebRTC signals from this peer — they were
+        // held back because we didn't have their sender-key yet.
+        await replayPendingSignalsFor(fromNum);
       }
     } catch (e) {
       console.warn('unwrapSenderKey failed:', e && e.message ? e.message : e);
     }
-  }, [replayPendingFor]);
+  }, [replayPendingFor, replayPendingSignalsFor]);
 
   // Tiny byte-equality helper for the pubKey/kemPub change-detection above.
   function sameBytes(a, b) {

@@ -90,6 +90,9 @@
         // Bundle audio/video on a single transport — fewer round trips.
         bundlePolicy: 'max-bundle',
         rtcpMuxPolicy: 'require',
+        // Pre-gather a small pool so checking starts faster once the answer
+        // lands — meaningfully reduces "stuck on Соединяемся" on slow STUN.
+        iceCandidatePoolSize: 4,
       });
 
       conn.onicecandidate = (e) => {
@@ -101,6 +104,20 @@
           sdpMLineIndex: e.candidate.sdpMLineIndex,
         };
         try { sendSignal({ kind: 'call-ice', candidate: c }); } catch {}
+      };
+
+      conn.oniceconnectionstatechange = () => {
+        if (!pc) return;
+        try { console.log('[NeeCall] iceConnectionState =', pc.iceConnectionState); } catch {}
+        // Some browsers stop at iceConnectionState='connected' without ever
+        // hitting connectionState='connected'. Treat ICE connected as enough.
+        if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+          if (state !== 'active') setState('active');
+        }
+        if (pc.iceConnectionState === 'failed') {
+          setState('failed');
+          try { onError(new Error('ice-failed')); } catch {}
+        }
       };
 
       conn.ontrack = (e) => {
@@ -123,6 +140,7 @@
       conn.onconnectionstatechange = () => {
         if (!pc) return;
         const cs = pc.connectionState;
+        try { console.log('[NeeCall] connectionState =', cs); } catch {}
         if (cs === 'connected') setState('active');
         else if (cs === 'failed') {
           setState('failed');
