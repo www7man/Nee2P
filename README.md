@@ -12,6 +12,21 @@
 
 **🌐 Try it now: [Nee2P.com](https://Nee2P.com)** — a fresh RAM-only instance. No telemetry, no accounts. Server source = this repo.
 
+### Self-host in 60 seconds
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/www7man/Nee2P)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template?template=https%3A%2F%2Fgithub.com%2Fwww7man%2FNee2P)
+[![Run on Fly.io](https://img.shields.io/badge/Fly.io-flyctl%20launch-7c3aed?logo=hackthebox&logoColor=white)](DEPLOY.md#flyio)
+
+Or run anywhere with Docker:
+
+```bash
+git clone https://github.com/www7man/Nee2P && cd Nee2P && docker compose up --build
+# → http://127.0.0.1:8787
+```
+
+Full guide: [DEPLOY.md](DEPLOY.md) — covers Linux VPS + nginx + systemd, macOS + Caddy, CDN notes, and rollback.
+
 <!-- TODO: record a 10-second GIF of: create session → share phrase → join → first message
      Save as docs/demo.gif and uncomment:
 ![Nee2P demo](docs/demo.gif)
@@ -70,7 +85,7 @@ Group sessions use a sender-keys protocol: each participant derives a pairwise H
 
 ---
 
-## Quick start
+## Local development
 
 ```bash
 git clone https://github.com/www7man/Nee2P
@@ -82,15 +97,7 @@ npm start
 
 Open the URL in two browser tabs (or two devices on the same network). Create a session on one, share the phrase, join from the other.
 
-### Docker
-
-```bash
-git clone https://github.com/www7man/Nee2P
-cd Nee2P
-cp .env.example .env   # optional — override defaults
-docker compose up --build
-# → http://127.0.0.1:8787
-```
+For production self-host see [Self-host in 60 seconds](#self-host-in-60-seconds) above or [DEPLOY.md](DEPLOY.md) for the full guide.
 
 ### Environment variables
 
@@ -108,7 +115,14 @@ Web Push VAPID keys are read from `~/.nee2p-vapid.json` — generate once with `
 
 ## Self-hosting
 
-See [DEPLOY.md](DEPLOY.md) for full guides: Caddy & nginx reverse proxy configs, launchd plist for macOS, CDN notes, and rollback instructions.
+[DEPLOY.md](DEPLOY.md) covers four paths in detail:
+
+- **One-click cloud** — Render, Fly.io, Railway (configs in repo: `render.yaml`, `fly.toml`, `railway.json`)
+- **Docker** — `docker compose up -d --build` behind any reverse proxy
+- **Linux VPS** — nginx + systemd + Let's Encrypt (the classic stack)
+- **macOS** — Caddy + launchd (for relays running at home)
+
+All paths end up at the same `~50 MB` Node process listening on one port. The relay has no database, so updates and rollbacks are stateless.
 
 ---
 

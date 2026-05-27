@@ -1,0 +1,43 @@
+# Fly.io app config — https://fly.io/docs/reference/configuration/
+#
+# Deploy:
+#   flyctl launch --copy-config --no-deploy   # creates the app, edits this file
+#   flyctl secrets set ADMIN_KEY="$(openssl rand -hex 24)"
+#   flyctl deploy
+#
+# Free-tier-friendly: shared-cpu-1x / 256 MB RAM is enough for hundreds of rooms.
+
+app = "nee2p"                # change to your app name
+primary_region = "iad"       # pick the one closest to your users
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  HOST = "0.0.0.0"
+  PORT = "8787"
+  NODE_ENV = "production"
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  auto_stop_machines = "off"   # don't sleep — long-poll/WS need always-on
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "connections"
+    soft_limit = 200
+    hard_limit = 400
+
+  # WebSocket + SSE work over Fly's HTTP service without extra config.
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1
+
+# Web Push (optional): write ~/.nee2p-vapid.json into a Fly volume or
+# stash the JSON as base64 in a secret and decode at boot. Skip if push
+# notifications are not needed.

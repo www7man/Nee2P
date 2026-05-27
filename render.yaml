@@ -1,0 +1,23 @@
+# Render.com Blueprint — https://render.com/docs/blueprint-spec
+#
+# Click "Deploy to Render" in the README to use this config, or run:
+#   render blueprint launch
+services:
+  - type: web
+    name: nee2p
+    runtime: docker
+    plan: starter            # free plan sleeps after 15 min — bad for a chat
+    region: oregon
+    branch: main
+    healthCheckPath: /
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 8787
+      - key: ADMIN_KEY
+        generateValue: true  # Render auto-generates a strong random value
+    # No persistent disk — the relay is RAM-only by design.
+    # WebSocket and SSE work out of the box on Render web services.
+    # For Web Push, mount ~/.nee2p-vapid.json via a Render secret file
+    # after the first deploy (Dashboard → service → Secret Files).
