@@ -3,6 +3,7 @@
 > No accounts. No database. No plaintext on the server. Ever.
 > 2–8 people · X25519 + ML-KEM-768 · RAM-only relay · self-hostable in one Node process.
 
+[![Release](https://img.shields.io/github/v/release/www7man/Nee2P?color=7c5cff&label=release)](https://github.com/www7man/Nee2P/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%E2%89%A518-brightgreen)](#quick-start)
 [![CI](https://github.com/www7man/Nee2P/actions/workflows/ci.yml/badge.svg)](https://github.com/www7man/Nee2P/actions/workflows/ci.yml)

@@ -310,8 +310,64 @@
   <!-- 01 — Последнее обновление -->
   <section>
     <div class="section-num">01 — Последнее обновление</div>
-    <h2 class="section-heading">v0.8.3 — Open-source инфраструктура + UX polish</h2>
+    <h2 class="section-heading">v0.8.4 — Двуязычный интерфейс + прозрачность</h2>
 
+    <div class="release">
+      <div class="release-meta">
+        <span class="release-version">v0.8.4</span>
+        <span class="release-date">май 2026</span>
+        <span class="release-tag">локализация</span>
+        <span class="release-tag">UX</span>
+        <span class="release-tag">admin</span>
+        <span class="release-tag">прозрачность</span>
+      </div>
+      <h3 class="release-title">Русский / English без перезагрузки, Cloudflare-туннель из браузера, ссылки на источники для всего криптостека</h3>
+
+      <h4>Локализация</h4>
+      <ul>
+        <li>Новый файл <code>i18n.js</code>: слой перевода с <code>t()</code>, <code>useLang()</code> и полными таблицами RU/EN для всех экранов (198 ключей в каждом языке)</li>
+        <li>Переключатель языка — пилюля в шапке. Выпадающий список с галочкой у активного. Язык хранится на устройстве, по умолчанию — английский</li>
+        <li>Все экраны переключаются мгновенно — WelcomeScreen, 3-шаговый визард, JoinScreen, PasswordScreen, ChatScreen, оверлеи звонков и диагностики сети</li>
+        <li>Добавить новый язык = одна запись в <code>LANGS</code> + одна в <code>LANG_NAMES</code> + блок переводов. PR'ы приветствуются.</li>
+      </ul>
+
+      <h4>Keyboard UX (мобильные)</h4>
+      <ul>
+        <li>Исправлена чёрная полоса под клавиатурой на iOS: <code>#stage</code> теперь привязан к <em>видимому</em> вьюпорту (<code>--vvtop</code> / <code>--vvh</code>), а не к layout-вьюпорту</li>
+        <li>Исправлен ремоунт инпутов при открытии клавиатуры: <code>Shell</code>-компонент вынесен из тела функции, <code>input</code> больше не теряет фокус при каждом тике <code>visualViewport</code></li>
+      </ul>
+
+      <h4>Панель администратора</h4>
+      <ul>
+        <li>Новая вкладка «Туннель»: запуск Cloudflare Quick Tunnel прямо из браузера</li>
+        <li>В рабочем состоянии — живой URL, счётчик аптайма, QR-код, кнопки «скопировать» / «открыть»</li>
+        <li>Автоопрос статуса каждые 3 секунды пока туннель стартует или работает</li>
+        <li>Все admin-эндпоинты переведены на GET (CDN-провайдеры блокировали POST/DELETE); авторизация через <code>X-Admin-Key</code> сохранена</li>
+      </ul>
+
+      <h4>Прозрачность и доверие</h4>
+      <ul>
+        <li>На странице <a href="trust.html">«Как убедиться, что мы не врём»</a> все 41+ терминов криптостека (Argon2id, X25519, ML-KEM-768, AES-256-GCM, HKDF, BIP-39, KEM, MITM…) теперь ведут на Википедию — проверяйте источники сами</li>
+        <li>Ссылка на политику ответственного раскрытия уязвимостей (<code>SECURITY.md</code>) — куда писать, если нашли 0-day</li>
+        <li>Автотест <code>smoke-trust-crypto-sync.js</code> в CI: проверяет, что таблица криптопараметров в trust.html не расходится с реальным <code>crypto.js</code>. Если кто-то поменяет, например, число итераций Argon2id, а на странице забудет — CI покраснеет.</li>
+      </ul>
+
+      <h4>Для разработчиков</h4>
+      <ul>
+        <li>WebRTC: JSDoc-документация публичного API <code>window.NeeCall</code>, дебаг-логи за флагом <code>NeeCall.debug = true</code> — production console остаётся чистой</li>
+        <li>Новые CI-тесты: <code>smoke-i18n</code> (полнота переводов), <code>smoke-signal-wire</code> (формат сигнальных сообщений звонка), <code>smoke-trust-crypto-sync</code> (см. выше). Прогон на Node 18/20/22</li>
+      </ul>
+    </div>
+  </section>
+
+  <hr />
+
+  <!-- 02 — История версий -->
+  <section>
+    <div class="section-num">02 — История версий</div>
+    <h2 class="section-heading">Полная история</h2>
+
+    <!-- v0.8.3 -->
     <div class="release">
       <div class="release-meta">
         <span class="release-version">v0.8.3</span>
@@ -330,14 +386,8 @@
         <li><strong>Keyboard UX</strong>: убран <code>translateY</code>-хак, который сжирал первый тап по input на iOS Safari; CreatedScreen больше не autoFocus-ит input — клавиатура не выскакивает сразу после создания сессии</li>
       </ul>
     </div>
-  </section>
 
-  <hr />
-
-  <!-- 02 — История версий -->
-  <section>
-    <div class="section-num">02 — История версий</div>
-    <h2 class="section-heading">Полная история</h2>
+    <hr />
 
     <!-- v0.8.2 -->
     <div class="release">

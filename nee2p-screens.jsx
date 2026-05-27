@@ -112,7 +112,7 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
           <span style={{
             fontSize: 10.5, fontWeight: 600, letterSpacing: 0.4,
             color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase',
-          }}>{t('welcome.opensource')}</span>
+          }}>{t('welcome.opensource')}{typeof window.NEE2P_VERSION !== 'undefined' ? ` v${window.NEE2P_VERSION}` : ''}</span>
           <Icon.Arrow size={10} color="rgba(255,255,255,0.35)" />
         </button>
       </div>
