@@ -101,9 +101,23 @@
     });
   }
 
+  // Cache the most recent diagnostic result so repeat pre-flight checks are
+  // instant. Network conditions change slowly enough that a 60s window is
+  // safe; force-refresh available via diagnose({ force: true }).
+  let _lastDiagnose = null;
+  let _lastDiagnoseAt = 0;
+  const DIAG_CACHE_MS = 60000;
+
+  function getCachedDiagnose() {
+    if (!_lastDiagnose) return null;
+    if ((Date.now() - _lastDiagnoseAt) > DIAG_CACHE_MS) return null;
+    return _lastDiagnose;
+  }
+
   // Full diagnostics report — runs every pre-flight check we can do without a
   // peer. Returns a structured result the UI displays as a checklist. Safe to
-  // call multiple times; ~5-6s total because of the STUN probes.
+  // call multiple times; ~5-6s total because of the STUN probes (cached for
+  // 60s after a fresh run).
   //
   // Result shape:
   //   {
@@ -115,9 +129,19 @@
   //            | 'cone'  (same srflx port across providers — P2P should work)
   //            | 'symmetric' (different ports — direct P2P will NOT work, needs TURN)
   //            | 'unknown' (STUN didn't respond or single-provider success),
-  //     warnings: [{level: 'red'|'yellow', text: string}, ...]
+  //     warnings: [{level: 'red'|'yellow', text: string}, ...],
+  //     readiness: 'ready' | 'degraded' | 'blocked' — high-level rollup the UI
+  //                uses to decide whether to allow proceeding with the call.
+  //                  ready    — no warnings, P2P should work
+  //                  degraded — only yellow warnings (call may not connect)
+  //                  blocked  — at least one red warning, don't even try
   //   }
-  async function diagnose() {
+  async function diagnose(opts) {
+    const force = !!(opts && opts.force);
+    if (!force) {
+      const cached = getCachedDiagnose();
+      if (cached) return cached;
+    }
     const result = {
       supported: isSupported(),
       secureContext: typeof window !== 'undefined' && !!window.isSecureContext,
@@ -186,6 +210,13 @@
       });
     }
 
+    // Roll up to a single "can we even try?" verdict for the UI.
+    const hasRed = result.warnings.some(w => w.level === 'red');
+    const hasYellow = result.warnings.some(w => w.level === 'yellow');
+    result.readiness = hasRed ? 'blocked' : (hasYellow ? 'degraded' : 'ready');
+
+    _lastDiagnose = result;
+    _lastDiagnoseAt = Date.now();
     return result;
   }
 
@@ -619,5 +650,5 @@
     };
   }
 
-  g.NeeCall = { create, isSupported, diagnose };
+  g.NeeCall = { create, isSupported, diagnose, getCachedDiagnose };
 })(typeof window !== 'undefined' ? window : globalThis);

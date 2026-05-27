@@ -10,7 +10,7 @@
 //
 // Bump CACHE_VERSION to invalidate the precache after deploys.
 
-const CACHE_VERSION = 'nee2p-v11-kbfix';
+const CACHE_VERSION = 'nee2p-v11-kbfix-preflight';
 
 // All paths are relative to the SW scope (which is /2Pee/ in production).
 const PRECACHE_URLS = [

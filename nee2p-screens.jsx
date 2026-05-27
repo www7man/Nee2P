@@ -1781,9 +1781,14 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
   const [burnPanelOpen, setBurnPanelOpen] = React.useState(false);
   // invite modal — shows ShareCodeCard as overlay (accessible any time, not just before pairing)
   const [inviteOpen, setInviteOpen] = React.useState(false);
-  // Network-diagnostics modal — opens from the failed-call overlay's
-  // "Проверить сеть" button OR can be triggered manually in the future.
+  // Network-diagnostics modal — opens in two scenarios:
+  //   • 'pre-flight'   — user clicks the call button, we show the checklist
+  //                      first so they can see their side is ok before the
+  //                      actual call starts. Confirm → triggers onCall().
+  //   • 'post-failure' — user taps "Проверить сеть" inside the failed-call
+  //                      overlay; informational only.
   const [diagOpen, setDiagOpen] = React.useState(false);
+  const [diagMode, setDiagMode] = React.useState('post-failure');
   // virtualization: render only the last N messages. At 1000+ msgs a typing
   // indicator state change would re-render every bubble; this caps the cost.
   // User can expand via the "Загрузить ещё" button at the top.
@@ -2234,7 +2239,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                   outgoing-call timeout handles the truly-offline case.
                   MVP is 2-party audio; group calls TBD. */}
               {!isGroup && partnerClaimed && callSupported && (callState === 'idle' || callState === 'ended' || callState === 'failed') && (
-                <button onClick={() => { if (onCall) onCall(); }}
+                <button onClick={() => { setDiagMode('pre-flight'); setDiagOpen(true); }}
                   title={partnerOnline ? 'Позвонить' : 'Собеседник может быть не в сети — попробовать'}
                   aria-label="Позвонить"
                   style={{
@@ -3210,13 +3215,19 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
           onHangup={onHangup}
           onToggleMute={onToggleMute}
           onToggleSpeaker={onToggleSpeaker}
-          onCheckNetwork={() => setDiagOpen(true)}
+          onCheckNetwork={() => { setDiagMode('post-failure'); setDiagOpen(true); }}
         />
       )}
 
-      {/* Network diagnostics modal — opens from failed-call overlay. */}
+      {/* Network diagnostics modal — pre-flight (before call) or
+          post-failure (after a failed call). Pre-flight confirm triggers
+          onCall(), which actually initiates the WebRTC handshake. */}
       {diagOpen && (
-        <NetworkDiagnosticsModal onClose={() => setDiagOpen(false)} />
+        <NetworkDiagnosticsModal
+          mode={diagMode}
+          onClose={() => setDiagOpen(false)}
+          onConfirm={diagMode === 'pre-flight' ? (() => { if (onCall) onCall(); }) : null}
+        />
       )}
 
       {fullscreenUrl && (
@@ -3619,6 +3630,51 @@ function NetworkDiagnosticsModal({ onClose, mode = 'post-failure', onConfirm }) 
         {!running && report && report.error && (
           <div style={{ padding: 18, fontSize: 13, color: '#ffb088', textAlign: 'center' }}>
             Не удалось запустить проверку: {report.error}
+          </div>
+        )}
+
+        {/* Pre-flight footer: confirm/cancel buttons. Confirm only enabled
+            when the report is at least 'degraded' (yellow warnings = let user
+            decide; red errors = block, only Cancel). */}
+        {mode === 'pre-flight' && (
+          <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+            <button onClick={onClose} style={{
+              flex: 1, minHeight: 46, borderRadius: 12, border: 'none', cursor: 'pointer',
+              background: 'rgba(255,255,255,0.06)',
+              boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.12)',
+              color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: 500, fontFamily: 'inherit',
+            }}>Отмена</button>
+            <button
+              onClick={() => { if (canConfirm && onConfirm) { onClose(); onConfirm(); } }}
+              disabled={!canConfirm}
+              title={canConfirm ? 'Начать звонок' : (running ? 'Идёт проверка…' : 'Сначала решите красные ошибки')}
+              style={{
+                flex: 1.4, minHeight: 46, borderRadius: 12, border: 'none',
+                cursor: canConfirm ? 'pointer' : 'not-allowed',
+                opacity: canConfirm ? 1 : 0.5,
+                background: canConfirm
+                  ? 'rgba(80,180,140,0.28)'
+                  : 'rgba(80,180,140,0.10)',
+                boxShadow: 'inset 0 0 0 0.5px rgba(123,224,177,0.5)' + (canConfirm ? ', 0 0 18px rgba(123,224,177,0.18)' : ''),
+                color: canConfirm ? '#a8efc8' : 'rgba(168,239,200,0.6)',
+                fontSize: 14, fontWeight: 600, fontFamily: 'inherit',
+              }}>
+              {running ? 'Проверяем…'
+                : readiness === 'degraded' ? 'Позвонить всё равно'
+                : 'Позвонить'}
+            </button>
+          </div>
+        )}
+
+        {/* Post-failure footer: single close button. */}
+        {mode === 'post-failure' && (
+          <div style={{ display: 'flex', marginTop: 18 }}>
+            <button onClick={onClose} style={{
+              flex: 1, minHeight: 46, borderRadius: 12, border: 'none', cursor: 'pointer',
+              background: 'rgba(255,255,255,0.06)',
+              boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.12)',
+              color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: 500, fontFamily: 'inherit',
+            }}>Закрыть</button>
           </div>
         )}
       </div>
