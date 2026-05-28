@@ -189,6 +189,15 @@ PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the dev loop, code st
 
 ---
 
+## See also
+
+- [`lite/`](lite/README.md) — **Nee2P Lite**: single-HTML P2P alternative with zero Nee2P-controlled servers.
+  Uses federated WebTorrent trackers for discovery, then WebRTC peer-to-peer.
+  Different tradeoffs (no async delivery, no push, 2-party only) — see
+  [comparison table](lite/README.md#что-это-и-чем-отличается-от-основного-nee2p).
+
+---
+
 ## License
 
 [MIT](LICENSE) — © 2025 Nee2P. contributors

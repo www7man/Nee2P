@@ -1,0 +1,1660 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<title>Nee2P Lite</title>
+<style>
+  :root {
+    --bg: #0a0b0f;
+    --bg-elev: #14161d;
+    --bg-elev-2: #1c1f29;
+    --border: #2a2e3a;
+    --text: #e8eaf0;
+    --text-dim: #9aa0b0;
+    --text-faint: #5a6070;
+    --accent: #7c5cff;
+    --accent-dim: #5a3eaa;
+    --ok: #4ade80;
+    --warn: #fbbf24;
+    --err: #f87171;
+    --ff-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --ff-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; width: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--ff-ui);
+    font-size: 15px;
+    line-height: 1.45;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #app { height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
+
+  /* ── Screen layouts ─────────────────────────────────────── */
+  .screen { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .screen-pad {
+    padding: max(env(safe-area-inset-top), 24px) 24px max(env(safe-area-inset-bottom), 24px);
+  }
+  .center-col {
+    max-width: 480px;
+    margin: 0 auto;
+    width: 100%;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 20px;
+  }
+
+  /* ── Logo ───────────────────────────────────────────────── */
+  .logo {
+    font-size: 36px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  .logo .lite {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--accent);
+    margin-left: 6px;
+    vertical-align: super;
+    letter-spacing: 0;
+  }
+  .tagline {
+    color: var(--text-dim);
+    font-size: 14px;
+    margin-top: 4px;
+  }
+
+  /* ── Buttons ────────────────────────────────────────────── */
+  .btn {
+    appearance: none;
+    border: 1px solid var(--border);
+    background: var(--bg-elev);
+    color: var(--text);
+    font: inherit;
+    padding: 14px 18px;
+    border-radius: 12px;
+    cursor: pointer;
+    min-height: 48px;
+    transition: background 0.15s, border-color 0.15s;
+    font-weight: 500;
+  }
+  .btn:hover:not(:disabled) { background: var(--bg-elev-2); }
+  .btn:active:not(:disabled) { transform: scale(0.985); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-dim); }
+  .btn-row { display: flex; gap: 10px; }
+  .btn-row .btn { flex: 1; }
+
+  /* ── Inputs ─────────────────────────────────────────────── */
+  .input, .textarea {
+    appearance: none;
+    width: 100%;
+    border: 1px solid var(--border);
+    background: var(--bg-elev);
+    color: var(--text);
+    font: inherit;
+    padding: 14px 16px;
+    border-radius: 12px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .input:focus, .textarea:focus { border-color: var(--accent); }
+  .textarea { resize: none; font-family: var(--ff-mono); font-size: 14px; line-height: 1.5; min-height: 84px; }
+  .label { font-size: 13px; color: var(--text-dim); margin-bottom: 6px; display: block; }
+
+  /* ── Status panel ───────────────────────────────────────── */
+  .status-panel {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-family: var(--ff-mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    max-height: 220px;
+    overflow-y: auto;
+  }
+  .status-line { display: flex; gap: 8px; align-items: baseline; }
+  .status-line .tag { color: var(--text-faint); width: 6em; flex-shrink: 0; }
+  .status-line .val { color: var(--text); }
+  .status-line.ok .val { color: var(--ok); }
+  .status-line.warn .val { color: var(--warn); }
+  .status-line.err .val { color: var(--err); }
+
+  /* ── Chat ───────────────────────────────────────────────── */
+  .chat-screen { display: flex; flex-direction: column; height: 100%; }
+  .chat-header {
+    padding: max(env(safe-area-inset-top), 12px) 16px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg-elev);
+  }
+  .chat-header .title { font-weight: 600; flex: 1; }
+  .chat-header .sub { font-size: 12px; color: var(--text-dim); }
+  .chat-header .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); }
+  .chat-header .dot.online { background: var(--ok); box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.15); }
+  .icon-btn {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .icon-btn:hover { background: var(--bg-elev-2); color: var(--text); }
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .msg {
+    max-width: 75%;
+    padding: 10px 14px;
+    border-radius: 16px;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    line-height: 1.4;
+    font-size: 15px;
+  }
+  .msg.them {
+    align-self: flex-start;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+  }
+  .msg.me {
+    align-self: flex-end;
+    background: var(--accent);
+    color: white;
+    border-bottom-right-radius: 4px;
+  }
+  .msg.sys {
+    align-self: center;
+    background: transparent;
+    color: var(--text-faint);
+    font-size: 12px;
+    padding: 4px 10px;
+    font-style: italic;
+  }
+  .input-bar {
+    display: flex;
+    gap: 8px;
+    padding: 10px 12px max(env(safe-area-inset-bottom), 12px);
+    border-top: 1px solid var(--border);
+    background: var(--bg-elev);
+  }
+  .input-bar .input {
+    border-radius: 22px;
+    padding: 10px 16px;
+  }
+  .send-btn {
+    appearance: none;
+    border: none;
+    background: var(--accent);
+    color: white;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Modal ──────────────────────────────────────────────── */
+  .modal-bg {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex; align-items: flex-end; justify-content: center;
+    z-index: 100;
+    animation: fade 0.15s ease-out;
+  }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  .modal {
+    background: var(--bg-elev);
+    border-radius: 20px 20px 0 0;
+    padding: 24px 20px max(env(safe-area-inset-bottom), 24px);
+    max-width: 480px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    animation: slideup 0.2s ease-out;
+  }
+  @keyframes slideup { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal h2 { font-size: 18px; margin-bottom: 12px; }
+  .modal p { color: var(--text-dim); font-size: 14px; margin-bottom: 16px; }
+  .fp-words {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 16px 0;
+  }
+  .fp-word {
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 8px;
+    text-align: center;
+    font-family: var(--ff-mono);
+    font-size: 13px;
+  }
+  .fp-word .num { color: var(--text-faint); margin-right: 4px; }
+
+  /* ── Spinner ────────────────────────────────────────────── */
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .small-link {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+    text-decoration-color: var(--text-faint);
+  }
+  .small-link:hover { color: var(--text); }
+
+  /* ── Mobile tweaks ──────────────────────────────────────── */
+  @media (max-width: 480px) {
+    .screen-pad { padding-left: 16px; padding-right: 16px; }
+    .logo { font-size: 30px; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗
+     ║  VENDOR LIBRARIES (inlined for single-file distribution)    ║
+     ║  These are copied verbatim from vendor/ in the main repo.   ║
+     ║  Hashes can be verified against the main project.           ║
+     ╚══════════════════════════════════════════════════════════════╝ -->
+
+<script>!function(A,I){"object"==typeof exports&&"object"==typeof module?module.exports=I():"function"==typeof define&&define.amd?define([],I):"object"==typeof exports?exports.argon2=I():A.argon2=I()}(this,(function(){return(()=>{var A,I,g={773:(A,I,g)=>{var B,Q="undefined"!=typeof self&&void 0!==self.Module?self.Module:{},C={};for(B in Q)Q.hasOwnProperty(B)&&(C[B]=Q[B]);var E,i,o,D,e=[];E="object"==typeof window,i="function"==typeof importScripts,o="object"==typeof process&&"object"==typeof process.versions&&"string"==typeof process.versions.node,D=!E&&!o&&!i;var n,t,a,r,s,y="";o?(y=i?g(967).dirname(y)+"/":"//",n=function(A,I){return r||(r=g(145)),s||(s=g(967)),A=s.normalize(A),r.readFileSync(A,I?null:"utf8")},a=function(A){var I=n(A,!0);return I.buffer||(I=new Uint8Array(I)),G(I.buffer),I},process.argv.length>1&&process.argv[1].replace(/\\/g,"/"),e=process.argv.slice(2),A.exports=Q,process.on("uncaughtException",(function(A){if(!(A instanceof V))throw A})),process.on("unhandledRejection",u),Q.inspect=function(){return"[Emscripten Module object]"}):D?("undefined"!=typeof read&&(n=function(A){return read(A)}),a=function(A){var I;return"function"==typeof readbuffer?new Uint8Array(readbuffer(A)):(G("object"==typeof(I=read(A,"binary"))),I)},"undefined"!=typeof scriptArgs?e=scriptArgs:void 0!==arguments&&(e=arguments),"undefined"!=typeof print&&("undefined"==typeof console&&(console={}),console.log=print,console.warn=console.error="undefined"!=typeof printErr?printErr:print)):(E||i)&&(i?y=self.location.href:"undefined"!=typeof document&&document.currentScript&&(y=document.currentScript.src),y=0!==y.indexOf("blob:")?y.substr(0,y.lastIndexOf("/")+1):"",n=function(A){var I=new XMLHttpRequest;return I.open("GET",A,!1),I.send(null),I.responseText},i&&(a=function(A){var I=new XMLHttpRequest;return I.open("GET",A,!1),I.responseType="arraybuffer",I.send(null),new Uint8Array(I.response)}),t=function(A,I,g){var B=new XMLHttpRequest;B.open("GET",A,!0),B.responseType="arraybuffer",B.onload=function(){200==B.status||0==B.status&&B.response?I(B.response):g()},B.onerror=g,B.send(null)}),Q.print||console.log.bind(console);var F,c,w=Q.printErr||console.warn.bind(console);for(B in C)C.hasOwnProperty(B)&&(Q[B]=C[B]);C=null,Q.arguments&&(e=Q.arguments),Q.thisProgram&&Q.thisProgram,Q.quit&&Q.quit,Q.wasmBinary&&(F=Q.wasmBinary),Q.noExitRuntime,"object"!=typeof WebAssembly&&u("no native wasm support detected");var h=!1;function G(A,I){A||u("Assertion failed: "+I)}var N,R,f="undefined"!=typeof TextDecoder?new TextDecoder("utf8"):void 0;function U(A){N=A,Q.HEAP8=new Int8Array(A),Q.HEAP16=new Int16Array(A),Q.HEAP32=new Int32Array(A),Q.HEAPU8=R=new Uint8Array(A),Q.HEAPU16=new Uint16Array(A),Q.HEAPU32=new Uint32Array(A),Q.HEAPF32=new Float32Array(A),Q.HEAPF64=new Float64Array(A)}Q.INITIAL_MEMORY;var M,Y=[],S=[],H=[],d=0,k=null,J=null;function u(A){throw Q.onAbort&&Q.onAbort(A),w(A+=""),h=!0,A="abort("+A+"). Build with -s ASSERTIONS=1 for more info.",new WebAssembly.RuntimeError(A)}function p(A){return A.startsWith("data:application/octet-stream;base64,")}function L(A){return A.startsWith("file://")}Q.preloadedImages={},Q.preloadedAudios={};var l,K="argon2.wasm";function q(A){try{if(A==K&&F)return new Uint8Array(F);if(a)return a(A);throw"both async and sync fetching of the wasm failed"}catch(A){u(A)}}function b(A){for(;A.length>0;){var I=A.shift();if("function"!=typeof I){var g=I.func;"number"==typeof g?void 0===I.arg?M.get(g)():M.get(g)(I.arg):g(void 0===I.arg?null:I.arg)}else I(Q)}}function x(A){try{return c.grow(A-N.byteLength+65535>>>16),U(c.buffer),1}catch(A){}}p(K)||(l=K,K=Q.locateFile?Q.locateFile(l,y):y+l);var m,X={a:function(A,I,g){R.copyWithin(A,I,I+g)},b:function(A){var I,g=R.length,B=2147418112;if((A>>>=0)>B)return!1;for(var Q=1;Q<=4;Q*=2){var C=g*(1+.2/Q);if(C=Math.min(C,A+100663296),x(Math.min(B,((I=Math.max(A,C))%65536>0&&(I+=65536-I%65536),I))))return!0}return!1}},W=(function(){var A={a:X};function I(A,I){var g,B=A.exports;Q.asm=B,U((c=Q.asm.c).buffer),M=Q.asm.k,g=Q.asm.d,S.unshift(g),function(A){if(d--,Q.monitorRunDependencies&&Q.monitorRunDependencies(d),0==d&&(null!==k&&(clearInterval(k),k=null),J)){var I=J;J=null,I()}}()}function g(A){I(A.instance)}function B(I){return function(){if(!F&&(E||i)){if("function"==typeof fetch&&!L(K))return fetch(K,{credentials:"same-origin"}).then((function(A){if(!A.ok)throw"failed to load wasm binary file at '"+K+"'";return A.arrayBuffer()})).catch((function(){return q(K)}));if(t)return new Promise((function(A,I){t(K,(function(I){A(new Uint8Array(I))}),I)}))}return Promise.resolve().then((function(){return q(K)}))}().then((function(I){return WebAssembly.instantiate(I,A)})).then(I,(function(A){w("failed to asynchronously prepare wasm: "+A),u(A)}))}if(d++,Q.monitorRunDependencies&&Q.monitorRunDependencies(d),Q.instantiateWasm)try{return Q.instantiateWasm(A,I)}catch(A){return w("Module.instantiateWasm callback failed with error: "+A),!1}F||"function"!=typeof WebAssembly.instantiateStreaming||p(K)||L(K)||"function"!=typeof fetch?B(g):fetch(K,{credentials:"same-origin"}).then((function(I){return WebAssembly.instantiateStreaming(I,A).then(g,(function(A){return w("wasm streaming compile failed: "+A),w("falling back to ArrayBuffer instantiation"),B(g)}))}))}(),Q.___wasm_call_ctors=function(){return(Q.___wasm_call_ctors=Q.asm.d).apply(null,arguments)},Q._argon2_hash=function(){return(Q._argon2_hash=Q.asm.e).apply(null,arguments)},Q._malloc=function(){return(W=Q._malloc=Q.asm.f).apply(null,arguments)}),T=(Q._free=function(){return(Q._free=Q.asm.g).apply(null,arguments)},Q._argon2_verify=function(){return(Q._argon2_verify=Q.asm.h).apply(null,arguments)},Q._argon2_error_message=function(){return(Q._argon2_error_message=Q.asm.i).apply(null,arguments)},Q._argon2_encodedlen=function(){return(Q._argon2_encodedlen=Q.asm.j).apply(null,arguments)},Q._argon2_hash_ext=function(){return(Q._argon2_hash_ext=Q.asm.l).apply(null,arguments)},Q._argon2_verify_ext=function(){return(Q._argon2_verify_ext=Q.asm.m).apply(null,arguments)},Q.stackAlloc=function(){return(T=Q.stackAlloc=Q.asm.n).apply(null,arguments)});function V(A){this.name="ExitStatus",this.message="Program terminated with exit("+A+")",this.status=A}function j(A){function I(){m||(m=!0,Q.calledRun=!0,h||(b(S),Q.onRuntimeInitialized&&Q.onRuntimeInitialized(),function(){if(Q.postRun)for("function"==typeof Q.postRun&&(Q.postRun=[Q.postRun]);Q.postRun.length;)A=Q.postRun.shift(),H.unshift(A);var A;b(H)}()))}A=A||e,d>0||(function(){if(Q.preRun)for("function"==typeof Q.preRun&&(Q.preRun=[Q.preRun]);Q.preRun.length;)A=Q.preRun.shift(),Y.unshift(A);var A;b(Y)}(),d>0||(Q.setStatus?(Q.setStatus("Running..."),setTimeout((function(){setTimeout((function(){Q.setStatus("")}),1),I()}),1)):I()))}if(Q.allocate=function(A,I){var g;return g=1==I?T(A.length):W(A.length),A.subarray||A.slice?R.set(A,g):R.set(new Uint8Array(A),g),g},Q.UTF8ToString=function(A,I){return A?function(A,I,g){for(var B=I+g,Q=I;A[Q]&&!(Q>=B);)++Q;if(Q-I>16&&A.subarray&&f)return f.decode(A.subarray(I,Q));for(var C="";I<Q;){var E=A[I++];if(128&E){var i=63&A[I++];if(192!=(224&E)){var o=63&A[I++];if((E=224==(240&E)?(15&E)<<12|i<<6|o:(7&E)<<18|i<<12|o<<6|63&A[I++])<65536)C+=String.fromCharCode(E);else{var D=E-65536;C+=String.fromCharCode(55296|D>>10,56320|1023&D)}}else C+=String.fromCharCode((31&E)<<6|i)}else C+=String.fromCharCode(E)}return C}(R,A,I):""},Q.ALLOC_NORMAL=0,J=function A(){m||j(),m||(J=A)},Q.run=j,Q.preInit)for("function"==typeof Q.preInit&&(Q.preInit=[Q.preInit]);Q.preInit.length>0;)Q.preInit.pop()();j(),A.exports=Q,Q.unloadRuntime=function(){"undefined"!=typeof self&&delete self.Module,Q=c=M=N=R=void 0,delete A.exports}},631:function(A,I,g){var B,Q;"undefined"!=typeof self&&self,void 0===(Q="function"==typeof(B=function(){const A="undefined"!=typeof self?self:this,I={Argon2d:0,Argon2i:1,Argon2id:2};function B(I){if(B._promise)return B._promise;if(B._module)return Promise.resolve(B._module);let C;return C=A.process&&A.process.versions&&A.process.versions.node?Q().then((A=>new Promise((I=>{A.postRun=()=>I(A)})))):(A.loadArgon2WasmBinary?A.loadArgon2WasmBinary():Promise.resolve(g(721)).then((A=>function(A){const I=atob(A),g=new Uint8Array(new ArrayBuffer(I.length));for(let A=0;A<I.length;A++)g[A]=I.charCodeAt(A);return g}(A)))).then((g=>function(I,g){return new Promise((B=>(A.Module={wasmBinary:I,wasmMemory:g,postRun(){B(Module)}},Q())))}(g,I?function(A){const I=1024,g=64*I,B=(1024*I*1024*2-64*I)/g,Q=Math.min(Math.max(Math.ceil(A*I/g),256)+256,B);return new WebAssembly.Memory({initial:Q,maximum:B})}(I):void 0))),B._promise=C,C.then((A=>(B._module=A,delete B._promise,A)))}function Q(){return A.loadArgon2WasmModule?A.loadArgon2WasmModule():Promise.resolve(g(773))}function C(A,I){return A.allocate(I,"i8",A.ALLOC_NORMAL)}function E(A,I){return C(A,new Uint8Array([...I,0]))}function i(A){if("string"!=typeof A)return A;if("function"==typeof TextEncoder)return(new TextEncoder).encode(A);if("function"==typeof Buffer)return Buffer.from(A);throw new Error("Don't know how to encode UTF8")}return{ArgonType:I,hash:function(A){const g=A.mem||1024;return B(g).then((B=>{const Q=A.time||1,o=A.parallelism||1,D=i(A.pass),e=E(B,D),n=D.length,t=i(A.salt),a=E(B,t),r=t.length,s=A.type||I.Argon2d,y=B.allocate(new Array(A.hashLen||24),"i8",B.ALLOC_NORMAL),F=A.secret?C(B,A.secret):0,c=A.secret?A.secret.byteLength:0,w=A.ad?C(B,A.ad):0,h=A.ad?A.ad.byteLength:0,G=A.hashLen||24,N=B._argon2_encodedlen(Q,g,o,r,G,s),R=B.allocate(new Array(N+1),"i8",B.ALLOC_NORMAL);let f,U,M;try{U=B._argon2_hash_ext(Q,g,o,e,n,a,r,y,G,R,N,s,F,c,w,h,19)}catch(A){f=A}if(0!==U||f){try{f||(f=B.UTF8ToString(B._argon2_error_message(U)))}catch(A){}M={message:f,code:U}}else{let A="";const I=new Uint8Array(G);for(let g=0;g<G;g++){const Q=B.HEAP8[y+g];I[g]=Q,A+=("0"+(255&Q).toString(16)).slice(-2)}M={hash:I,hashHex:A,encoded:B.UTF8ToString(R)}}try{B._free(e),B._free(a),B._free(y),B._free(R),w&&B._free(w),F&&B._free(F)}catch(A){}if(f)throw M;return M}))},verify:function(A){return B().then((g=>{const B=i(A.pass),Q=E(g,B),o=B.length,D=A.secret?C(g,A.secret):0,e=A.secret?A.secret.byteLength:0,n=A.ad?C(g,A.ad):0,t=A.ad?A.ad.byteLength:0,a=E(g,i(A.encoded));let r,s,y,F=A.type;if(void 0===F){let g=A.encoded.split("$")[1];g&&(g=g.replace("a","A"),F=I[g]||I.Argon2d)}try{s=g._argon2_verify_ext(a,Q,o,D,e,n,t,F)}catch(A){r=A}if(s||r){try{r||(r=g.UTF8ToString(g._argon2_error_message(s)))}catch(A){}y={message:r,code:s}}try{g._free(Q),g._free(a)}catch(A){}if(r)throw y;return y}))},unloadRuntime:function(){B._module&&(B._module.unloadRuntime(),delete B._promise,delete B._module)}}})?B.apply(I,[]):B)||(A.exports=Q)},721:function(A,I){A.exports="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DwtBixEPC0GeEyEBCyABC48DAQF/IwBBgANrIgQkACAEQQA2AowBIARBjAFqIAEQBwJAIAFBwABNBEAgBEGQAWogARAYQQBIDQEgBEGQAWogBEGMAWpBBBAGQQBIDQEgBEGQAWogAiADEAZBAEgNASAEQZABaiAAIAEQEhoMAQsgBEGQAWpBwAAQGEEASA0AIARBkAFqIARBjAFqQQQQBkEASA0AIARBkAFqIAIgAxAGQQBIDQAgBEGQAWogBEFAa0HAABASQQBIDQAgACAEKQNANwAAIAAgBCkDSDcACCAAIAQpA1g3ABggACAEKQNQNwAQIABBIGohACABQSBrIgJBwQBPBEADQCAEIARBQGtBwAAQBSIBQUBrQcAAIAEQMUEASA0CIAAgASkDQDcAACAAIAEpA0g3AAggACAEKQNYNwAYIAAgBCkDUDcAECAAQSBqIQAgAkEgayICQcAASw0ACwsgBCAEQUBrQcAAEAUiAUFAayACIAEQMUEASA0AIAAgAUFAayACEAUaCyAEQZABakHwARAEIARBgANqJAALAwABC5kCACAARQRAQQAPCwJ/AkAgAAR/IAFB/wBNDQECQEGgHigCACgCAEUEQCABQYB/cUGAvwNGDQMMAQsgAUH/D00EQCAAIAFBP3FBgAFyOgABIAAgAUEGdkHAAXI6AABBAgwECyABQYCwA09BACABQYBAcUGAwANHG0UEQCAAIAFBP3FBgAFyOgACIAAgAUEMdkHgAXI6AAAgACABQQZ2QT9xQYABcjoAAUEDDAQLIAFBgIAEa0H//z9NBEAgACABQT9xQYABcjoAAyAAIAFBEnZB8AFyOgAAIAAgAUEGdkE/cUGAAXI6AAIgACABQQx2QT9xQYABcjoAAUEEDAQLC0HcHkEZNgIAQX8FQQELDAELIAAgAToAAEEBCwtQAQN/AkAgACgCACwAABAPRQRADAELA0AgACgCACICLAAAIQMgACACQQFqNgIAIAEgA2pBMGshASACLAABEA9FDQEgAUEKbCEBDAALAAsgAQu7AgACQCABQRRLDQACQAJAAkACQAJAAkACQAJAAkACQCABQQlrDgoAAQIDBAUGBwgJCgsgAiACKAIAIgFBBGo2AgAgACABKAIANgIADwsgAiACKAIAIgFBBGo2AgAgACABNAIANwMADwsgAiACKAIAIgFBBGo2AgAgACABNQIANwMADwsgAiACKAIAQQdqQXhxIgFBCGo2AgAgACABKQMANwMADwsgAiACKAIAIgFBBGo2AgAgACABMgEANwMADwsgAiACKAIAIgFBBGo2AgAgACABMwEANwMADwsgAiACKAIAIgFBBGo2AgAgACABMAAANwMADwsgAiACKAIAIgFBBGo2AgAgACABMQAANwMADwsgAiACKAIAQQdqQXhxIgFBCGo2AgAgACABKwMAOQMADwsgACACQQARAgALCxkAIAAtAOgBBEAgAEJ/NwNYCyAAQn83A1ALIwAgASABKQMwQgF8NwMwIAIgASAAQQAQESACIAAgAEEAEBELOQECfyAAQQNuIgJBAnQhAQJAAkACQCACQQNsQX9zIABqDgIBAAILIAFBAXIhAQsgAUECaiEBCyABC3oBAn8gAEHA/wBzQQFqQQh2QX9zQS9xIABBwf8Ac0EBakEIdkF/c0ErcSAAQeb/A2pBCHZB/wFxIgEgAEHBAGpxcnIgAEHM/wNqQQh2IgIgAEHHAGpxIAFB/wFzcXIgAEH8AWogAEHC/wNqQQh2cSACQX9zcUH/AXFyC9YBAQV/QX8hBCADQQNuIgZBAnQhBQJAAkACQCAGQQNsQX9zIANqDgIBAAILIAVBAXIhBQsgBUECaiEFCyABIAVLBH8CQCADRQ0AQQAhAUEIIQQDQCABIAItAAAiCHIhBwNAIAAiASAHIAQiBkEGayIEdkE/cRAoOgAAIAFBAWohACAEQQVLDQALIANBAWsiAwRAIAJBAWohAiAHQQh0IQEgBEEIaiEEDAELCyAERQ0AIAEgCEEMIAZrdEE/cRAoOgABIAFBAmohAAsgAEEAOgAAIAUFIAQLC8oEAQN/IwBB4ABrIgQkACADEB8hBSACEBwhAwJAAkAgBUUNACADDQEgAUECSQ0AIABBJDsAACABQQFrIgMgBRAKIgFNDQAgAEEBaiAFIAFBAWoQBSEAIAMgAWsiA0EESQ0AIAAgAWoiAUGk7PUBNgAAIAQgAigCODYCMCAEQUBrIARBMGoQEyADQQNrIgMgBEFAaxAKIgBNDQAgAUEDaiAEQUBrIABBAWoQBSEBIAMgAGsiA0EESQ0AIAAgAWoiAUGk2vUBNgAAIAQgAigCLDYCICAEQUBrIARBIGoQEyADQQNrIgMgBEFAaxAKIgBNDQAgAUEDaiAEQUBrIABBAWoQBSEBIAMgAGsiA0EESQ0AIAAgAWoiAUGs6PUBNgAAIAQgAigCKDYCECAEQUBrIARBEGoQEyADQQNrIgMgBEFAaxAKIgBNDQAgAUEDaiAEQUBrIABBAWoQBSEBIAMgAGsiA0EESQ0AIAAgAWoiAUGs4PUBNgAAIAQgAigCMDYCACAEQUBrIAQQEyADQQNrIgMgBEFAaxAKIgBNDQAgAUEDaiAEQUBrIABBAWoQBSEBIAMgAGsiA0ECSQ0AIAAgAWoiAEEkOwAAIABBAWoiACADQQFrIgYgAigCECACKAIUECkiAUF/RiIFDQBBYSEDIAZBACABIAUbayIGQQJJDQEgACAAIAFqIAUbIgBBJDsAACAAQQFqIAZBAWsgAigCACACKAIEECkhACAEQeAAaiQAQWFBACAAQX9GGw8LQWEhAwsgBEHgAGokACADC7gBAQF/QQAgAEEEaiAAQdD/A2pBCHZBf3NxQTkgAGtBCHZBf3NxQf8BcSAAQcEAayIBIAFBCHZBf3NxQdoAIABrQQh2QX9zcUH/AXEgAEG5AWogAEGf/wNqQQh2QX9zcUH6ACAAa0EIdkF/c3FB/wFxIABB0P8Ac0EBakEIdkF/c0E/cSAAQdT/AHNBAWpBCHZBf3NBPnFycnJyIgFrQQh2QX9zIABBvv8Dc0EBakEIdnFB/wFxIAFyC64BAQR/An8CfyACLAAAECsiBkH/AUYEQEF/DAELA0AgBCAGaiEEAkAgA0EGaiIGQQhJBEAgBiEDDAELIAEoAgAgBU0EQEEADwsgACAEIANBAmsiA3Y6AAAgAEEBaiEAIAVBAWohBQsgAkEBaiICLAAAECsiBkH/AUcEQCAEQQZ0IQQMAQsLQQAgA0EESw0BGkF/IAN0CyEDQQAgBCADQX9zcQ0AGiABIAU2AgAgAgsLrAMBBX8jAEEQayIDJAAgACgCBCEGIAAoAhQhBwJAIAIQHyIERQRAQWYhAgwBC0FgIQIgAS0AACIFQSRHDQAgAUEBaiABIAVBJEYbIgEgBCAEEAoiBBAQIgUNACAAQRA2AjggASABIARqIgEgBRsiBEHfFEEDEBBFBEAgBEEDaiADQQxqEBUiAUUNASAAIAMoAgw2AjgLIAFB6xRBAxAQDQAgAUEDaiADQQxqEBUiAUUNACAAIAMoAgw2AiwgAUHjFEEDEBANACABQQNqIANBDGoQFSIBRQ0AIAAgAygCDDYCKCABQecUQQMQEA0AIAFBA2ogA0EMahAVIgFFDQAgACADKAIMIgQ2AjAgACAENgI0IAEtAABBJEcNACADIAc2AgwgACgCECADQQxqIAFBAWoQLCIBRQ0AIAAgAygCDDYCFCABLQAAQSRHDQAgAyAGNgIMIAAoAgAgA0EMaiABQQFqECwiAUUNACAAIAMoAgw2AgQgAEEANgJEIABCADcCPCAAQgA3AhggAEIANwIgIAAQHCICDQBBYEEAIAEtAAAbIQILIANBEGokACACCykBAn8DQCAAIAJBA3QiA2ogASADaikAADcDACACQQFqIgJBgAFHDQALCwwAIABBAEGACBALGgtlAQJ/IAAgAhAeIgIEfyACBUFdQQACfyAAKAIAIQRBACECIAAoAgQiAAR/A0AgAyACIARqLQAAIAEgAmotAABzciEDIAJBAWoiAiAARw0ACyADQQFrQQh2QQFxQQFrBUEACwsbCwtdAQJ/IwBB8AFrIgMkAEF/IQQCQCACRSAARSABRXJyIAFBwABLcg0AIAMgARAYQQBIDQAgAyACQcAAEAZBAEgNACADIAAgARASIQQLIANB8AEQBCADQfABaiQAIAQLCQAgACABNwAACxAAIwAgAGtBcHEiACQAIAALMwEBfyAAKAIUIgMgASACIAAoAhAgA2siASABIAJLGyIBEAUaIAAgACgCFCABajYCFCACC9oBAQR/IwBB0ABrIggkAAJAIABFBEBBYCEADAELIAggABAKIgk2AgwgCCAJNgIcIAggCRAJIgo2AhggCCAJEAkiCzYCCEEAIQkCQAJAIApFIAtFcg0AIAggAjYCFCAIIAE2AhAgCEEIaiAAIAcQLSIADQEgCCgCCCEJIAggCCgCDBAJIgA2AgggAEUNACAIIAY2AiwgCCAFNgIoIAggBDYCJCAIIAM2AiAgCEEIaiAJIAcQMCEADAELQWohAAsgCCgCGBAIIAgoAggQCCAJEAgLIAhB0ABqJAAgAAuQAgEDfyMAQdAAayIRJABBfiETAkAgCEEESQ0AIAgQCSISRQRAQWohEwwBCyARQQA2AkwgEUIANwJEIBEgAjYCPCARIAI2AjggESABNgI0IBEgADYCMCARIA82AiwgESAONgIoIBEgDTYCJCAR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IGxvbmcgb3IgdG9vIHNob3J0AE1pc3NpbmcgYXJndW1lbnRzAFRvbyBtYW55IGxhbmVzAFRvbyBmZXcgbGFuZXMAVG9vIG1hbnkgdGhyZWFkcwBOb3QgZW5vdWdoIHRocmVhZHMATWVtb3J5IGFsbG9jYXRpb24gZXJyb3IATWVtb3J5IGNvc3QgaXMgdG9vIHNtYWxsAFRpbWUgY29zdCBpcyB0b28gc21hbGwAYXJnb24yaQBBcmdvbjJpAFRoZSBwYXNzd29yZCBkb2VzIG5vdCBtYXRjaCB0aGUgc3VwcGxpZWQgaGFzaABPdXRwdXQgcG9pbnRlciBtaXNtYXRjaABPdXRwdXQgaXMgdG9vIGxvbmcAU2FsdCBpcyB0b28gbG9uZwBTZWNyZXQgaXMgdG9vIGxvbmcAUGFzc3dvcmQgaXMgdG9vIGxvbmcAQXNzb2NpYXRlZCBkYXRhIGlzIHRvbyBsb25nAFRocmVhZGluZyBmYWlsdXJlAE1lbW9yeSBjb3N0IGlzIHRvbyBsYXJnZQBUaW1lIGNvc3QgaXMgdG9vIGxhcmdlAFVua25vd24gZXJyb3IgY29kZQBhcmdvbjJpZABBcmdvbjJpZABFbmNvZGluZyBmYWlsZWQARGVjb2RpbmcgZmFpbGVkAGFyZ29uMmQAQXJnb24yZABBcmdvbjJfQ29udGV4dCBjb250ZXh0IGlzIE5VTEwAT3V0cHV0IHBvaW50ZXIgaXMgTlVMTABUaGUgYWxsb2NhdGUgbWVtb3J5IGNhbGxiYWNrIGlzIE5VTEwAVGhlIGZyZWUgbWVtb3J5IGNhbGxiYWNrIGlzIE5VTEwAT0sAJHY9ACx0PQAscD0AJG09AFRoZXJlIGlzIG5vIHN1Y2ggdmVyc2lvbiBvZiBBcmdvbjIAU2FsdCBwb2ludGVyIGlzIE5VTEwsIGJ1dCBzYWx0IGxlbmd0aCBpcyBub3QgMABTZWNyZXQgcG9pbnRlciBpcyBOVUxMLCBidXQgc2VjcmV0IGxlbmd0aCBpcyBub3QgMABQYXNzd29yZCBwb2ludGVyIGlzIE5VTEwsIGJ1dCBwYXNzd29yZCBsZW5ndGggaXMgbm90IDAAQXNzb2NpYXRlZCBkYXRhIHBvaW50ZXIgaXMgTlVMTCwgYnV0IGFkIGxlbmd0aCBpcyBub3QgMAAobnVsbCkAAACbCAAAuwcAAEkJAADACQAAsAkAAPAHAAAfCAAAMAgAAMkIAABvCgAA4AkAABYKAAA7CgAAQwgAACsLAADBCgAAkgoAAPQKAAACCAAAEQgAAFsJAABbCAAAdAkAAHQIAAAFCQAAdAcAAC0JAACeBwAA9AgAAGIHAAAYCQAAiAcAAOEIAABOBwAA/wkAAFwKAAABAEGkGAsBAgBByxgLBf//////AEGQGQtBEQAKABEREQAAAAAFAAAAAAAACQAAAAALAAAAAAAAAAARAA8KERERAwoHAAEACQsLAAAJBgsAAAsABhEAAAAREREAQeEZCyELAAAAAAAAAAARAAoKERERAAoAAAIACQsAAAAJAAsAAAsAQZsaCwEMAEGnGgsVDAAAAAAMAAAAAAkMAAAAAAAMAAAMAEHVGgsBDgBB4RoLFQ0AAAAEDQAAAAAJDgAAAAAADgAADgBBjxsLARAAQZsbCx4PAAAAAA8AAAAACRAAAAAAABAAABAAABIAAAASEhIAQdIbCw4SAAAAEhISAAAAAAAACQBBgxwLAQsAQY8cCxUKAAAAAAoAAAAACQsAAAAAAAsAAAsAQb0cCwEMAEHJHAsnDAAAAAAMAAAAAAkMAAAAAAAMAAAMAAAwMTIzNDU2Nzg5QUJDREVGAEHwHAsBAQBBoB4LAogPAEHYHgsDkBFQ"},145:()=>{},967:()=>{}},B={};function Q(A){var I=B[A];if(void 0!==I)return I.exports;var C=B[A]={exports:{}};return g[A].call(C.exports,C,C.exports,Q),C.exports}return I=Object.getPrototypeOf?A=>Object.getPrototypeOf(A):A=>A.__proto__,Q.t=function(g,B){if(1&B&&(g=this(g)),8&B)return g;if("object"==typeof g&&g){if(4&B&&g.__esModule)return g;if(16&B&&"function"==typeof g.then)return g}var C=Object.create(null);Q.r(C);var E={};A=A||[null,I({}),I([]),I(I)];for(var i=2&B&&g;"object"==typeof i&&!~A.indexOf(i);i=I(i))Object.getOwnPropertyNames(i).forEach((A=>E[A]=()=>g[A]));return E.default=()=>g,Q.d(C,E),C},Q.d=(A,I)=>{for(var g in I)Q.o(I,g)&&!Q.o(A,g)&&Object.defineProperty(A,g,{enumerable:!0,get:I[g]})},Q.o=(A,I)=>Object.prototype.hasOwnProperty.call(A,I),Q.r=A=>{"undefined"!=typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(A,Symbol.toStringTag,{value:"Module"}),Object.defineProperty(A,"__esModule",{value:!0})},Q(631)})()}));</script>
+<script>// BIP-39 English wordlist (BIP-0039 from the bitcoin/bips repo, MIT-equivalent).
+// 2048 words. Used by Nee2PCrypto.safetyNumber() to render 12-word fingerprints.
+(function (g) { g.Nee2PBip39English = [
+"abandon","ability","able","about","above","absent","absorb","abstract",
+"absurd","abuse","access","accident","account","accuse","achieve","acid",
+"acoustic","acquire","across","act","action","actor","actress","actual",
+"adapt","add","addict","address","adjust","admit","adult","advance",
+"advice","aerobic","affair","afford","afraid","again","age","agent",
+"agree","ahead","aim","air","airport","aisle","alarm","album",
+"alcohol","alert","alien","all","alley","allow","almost","alone",
+"alpha","already","also","alter","always","amateur","amazing","among",
+"amount","amused","analyst","anchor","ancient","anger","angle","angry",
+"animal","ankle","announce","annual","another","answer","antenna","antique",
+"anxiety","any","apart","apology","appear","apple","approve","april",
+"arch","arctic","area","arena","argue","arm","armed","armor",
+"army","around","arrange","arrest","arrive","arrow","art","artefact",
+"artist","artwork","ask","aspect","assault","asset","assist","assume",
+"asthma","athlete","atom","attack","attend","attitude","attract","auction",
+"audit","august","aunt","author","auto","autumn","average","avocado",
+"avoid","awake","aware","away","awesome","awful","awkward","axis",
+"baby","bachelor","bacon","badge","bag","balance","balcony","ball",
+"bamboo","banana","banner","bar","barely","bargain","barrel","base",
+"basic","basket","battle","beach","bean","beauty","because","become",
+"beef","before","begin","behave","behind","believe","below","belt",
+"bench","benefit","best","betray","better","between","beyond","bicycle",
+"bid","bike","bind","biology","bird","birth","bitter","black",
+"blade","blame","blanket","blast","bleak","bless","blind","blood",
+"blossom","blouse","blue","blur","blush","board","boat","body",
+"boil","bomb","bone","bonus","book","boost","border","boring",
+"borrow","boss","bottom","bounce","box","boy","bracket","brain",
+"brand","brass","brave","bread","breeze","brick","bridge","brief",
+"bright","bring","brisk","broccoli","broken","bronze","broom","brother",
+"brown","brush","bubble","buddy","budget","buffalo","build","bulb",
+"bulk","bullet","bundle","bunker","burden","burger","burst","bus",
+"business","busy","butter","buyer","buzz","cabbage","cabin","cable",
+"cactus","cage","cake","call","calm","camera","camp","can",
+"canal","cancel","candy","cannon","canoe","canvas","canyon","capable",
+"capital","captain","car","carbon","card","cargo","carpet","carry",
+"cart","case","cash","casino","castle","casual","cat","catalog",
+"catch","category","cattle","caught","cause","caution","cave","ceiling",
+"celery","cement","census","century","cereal","certain","chair","chalk",
+"champion","change","chaos","chapter","charge","chase","chat","cheap",
+"check","cheese","chef","cherry","chest","chicken","chief","child",
+"chimney","choice","choose","chronic","chuckle","chunk","churn","cigar",
+"cinnamon","circle","citizen","city","civil","claim","clap","clarify",
+"claw","clay","clean","clerk","clever","click","client","cliff",
+"climb","clinic","clip","clock","clog","close","cloth","cloud",
+"clown","club","clump","cluster","clutch","coach","coast","coconut",
+"code","coffee","coil","coin","collect","color","column","combine",
+"come","comfort","comic","common","company","concert","conduct","confirm",
+"congress","connect","consider","control","convince","cook","cool","copper",
+"copy","coral","core","corn","correct","cost","cotton","couch",
+"country","couple","course","cousin","cover","coyote","crack","cradle",
+"craft","cram","crane","crash","crater","crawl","crazy","cream",
+"credit","creek","crew","cricket","crime","crisp","critic","crop",
+"cross","crouch","crowd","crucial","cruel","cruise","crumble","crunch",
+"crush","cry","crystal","cube","culture","cup","cupboard","curious",
+"current","curtain","curve","cushion","custom","cute","cycle","dad",
+"damage","damp","dance","danger","daring","dash","daughter","dawn",
+"day","deal","debate","debris","decade","december","decide","decline",
+"decorate","decrease","deer","defense","define","defy","degree","delay",
+"deliver","demand","demise","denial","dentist","deny","depart","depend",
+"deposit","depth","deputy","derive","describe","desert","design","desk",
+"despair","destroy","detail","detect","develop","device","devote","diagram",
+"dial","diamond","diary","dice","diesel","diet","differ","digital",
+"dignity","dilemma","dinner","dinosaur","direct","dirt","disagree","discover",
+"disease","dish","dismiss","disorder","display","distance","divert","divide",
+"divorce","dizzy","doctor","document","dog","doll","dolphin","domain",
+"donate","donkey","donor","door","dose","double","dove","draft",
+"dragon","drama","drastic","draw","dream","dress","drift","drill",
+"drink","drip","drive","drop","drum","dry","duck","dumb",
+"dune","during","dust","dutch","duty","dwarf","dynamic","eager",
+"eagle","early","earn","earth","easily","east","easy","echo",
+"ecology","economy","edge","edit","educate","effort","egg","eight",
+"either","elbow","elder","electric","elegant","element","elephant","elevator",
+"elite","else","embark","embody","embrace","emerge","emotion","employ",
+"empower","empty","enable","enact","end","endless","endorse","enemy",
+"energy","enforce","engage","engine","enhance","enjoy","enlist","enough",
+"enrich","enroll","ensure","enter","entire","entry","envelope","episode",
+"equal","equip","era","erase","erode","erosion","error","erupt",
+"escape","essay","essence","estate","eternal","ethics","evidence","evil",
+"evoke","evolve","exact","example","excess","exchange","excite","exclude",
+"excuse","execute","exercise","exhaust","exhibit","exile","exist","exit",
+"exotic","expand","expect","expire","explain","expose","express","extend",
+"extra","eye","eyebrow","fabric","face","faculty","fade","faint",
+"faith","fall","false","fame","family","famous","fan","fancy",
+"fantasy","farm","fashion","fat","fatal","father","fatigue","fault",
+"favorite","feature","february","federal","fee","feed","feel","female",
+"fence","festival","fetch","fever","few","fiber","fiction","field",
+"figure","file","film","filter","final","find","fine","finger",
+"finish","fire","firm","first","fiscal","fish","fit","fitness",
+"fix","flag","flame","flash","flat","flavor","flee","flight",
+"flip","float","flock","floor","flower","fluid","flush","fly",
+"foam","focus","fog","foil","fold","follow","food","foot",
+"force","forest","forget","fork","fortune","forum","forward","fossil",
+"foster","found","fox","fragile","frame","frequent","fresh","friend",
+"fringe","frog","front","frost","frown","frozen","fruit","fuel",
+"fun","funny","furnace","fury","future","gadget","gain","galaxy",
+"gallery","game","gap","garage","garbage","garden","garlic","garment",
+"gas","gasp","gate","gather","gauge","gaze","general","genius",
+"genre","gentle","genuine","gesture","ghost","giant","gift","giggle",
+"ginger","giraffe","girl","give","glad","glance","glare","glass",
+"glide","glimpse","globe","gloom","glory","glove","glow","glue",
+"goat","goddess","gold","good","goose","gorilla","gospel","gossip",
+"govern","gown","grab","grace","grain","grant","grape","grass",
+"gravity","great","green","grid","grief","grit","grocery","group",
+"grow","grunt","guard","guess","guide","guilt","guitar","gun",
+"gym","habit","hair","half","hammer","hamster","hand","happy",
+"harbor","hard","harsh","harvest","hat","have","hawk","hazard",
+"head","health","heart","heavy","hedgehog","height","hello","helmet",
+"help","hen","hero","hidden","high","hill","hint","hip",
+"hire","history","hobby","hockey","hold","hole","holiday","hollow",
+"home","honey","hood","hope","horn","horror","horse","hospital",
+"host","hotel","hour","hover","hub","huge","human","humble",
+"humor","hundred","hungry","hunt","hurdle","hurry","hurt","husband",
+"hybrid","ice","icon","idea","identify","idle","ignore","ill",
+"illegal","illness","image","imitate","immense","immune","impact","impose",
+"improve","impulse","inch","include","income","increase","index","indicate",
+"indoor","industry","infant","inflict","inform","inhale","inherit","initial",
+"inject","injury","inmate","inner","innocent","input","inquiry","insane",
+"insect","inside","inspire","install","intact","interest","into","invest",
+"invite","involve","iron","island","isolate","issue","item","ivory",
+"jacket","jaguar","jar","jazz","jealous","jeans","jelly","jewel",
+"job","join","joke","journey","joy","judge","juice","jump",
+"jungle","junior","junk","just","kangaroo","keen","keep","ketchup",
+"key","kick","kid","kidney","kind","kingdom","kiss","kit",
+"kitchen","kite","kitten","kiwi","knee","knife","knock","know",
+"lab","label","labor","ladder","lady","lake","lamp","language",
+"laptop","large","later","latin","laugh","laundry","lava","law",
+"lawn","lawsuit","layer","lazy","leader","leaf","learn","leave",
+"lecture","left","leg","legal","legend","leisure","lemon","lend",
+"length","lens","leopard","lesson","letter","level","liar","liberty",
+"library","license","life","lift","light","like","limb","limit",
+"link","lion","liquid","list","little","live","lizard","load",
+"loan","lobster","local","lock","logic","lonely","long","loop",
+"lottery","loud","lounge","love","loyal","lucky","luggage","lumber",
+"lunar","lunch","luxury","lyrics","machine","mad","magic","magnet",
+"maid","mail","main","major","make","mammal","man","manage",
+"mandate","mango","mansion","manual","maple","marble","march","margin",
+"marine","market","marriage","mask","mass","master","match","material",
+"math","matrix","matter","maximum","maze","meadow","mean","measure",
+"meat","mechanic","medal","media","melody","melt","member","memory",
+"mention","menu","mercy","merge","merit","merry","mesh","message",
+"metal","method","middle","midnight","milk","million","mimic","mind",
+"minimum","minor","minute","miracle","mirror","misery","miss","mistake",
+"mix","mixed","mixture","mobile","model","modify","mom","moment",
+"monitor","monkey","monster","month","moon","moral","more","morning",
+"mosquito","mother","motion","motor","mountain","mouse","move","movie",
+"much","muffin","mule","multiply","muscle","museum","mushroom","music",
+"must","mutual","myself","mystery","myth","naive","name","napkin",
+"narrow","nasty","nation","nature","near","neck","need","negative",
+"neglect","neither","nephew","nerve","nest","net","network","neutral",
+"never","news","next","nice","night","noble","noise","nominee",
+"noodle","normal","north","nose","notable","note","nothing","notice",
+"novel","now","nuclear","number","nurse","nut","oak","obey",
+"object","oblige","obscure","observe","obtain","obvious","occur","ocean",
+"october","odor","off","offer","office","often","oil","okay",
+"old","olive","olympic","omit","once","one","onion","online",
+"only","open","opera","opinion","oppose","option","orange","orbit",
+"orchard","order","ordinary","organ","orient","original","orphan","ostrich",
+"other","outdoor","outer","output","outside","oval","oven","over",
+"own","owner","oxygen","oyster","ozone","pact","paddle","page",
+"pair","palace","palm","panda","panel","panic","panther","paper",
+"parade","parent","park","parrot","party","pass","patch","path",
+"patient","patrol","pattern","pause","pave","payment","peace","peanut",
+"pear","peasant","pelican","pen","penalty","pencil","people","pepper",
+"perfect","permit","person","pet","phone","photo","phrase","physical",
+"piano","picnic","picture","piece","pig","pigeon","pill","pilot",
+"pink","pioneer","pipe","pistol","pitch","pizza","place","planet",
+"plastic","plate","play","please","pledge","pluck","plug","plunge",
+"poem","poet","point","polar","pole","police","pond","pony",
+"pool","popular","portion","position","possible","post","potato","pottery",
+"poverty","powder","power","practice","praise","predict","prefer","prepare",
+"present","pretty","prevent","price","pride","primary","print","priority",
+"prison","private","prize","problem","process","produce","profit","program",
+"project","promote","proof","property","prosper","protect","proud","provide",
+"public","pudding","pull","pulp","pulse","pumpkin","punch","pupil",
+"puppy","purchase","purity","purpose","purse","push","put","puzzle",
+"pyramid","quality","quantum","quarter","question","quick","quit","quiz",
+"quote","rabbit","raccoon","race","rack","radar","radio","rail",
+"rain","raise","rally","ramp","ranch","random","range","rapid",
+"rare","rate","rather","raven","raw","razor","ready","real",
+"reason","rebel","rebuild","recall","receive","recipe","record","recycle",
+"reduce","reflect","reform","refuse","region","regret","regular","reject",
+"relax","release","relief","rely","remain","remember","remind","remove",
+"render","renew","rent","reopen","repair","repeat","replace","report",
+"require","rescue","resemble","resist","resource","response","result","retire",
+"retreat","return","reunion","reveal","review","reward","rhythm","rib",
+"ribbon","rice","rich","ride","ridge","rifle","right","rigid",
+"ring","riot","ripple","risk","ritual","rival","river","road",
+"roast","robot","robust","rocket","romance","roof","rookie","room",
+"rose","rotate","rough","round","route","royal","rubber","rude",
+"rug","rule","run","runway","rural","sad","saddle","sadness",
+"safe","sail","salad","salmon","salon","salt","salute","same",
+"sample","sand","satisfy","satoshi","sauce","sausage","save","say",
+"scale","scan","scare","scatter","scene","scheme","school","science",
+"scissors","scorpion","scout","scrap","screen","script","scrub","sea",
+"search","season","seat","second","secret","section","security","seed",
+"seek","segment","select","sell","seminar","senior","sense","sentence",
+"series","service","session","settle","setup","seven","shadow","shaft",
+"shallow","share","shed","shell","sheriff","shield","shift","shine",
+"ship","shiver","shock","shoe","shoot","shop","short","shoulder",
+"shove","shrimp","shrug","shuffle","shy","sibling","sick","side",
+"siege","sight","sign","silent","silk","silly","silver","similar",
+"simple","since","sing","siren","sister","situate","six","size",
+"skate","sketch","ski","skill","skin","skirt","skull","slab",
+"slam","sleep","slender","slice","slide","slight","slim","slogan",
+"slot","slow","slush","small","smart","smile","smoke","smooth",
+"snack","snake","snap","sniff","snow","soap","soccer","social",
+"sock","soda","soft","solar","soldier","solid","solution","solve",
+"someone","song","soon","sorry","sort","soul","sound","soup",
+"source","south","space","spare","spatial","spawn","speak","special",
+"speed","spell","spend","sphere","spice","spider","spike","spin",
+"spirit","split","spoil","sponsor","spoon","sport","spot","spray",
+"spread","spring","spy","square","squeeze","squirrel","stable","stadium",
+"staff","stage","stairs","stamp","stand","start","state","stay",
+"steak","steel","stem","step","stereo","stick","still","sting",
+"stock","stomach","stone","stool","story","stove","strategy","street",
+"strike","strong","struggle","student","stuff","stumble","style","subject",
+"submit","subway","success","such","sudden","suffer","sugar","suggest",
+"suit","summer","sun","sunny","sunset","super","supply","supreme",
+"sure","surface","surge","surprise","surround","survey","suspect","sustain",
+"swallow","swamp","swap","swarm","swear","sweet","swift","swim",
+"swing","switch","sword","symbol","symptom","syrup","system","table",
+"tackle","tag","tail","talent","talk","tank","tape","target",
+"task","taste","tattoo","taxi","teach","team","tell","ten",
+"tenant","tennis","tent","term","test","text","thank","that",
+"theme","then","theory","there","they","thing","this","thought",
+"three","thrive","throw","thumb","thunder","ticket","tide","tiger",
+"tilt","timber","time","tiny","tip","tired","tissue","title",
+"toast","tobacco","today","toddler","toe","together","toilet","token",
+"tomato","tomorrow","tone","tongue","tonight","tool","tooth","top",
+"topic","topple","torch","tornado","tortoise","toss","total","tourist",
+"toward","tower","town","toy","track","trade","traffic","tragic",
+"train","transfer","trap","trash","travel","tray","treat","tree",
+"trend","trial","tribe","trick","trigger","trim","trip","trophy",
+"trouble","truck","true","truly","trumpet","trust","truth","try",
+"tube","tuition","tumble","tuna","tunnel","turkey","turn","turtle",
+"twelve","twenty","twice","twin","twist","two","type","typical",
+"ugly","umbrella","unable","unaware","uncle","uncover","under","undo",
+"unfair","unfold","unhappy","uniform","unique","unit","universe","unknown",
+"unlock","until","unusual","unveil","update","upgrade","uphold","upon",
+"upper","upset","urban","urge","usage","use","used","useful",
+"useless","usual","utility","vacant","vacuum","vague","valid","valley",
+"valve","van","vanish","vapor","various","vast","vault","vehicle",
+"velvet","vendor","venture","venue","verb","verify","version","very",
+"vessel","veteran","viable","vibrant","vicious","victory","video","view",
+"village","vintage","violin","virtual","virus","visa","visit","visual",
+"vital","vivid","vocal","voice","void","volcano","volume","vote",
+"voyage","wage","wagon","wait","walk","wall","walnut","want",
+"warfare","warm","warrior","wash","wasp","waste","water","wave",
+"way","wealth","weapon","wear","weasel","weather","web","wedding",
+"weekend","weird","welcome","west","wet","whale","what","wheat",
+"wheel","when","where","whip","whisper","wide","width","wife",
+"wild","will","win","window","wine","wing","wink","winner",
+"winter","wire","wisdom","wise","wish","witness","wolf","woman",
+"wonder","wood","wool","word","work","world","worry","worth",
+"wrap","wreck","wrestle","wrist","write","wrong","yard","year",
+"yellow","you","young","youth","zebra","zero","zone","zoo",
+
+]; })(typeof window !== "undefined" ? window : globalThis);
+</script>
+<script type="module">
+var g=class extends Error{constructor(t){let i;t instanceof Error?i=t.message:typeof t=="string"?i=t:i="",super(i),this.name=this.constructor.name}};var B=[2285,2571,2970,1812,1493,1422,287,202,3158,622,1577,182,962,2127,1855,1468,573,2004,264,383,2500,1458,1727,3199,2648,1017,732,608,1787,411,3124,1758,1223,652,2777,1015,2036,1491,3047,1785,516,3321,3009,2663,1711,2167,126,1469,2476,3239,3058,830,107,1908,3082,2378,2931,961,1821,2604,448,2264,677,2054,2226,430,555,843,2078,871,1550,105,422,587,177,3094,3038,2869,1574,1653,3083,778,1159,3182,2552,1483,2727,1119,1739,644,2457,349,418,329,3173,3254,817,1097,603,610,1322,2044,1864,384,2114,3193,1218,1994,2455,220,2142,1670,2144,1799,2051,794,1819,2475,2459,478,3221,3021,996,991,958,1869,1522,1628],V=[1701,1807,1460,2371,2338,2333,308,108,2851,870,854,1510,2535,1278,1530,1185,1659,1187,3109,874,1335,2111,136,1215,2945,1465,1285,2007,2719,2726,2232,2512,75,156,3e3,2911,2980,872,2685,1590,2210,602,1846,777,147,2170,2551,246,1676,1755,460,291,235,3152,2742,2907,3224,1779,2458,1251,2486,2774,2899,1103,1275,2652,1065,2881,725,1508,2368,398,951,247,1421,3222,2499,271,90,853,1860,3203,1162,1618,666,320,8,2813,1544,282,1838,1293,2314,552,2677,2106,1571,205,2918,1542,2721,2597,2312,681,130,1602,1871,829,2946,3065,1325,2756,1861,1474,1202,2367,3147,1752,2707,171,3127,3042,1907,1836,1517,359,758,1441];var I=BigInt(4294967295),Y=BigInt(32);function Ot(r,t=!1){return t?{h:Number(r&I),l:Number(r>>Y&I)}:{h:Number(r>>Y&I)|0,l:Number(r&I)|0}}function tt(r,t=!1){let i=r.length,e=new Uint32Array(i),n=new Uint32Array(i);for(let o=0;o<i;o++){let{h:s,l:u}=Ot(r[o],t);[e[o],n[o]]=[s,u]}return[e,n]}var et=(r,t,i)=>r<<i|t>>>32-i,rt=(r,t,i)=>t<<i|r>>>32-i,nt=(r,t,i)=>t<<i-32|r>>>64-i,it=(r,t,i)=>r<<i-32|t>>>64-i;function Bt(r){return r instanceof Uint8Array||ArrayBuffer.isView(r)&&r.constructor.name==="Uint8Array"}function C(r,t=""){if(!Number.isSafeInteger(r)||r<0){let i=t&&`"${t}" `;throw new Error(`${i}expected integer >0, got ${r}`)}}function T(r,t,i=""){let e=Bt(r),n=r?.length,o=t!==void 0;if(!e||o&&n!==t){let s=i&&`"${i}" `,u=o?` of length ${t}`:"",f=e?`length=${n}`:`type=${typeof r}`;throw new Error(s+"expected Uint8Array"+u+", got "+f)}return r}function R(r,t=!0){if(r.destroyed)throw new Error("Hash instance has been destroyed");if(t&&r.finished)throw new Error("Hash#digest() has already been called")}function ot(r,t){T(r,void 0,"digestInto() output");let i=t.outputLen;if(r.length<i)throw new Error('"digestInto() output" expected to be of length >='+i)}function st(r){return new Uint32Array(r.buffer,r.byteOffset,Math.floor(r.byteLength/4))}function $(...r){for(let t=0;t<r.length;t++)r[t].fill(0)}var It=new Uint8Array(new Uint32Array([287454020]).buffer)[0]===68;function Tt(r){return r<<24&4278190080|r<<8&16711680|r>>>8&65280|r>>>24&255}function jt(r){for(let t=0;t<r.length;t++)r[t]=Tt(r[t]);return r}var Q=It?r=>r:jt;function X(r,t={}){let i=(n,o)=>r(o).update(n).digest(),e=r(void 0);return i.outputLen=e.outputLen,i.blockLen=e.blockLen,i.create=n=>r(n),Object.assign(i,t),Object.freeze(i)}var P=r=>({oid:Uint8Array.from([6,9,96,134,72,1,101,3,4,2,r])});var Et=BigInt(0),z=BigInt(1),Ft=BigInt(2),Ht=BigInt(7),Nt=BigInt(256),Kt=BigInt(113),at=[],lt=[],ft=[];for(let r=0,t=z,i=1,e=0;r<24;r++){[i,e]=[e,(2*i+3*e)%5],at.push(2*(5*e+i)),lt.push((r+1)*(r+2)/2%64);let n=Et;for(let o=0;o<7;o++)t=(t<<z^(t>>Ht)*Kt)%Nt,t&Ft&&(n^=z<<(z<<BigInt(o))-z);ft.push(n)}var ht=tt(ft,!0),Mt=ht[0],Vt=ht[1],ut=(r,t,i)=>i>32?nt(r,t,i):et(r,t,i),ct=(r,t,i)=>i>32?it(r,t,i):rt(r,t,i);function Ct(r,t=24){let i=new Uint32Array(10);for(let e=24-t;e<24;e++){for(let s=0;s<10;s++)i[s]=r[s]^r[s+10]^r[s+20]^r[s+30]^r[s+40];for(let s=0;s<10;s+=2){let u=(s+8)%10,f=(s+2)%10,m=i[f],a=i[f+1],w=ut(m,a,1)^i[u],U=ct(m,a,1)^i[u+1];for(let b=0;b<50;b+=10)r[s+b]^=w,r[s+b+1]^=U}let n=r[2],o=r[3];for(let s=0;s<24;s++){let u=lt[s],f=ut(n,o,u),m=ct(n,o,u),a=at[s];n=r[a],o=r[a+1],r[a]=f,r[a+1]=m}for(let s=0;s<50;s+=10){for(let u=0;u<10;u++)i[u]=r[s+u];for(let u=0;u<10;u++)r[s+u]^=~i[(u+2)%10]&i[(u+4)%10]}r[0]^=Mt[e],r[1]^=Vt[e]}$(i)}var j=class r{constructor(t,i,e,n=!1,o=24){if(Object.defineProperty(this,"state",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"pos",{enumerable:!0,configurable:!0,writable:!0,value:0}),Object.defineProperty(this,"posOut",{enumerable:!0,configurable:!0,writable:!0,value:0}),Object.defineProperty(this,"finished",{enumerable:!0,configurable:!0,writable:!0,value:!1}),Object.defineProperty(this,"state32",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"destroyed",{enumerable:!0,configurable:!0,writable:!0,value:!1}),Object.defineProperty(this,"blockLen",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"suffix",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"outputLen",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"enableXOF",{enumerable:!0,configurable:!0,writable:!0,value:!1}),Object.defineProperty(this,"rounds",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),this.blockLen=t,this.suffix=i,this.outputLen=e,this.enableXOF=n,this.rounds=o,C(e,"outputLen"),!(0<t&&t<200))throw new Error("only keccak-f1600 function is supported");this.state=new Uint8Array(200),this.state32=st(this.state)}clone(){return this._cloneInto()}keccak(){Q(this.state32),Ct(this.state32,this.rounds),Q(this.state32),this.posOut=0,this.pos=0}update(t){R(this),T(t);let{blockLen:i,state:e}=this,n=t.length;for(let o=0;o<n;){let s=Math.min(i-this.pos,n-o);for(let u=0;u<s;u++)e[this.pos++]^=t[o++];this.pos===i&&this.keccak()}return this}finish(){if(this.finished)return;this.finished=!0;let{state:t,suffix:i,pos:e,blockLen:n}=this;t[e]^=i,(i&128)!==0&&e===n-1&&this.keccak(),t[n-1]^=128,this.keccak()}writeInto(t){R(this,!1),T(t),this.finish();let i=this.state,{blockLen:e}=this;for(let n=0,o=t.length;n<o;){this.posOut>=e&&this.keccak();let s=Math.min(e-this.posOut,o-n);t.set(i.subarray(this.posOut,this.posOut+s),n),this.posOut+=s,n+=s}return t}xofInto(t){if(!this.enableXOF)throw new Error("XOF is not possible for this instance");return this.writeInto(t)}xof(t){return C(t),this.xofInto(new Uint8Array(t))}digestInto(t){if(ot(t,this),this.finished)throw new Error("digest() was already called");return this.writeInto(t),this.destroy(),t}digest(){return this.digestInto(new Uint8Array(this.outputLen))}destroy(){this.destroyed=!0,$(this.state)}_cloneInto(t){let{blockLen:i,suffix:e,outputLen:n,rounds:o,enableXOF:s}=this;return t||(t=new r(i,e,n,s,o)),t.state32.set(this.state32),t.pos=this.pos,t.posOut=this.posOut,t.finished=this.finished,t.rounds=o,t.suffix=e,t.outputLen=n,t.enableXOF=s,t.destroyed=this.destroyed,t}},pt=(r,t,i,e={})=>X(()=>new j(t,r,i),e),E=pt(6,136,32,P(8)),F=pt(6,72,64,P(10));var dt=(r,t,i,e={})=>X((n={})=>new j(t,r,n.dkLen===void 0?i:n.dkLen,!0),e),H=dt(31,168,16,P(11)),v=dt(31,136,32,P(12));var Rt={},yt=$t(globalThis,Rt);function $t(r,t){return new Proxy(r,{get(i,e,n){return e in t?t[e]:r[e]},set(i,e,n){return e in t&&delete t[e],r[e]=n,!0},deleteProperty(i,e){let n=!1;return e in t&&(delete t[e],n=!0),e in r&&(delete r[e],n=!0),n},ownKeys(i){let e=Reflect.ownKeys(r),n=Reflect.ownKeys(t),o=new Set(n);return[...e.filter(s=>!o.has(s)),...n]},defineProperty(i,e,n){return e in t&&delete t[e],Reflect.defineProperty(r,e,n),!0},getOwnPropertyDescriptor(i,e){return e in t?Reflect.getOwnPropertyDescriptor(t,e):Reflect.getOwnPropertyDescriptor(r,e)},has(i,e){return e in t||e in r}})}function h(r){return r%256}function _(r){return r>=-32768&&r<=32767?r:r<-32768?(r=r+32769,r=r%65536,32767+r):(r=r-32768,r=r%65536,-32768+r)}function c(r){return r%65536}function N(r){return r>=-2147483648&&r<=2147483647?r:r<-2147483648?(r=r+2147483649,r=r%4294967296,2147483647+r):(r=r-2147483648,r=r%4294967296,-2147483648+r)}function y(r){return r%4294967296}function _t(r,t){if(r.length!=t.length)return 0;let i=new Uint8Array([0]);for(let n=0;n<r.length;n++)i[0]|=r[n]^t[n];let e=new Uint8Array([0]);return e[0]=~(i[0]^e[0]),e[0]&=e[0]>>4,e[0]&=e[0]>>2,e[0]&=e[0]>>1,e[0]}function bt(r,t){if(r.length!=t.length)return!1;for(let i=0;i<r.length;i++)if(r[i]!==t[i])return!1;return!0}async function wt(){if(typeof yt<"u"&&globalThis.crypto!==void 0)return globalThis.crypto;try{let{webcrypto:r}=await import("crypto");return r}catch{throw new Error("failed to load Crypto")}}function L(r,t,i){return v.create({dkLen:r}).update(t).update(new Uint8Array([i])).digest()}function mt(r){let t=y(r[0]);return t|=y(r[1])<<8,t|=y(r[2])<<16,t}function kt(r){let t=y(r[0]);return t|=y(r[1])<<8,t|=y(r[2])<<16,t|=y(r[3])<<24,y(t)}var A=class{constructor(){Object.defineProperty(this,"_api",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"_k",{enumerable:!0,configurable:!0,writable:!0,value:0}),Object.defineProperty(this,"_du",{enumerable:!0,configurable:!0,writable:!0,value:0}),Object.defineProperty(this,"_dv",{enumerable:!0,configurable:!0,writable:!0,value:0}),Object.defineProperty(this,"_eta1",{enumerable:!0,configurable:!0,writable:!0,value:0}),Object.defineProperty(this,"_eta2",{enumerable:!0,configurable:!0,writable:!0,value:0}),Object.defineProperty(this,"_skSize",{enumerable:!0,configurable:!0,writable:!0,value:0}),Object.defineProperty(this,"_pkSize",{enumerable:!0,configurable:!0,writable:!0,value:0}),Object.defineProperty(this,"_compressedUSize",{enumerable:!0,configurable:!0,writable:!0,value:0}),Object.defineProperty(this,"_compressedVSize",{enumerable:!0,configurable:!0,writable:!0,value:0})}async generateKeyPair(){await this._setup();try{let t=new Uint8Array(64);return this._api.getRandomValues(t),this._deriveKeyPair(t)}catch(t){throw new g(t)}}async deriveKeyPair(t){await this._setup();try{if(t.byteLength!==64)throw new Error("seed must be 64 bytes in length");return this._deriveKeyPair(t)}catch(i){throw new g(i)}}async encap(t,i){await this._setup();try{if(t.length!==384*this._k+32)throw new Error("invalid encapsulation key");let e=this._getSeed(i),[n,o]=D(e,gt(t));return[this._encap(t,e,o),n]}catch(e){throw new g(e)}}async decap(t,i){await this._setup();try{if(t.byteLength!==this._compressedUSize+this._compressedVSize)throw new Error("Invalid ct size");if(i.length!==768*this._k+96)throw new Error("Invalid decapsulation key");let e=i.subarray(0,this._skSize),n=i.subarray(this._skSize,this._skSize+this._pkSize),o=i.subarray(this._skSize+this._pkSize,this._skSize+this._pkSize+32),s=i.subarray(this._skSize+this._pkSize+32,this._skSize+this._pkSize+64),u=this._decap(t,e),[f,m]=D(u,o),a=Dt(s,t),w=this._encap(n,u,m);return _t(t,w)===1?f:a}catch(e){throw new g(e)}}async _setup(){this._api===void 0&&(this._api=await wt())}_getSeed(t){if(t==null){let i=new Uint8Array(32);return this._api.getRandomValues(i),i}if(t.byteLength!==32)throw new Error("seed must be 32 bytes in length");return t}_deriveKeyPair(t){let i=t.subarray(0,32),e=t.subarray(32,64),[n,o]=this._deriveCpaKeyPair(i),s=gt(n),u=new Uint8Array(this._skSize+this._pkSize+64);return u.set(o,0),u.set(n,this._skSize),u.set(s,this._skSize+this._pkSize),u.set(e,this._skSize+this._pkSize+32),[n,u]}_deriveCpaKeyPair(t){let[i,e]=D(t,new Uint8Array([this._k])),n=this._sampleMatrix(i,!1),o=this._sampleNoise1(e,0,this._k),s=this._sampleNoise1(e,this._k,this._k);for(let a=0;a<this._k;a++)o[a]=K(o[a]),o[a]=S(o[a]),s[a]=K(s[a]);let u=new Array(this._k);for(let a=0;a<this._k;a++)u[a]=Jt(M(n[a],o)),u[a]=O(u[a],s[a]),u[a]=S(u[a]);let f=new Uint8Array(this._pkSize);for(let a=0;a<this._k;a++)f.set(Z(u[a]),a*384);f.set(i,this._skSize);let m=new Uint8Array(this._skSize);for(let a=0;a<this._k;a++)m.set(Z(o[a]),a*384);return[f,m]}_encap(t,i,e){let n=new Array(this._k),o=new Uint8Array(384*this._k);for(let p=0;p<this._k;p++)n[p]=xt(t.subarray(p*384,(p+1)*384)),o.set(Z(n[p]),p*384);if(!bt(t.subarray(0,o.length),o))throw new Error("invalid encapsulation key");let s=t.subarray(this._skSize),u=this._sampleMatrix(s,!0),f=this._sampleNoise1(e,0,this._k),m=this._sampleNoise2(e,this._k,this._k),a=this._sampleNoise2(e,this._k*2,1)[0];for(let p=0;p<this._k;p++)f[p]=K(f[p]),f[p]=S(f[p]);let w=new Array(this._k);for(let p=0;p<this._k;p++)w[p]=M(u[p],f),w[p]=q(w[p]),w[p]=O(w[p],m[p]),w[p]=S(w[p]);let U=Gt(i),b=M(n,f);b=q(b),b=O(b,a),b=O(b,U),b=S(b);let k=new Uint8Array(this._compressedUSize+this._compressedVSize);return this._compressU(k.subarray(0,this._compressedUSize),w),this._compressV(k.subarray(this._compressedUSize),b),k}_decap(t,i){let e=this._decompressU(t.subarray(0,this._compressedUSize)),n=this._decompressV(t.subarray(this._compressedUSize)),o=this._polyvecFromBytes(i);for(let u=0;u<this._k;u++)e[u]=K(e[u]);let s=M(o,e);return s=q(s),s=Wt(n,s),s=S(s),qt(s)}_sampleMatrix(t,i){let e=new Array(this._k),n=new Uint8Array(2);for(let o=0,s=0;s<this._k;s++){e[s]=new Array(this._k);for(let u=0;u<this._k;u++){i?(n[0]=s,n[1]=u):(n[0]=u,n[1]=s);let f=Zt(t,n),m=At(f.subarray(0,504),504,256);for(e[s][u]=m[0],o=m[1];o<256;){let a=f.subarray(504,672),w=At(a,168,256-o),U=w[0],b=w[1];for(let k=o;k<256;k++)e[s][u][k]=U[k-o];o=o+b}}}return e}_sampleNoise1(t,i,e){let n=new Array(e);for(let o=0;o<e;o++)n[o]=St(L(this._eta1*256/4,t,i),this._eta1),i++;return n}_sampleNoise2(t,i,e){let n=new Array(e);for(let o=0;o<e;o++)n[o]=St(L(this._eta2*256/4,t,i),this._eta2),i++;return n}_polyvecFromBytes(t){let i=new Array(this._k);for(let e=0;e<this._k;e++)i[e]=xt(t.subarray(e*384,(e+1)*384));return i}_compressU(t,i){let e=new Array(4);for(let n=0,o=0;o<this._k;o++)for(let s=0;s<256/4;s++){for(let u=0;u<4;u++)e[u]=((i[o][4*s+u]<<10)+3329/2)/3329&1023;t[n++]=h(e[0]>>0),t[n++]=h(e[0]>>8|e[1]<<2),t[n++]=h(e[1]>>6|e[2]<<4),t[n++]=h(e[2]>>4|e[3]<<6),t[n++]=h(e[3]>>2)}return t}_compressV(t,i){let e=new Uint8Array(8);for(let n=0,o=0;o<256/8;o++){for(let s=0;s<8;s++)e[s]=h(((i[8*o+s]<<4)+3329/2)/3329)&15;t[n++]=e[0]|e[1]<<4,t[n++]=e[2]|e[3]<<4,t[n++]=e[4]|e[5]<<4,t[n++]=e[6]|e[7]<<4}return t}_decompressU(t){let i=new Array(this._k);for(let n=0;n<this._k;n++)i[n]=new Array(384);let e=new Array(4);for(let n=0,o=0;o<this._k;o++)for(let s=0;s<256/4;s++){e[0]=c(t[n+0])>>0|c(t[n+1])<<8,e[1]=c(t[n+1])>>2|c(t[n+2])<<6,e[2]=c(t[n+2])>>4|c(t[n+3])<<4,e[3]=c(t[n+3])>>6|c(t[n+4])<<2,n=n+5;for(let u=0;u<4;u++)i[o][4*s+u]=_(y(e[u]&1023)*y(3329)+512>>10)}return i}_decompressV(t){let i=new Array(384);for(let e=0,n=0;n<256/2;n++,e++)i[2*n+0]=_(c(t[e]&15)*c(3329)+8>>4),i[2*n+1]=_(c(t[e]>>4)*c(3329)+8>>4);return i}};function D(r,t){let i=F.create().update(r);t!==void 0&&i.update(t);let e=i.digest();return[e.subarray(0,32),e.subarray(32,64)]}function gt(r){return E.create().update(r).digest()}function Dt(r,t){let i=v.create({dkLen:32}).update(r);return t!==void 0&&i.update(t),i.digest()}function Zt(r,t){return H.create({dkLen:672}).update(r).update(t).digest()}function Z(r){let t=0,i=0,e=new Uint8Array(384),n=Lt(r);for(let o=0;o<256/2;o++)t=c(n[2*o]),i=c(n[2*o+1]),e[3*o+0]=h(t>>0),e[3*o+1]=h(t>>8)|h(i<<4),e[3*o+2]=h(i>>4);return e}function xt(r){let t=new Array(384).fill(0);for(let i=0;i<256/2;i++)t[2*i]=_((c(r[3*i+0])>>0|c(r[3*i+1])<<8)&4095),t[2*i+1]=_((c(r[3*i+1])>>4|c(r[3*i+2])<<4)&4095);return t}function qt(r){let t=new Uint8Array(32),i,e=Lt(r);for(let n=0;n<256/8;n++){t[n]=0;for(let o=0;o<8;o++)i=((c(e[8*n+o])<<1)+c(3329/2))/c(3329)&1,t[n]|=h(i<<o)}return t}function Gt(r){let t=new Array(384).fill(0),i;for(let e=0;e<256/8;e++)for(let n=0;n<8;n++)i=-1*_(r[e]>>n&1),t[8*e+n]=i&_(3330/2);return t}function At(r,t,i){let e=new Array(384).fill(0),n=0,o,s;for(let u=0;n<i&&u+3<=t;)o=(c(r[u]>>0)|c(r[u+1])<<8)&4095,s=(c(r[u+1]>>4)|c(r[u+2])<<4)&4095,u=u+3,o<3329&&(e[n]=o,n=n+1),n<i&&s<3329&&(e[n]=s,n=n+1);return[e,n]}function St(r,t){let i,e,n,o,s=new Array(384).fill(0);for(let u=0;u<256/8;u++){i=kt(r.subarray(4*u,r.length)),e=i&1431655765,e=e+(i>>1&1431655765);for(let f=0;f<8;f++)n=_(e>>4*f+0&3),o=_(e>>4*f+t&3),s[8*u+f]=n-o}return s}function K(r){for(let t=0,i=1,e=128;e>=2;e>>=1)for(let n=0;n<256;n=t+e){let o=B[i];for(i=i+1,t=n;t<n+e;t++){let s=x(o,r[t+e]);r[t+e]=r[t]-s,r[t]=r[t]+s}}return r}function x(r,t){return zt(r*t)}function S(r){for(let t=0;t<256;t++)r[t]=Pt(r[t]);return r}function Pt(r){let i=(16777216+3329/2)/3329*r>>24;return i=i*3329,r-i}function zt(r){let i=_(N(r)*62209)*3329;return i=r-i,i>>=16,_(i)}function Jt(r){for(let i=0;i<256;i++)r[i]=zt(N(r[i])*N(1353));return r}function M(r,t){let i=vt(r[0],t[0]),e;for(let n=1;n<r.length;n++)e=vt(r[n],t[n]),i=O(i,e);return S(i)}function vt(r,t){let i,e;for(let n=0;n<256/4;n++)i=Ut(r[4*n+0],r[4*n+1],t[4*n+0],t[4*n+1],B[64+n]),e=Ut(r[4*n+2],r[4*n+3],t[4*n+2],t[4*n+3],-B[64+n]),r[4*n+0]=i[0],r[4*n+1]=i[1],r[4*n+2]=e[0],r[4*n+3]=e[1];return r}function Ut(r,t,i,e,n){let o=new Array(2);return o[0]=x(t,e),o[0]=x(o[0],n),o[0]+=x(r,i),o[1]=x(r,e),o[1]+=x(t,i),o}function O(r,t){let i=new Array(384);for(let e=0;e<256;e++)i[e]=r[e]+t[e];return i}function Wt(r,t){for(let i=0;i<256;i++)r[i]-=t[i];return r}function q(r){let t=0;for(let i=0,e=2;e<=128;e<<=1)for(let n=0;n<256;n=t+e){let o=V[i];for(i=i+1,t=n;t<n+e;t++){let s=r[t];r[t]=Pt(s+r[t+e]),r[t+e]=s-r[t+e],r[t+e]=x(o,r[t+e])}}for(t=0;t<256;t++)r[t]=x(r[t],V[127]);return r}function Lt(r){for(let t=0;t<256;t++)r[t]-=3329,r[t]+=r[t]>>31&3329;return r}var G=class extends A{constructor(){super(),Object.defineProperty(this,"_k",{enumerable:!0,configurable:!0,writable:!0,value:2}),Object.defineProperty(this,"_du",{enumerable:!0,configurable:!0,writable:!0,value:10}),Object.defineProperty(this,"_dv",{enumerable:!0,configurable:!0,writable:!0,value:4}),Object.defineProperty(this,"_eta1",{enumerable:!0,configurable:!0,writable:!0,value:3}),Object.defineProperty(this,"_eta2",{enumerable:!0,configurable:!0,writable:!0,value:2}),this._skSize=12*this._k*256/8,this._pkSize=this._skSize+32,this._compressedUSize=this._k*this._du*256/8,this._compressedVSize=this._dv*256/8}_sampleNoise1(t,i,e){let n=new Array(e);for(let o=0;o<e;o++)n[o]=Yt(L(this._eta1*256/4,t,i),this._eta1),i++;return n}};function Yt(r,t){let i,e,n,o,s=new Array(384).fill(0);for(let u=0;u<256/4;u++){i=mt(r.subarray(3*u,r.length)),e=i&2396745,e=e+(i>>1&2396745),e=e+(i>>2&2396745);for(let f=0;f<4;f++)n=_(e>>6*f+0&7),o=_(e>>6*f+t&7),s[4*u+f]=n-o}return s}var J=class extends A{constructor(){super(),Object.defineProperty(this,"_k",{enumerable:!0,configurable:!0,writable:!0,value:3}),Object.defineProperty(this,"_du",{enumerable:!0,configurable:!0,writable:!0,value:10}),Object.defineProperty(this,"_dv",{enumerable:!0,configurable:!0,writable:!0,value:4}),Object.defineProperty(this,"_eta1",{enumerable:!0,configurable:!0,writable:!0,value:2}),Object.defineProperty(this,"_eta2",{enumerable:!0,configurable:!0,writable:!0,value:2}),this._skSize=12*this._k*256/8,this._pkSize=this._skSize+32,this._compressedUSize=this._k*this._du*256/8,this._compressedVSize=this._dv*256/8}};var W=class extends A{constructor(){super(),Object.defineProperty(this,"_k",{enumerable:!0,configurable:!0,writable:!0,value:4}),Object.defineProperty(this,"_du",{enumerable:!0,configurable:!0,writable:!0,value:11}),Object.defineProperty(this,"_dv",{enumerable:!0,configurable:!0,writable:!0,value:5}),Object.defineProperty(this,"_eta1",{enumerable:!0,configurable:!0,writable:!0,value:2}),Object.defineProperty(this,"_eta2",{enumerable:!0,configurable:!0,writable:!0,value:2}),this._skSize=12*this._k*256/8,this._pkSize=this._skSize+32,this._compressedUSize=this._k*this._du*256/8,this._compressedVSize=this._dv*256/8}_compressU(t,i){let e=new Array(8);for(let n=0,o=0;o<this._k;o++)for(let s=0;s<256/8;s++){for(let u=0;u<8;u++)e[u]=c(((y(i[o][8*s+u])<<11)+y(3329/2))/y(3329)&2047);t[n++]=h(e[0]>>0),t[n++]=h(e[0]>>8|e[1]<<3),t[n++]=h(e[1]>>5|e[2]<<6),t[n++]=h(e[2]>>2),t[n++]=h(e[2]>>10|e[3]<<1),t[n++]=h(e[3]>>7|e[4]<<4),t[n++]=h(e[4]>>4|e[5]<<7),t[n++]=h(e[5]>>1),t[n++]=h(e[5]>>9|e[6]<<2),t[n++]=h(e[6]>>6|e[7]<<5),t[n++]=h(e[7]>>3)}return t}_compressV(t,i){let e=new Uint8Array(8);for(let n=0,o=0;o<256/8;o++){for(let s=0;s<8;s++)e[s]=h(((y(i[8*o+s])<<5)+y(3329/2))/y(3329))&31;t[n++]=h(e[0]>>0|e[1]<<5),t[n++]=h(e[1]>>3|e[2]<<2|e[3]<<7),t[n++]=h(e[3]>>1|e[4]<<4),t[n++]=h(e[4]>>4|e[5]<<1|e[6]<<6),t[n++]=h(e[6]>>2|e[7]<<3)}return t}_decompressU(t){let i=new Array(this._k);for(let n=0;n<this._k;n++)i[n]=new Array(384);let e=new Array(8);for(let n=0,o=0;o<this._k;o++)for(let s=0;s<256/8;s++){e[0]=c(t[n+0])>>0|c(t[n+1])<<8,e[1]=c(t[n+1])>>3|c(t[n+2])<<5,e[2]=c(t[n+2])>>6|c(t[n+3])<<2|c(t[n+4])<<10,e[3]=c(t[n+4])>>1|c(t[n+5])<<7,e[4]=c(t[n+5])>>4|c(t[n+6])<<4,e[5]=c(t[n+6])>>7|c(t[n+7])<<1|c(t[n+8])<<9,e[6]=c(t[n+8])>>2|c(t[n+9])<<6,e[7]=c(t[n+9])>>5|c(t[n+10])<<3,n=n+11;for(let u=0;u<8;u++)i[o][8*s+u]=y(e[u]&2047)*3329+1024>>11}return i}_decompressV(t){let i=new Array(384),e=new Array(8);for(let n=0,o=0;o<256/8;o++){e[0]=t[n+0]>>0,e[1]=t[n+0]>>5|t[n+1]<<3,e[2]=t[n+1]>>2,e[3]=t[n+1]>>7|t[n+2]<<1,e[4]=t[n+2]>>4|t[n+3]<<4,e[5]=t[n+3]>>1,e[6]=t[n+3]>>6|t[n+4]<<2,e[7]=t[n+4]>>3,n=n+5;for(let s=0;s<8;s++)i[8*o+s]=_(y(e[s]&31)*y(3329)+16>>5)}return i}};
+/*! noble-hashes - MIT License (c) 2022 Paul Miller (paulmillr.com) */
+// Bind ES module exports to globals so non-module scripts can use them.
+// The export line at end of bundle is replaced; here we manually expose.
+window.__nee2pMlKem = { MlKem768: (typeof J !== 'undefined' ? J : null) };
+</script>
+<script type="module">
+var _n=Object.defineProperty;var vn=(e,t,n)=>t in e?_n(e,t,{enumerable:!0,configurable:!0,writable:!0,value:n}):e[t]=n;var p=(e,t,n)=>vn(e,typeof t!="symbol"?t+"":t,n);function Wt(e){return e instanceof Uint8Array||ArrayBuffer.isView(e)&&e.constructor.name==="Uint8Array"&&"BYTES_PER_ELEMENT"in e&&e.BYTES_PER_ELEMENT===1}function Rt(e,t=""){if(typeof e!="number"){let n=t&&`"${t}" `;throw new TypeError(`${n}expected number, got ${typeof e}`)}if(!Number.isSafeInteger(e)||e<0){let n=t&&`"${t}" `;throw new RangeError(`${n}expected integer >= 0, got ${e}`)}}function $(e,t,n=""){let r=Wt(e),o=e?.length,s=t!==void 0;if(!r||s&&o!==t){let i=n&&`"${n}" `,f=s?` of length ${t}`:"",a=r?`length=${o}`:`type=${typeof e}`,c=i+"expected Uint8Array"+f+", got "+a;throw r?new RangeError(c):new TypeError(c)}return e}function Pt(e,t=!0){if(e.destroyed)throw new Error("Hash instance has been destroyed");if(t&&e.finished)throw new Error("Hash#digest() has already been called")}function Re(e,t){$(e,void 0,"digestInto() output");let n=t.outputLen;if(e.length<n)throw new RangeError('"digestInto() output" expected to be of length >='+n)}function wt(...e){for(let t=0;t<e.length;t++)e[t].fill(0)}function It(e){return new DataView(e.buffer,e.byteOffset,e.byteLength)}var Ie=typeof Uint8Array.from([]).toHex=="function"&&typeof Uint8Array.fromHex=="function",An=Array.from({length:256},(e,t)=>t.toString(16).padStart(2,"0"));function Lt(e){if($(e),Ie)return e.toHex();let t="";for(let n=0;n<e.length;n++)t+=An[e[n]];return t}var Q={_0:48,_9:57,A:65,F:70,a:97,f:102};function Te(e){if(e>=Q._0&&e<=Q._9)return e-Q._0;if(e>=Q.A&&e<=Q.F)return e-(Q.A-10);if(e>=Q.a&&e<=Q.f)return e-(Q.a-10)}function Et(e){if(typeof e!="string")throw new TypeError("hex string expected, got "+typeof e);if(Ie)try{return Uint8Array.fromHex(e)}catch(o){throw o instanceof SyntaxError?new RangeError(o.message):o}let t=e.length,n=t/2;if(t%2)throw new RangeError("hex string expected, got unpadded hex of length "+t);let r=new Uint8Array(n);for(let o=0,s=0;o<n;o++,s+=2){let i=Te(e.charCodeAt(s)),f=Te(e.charCodeAt(s+1));if(i===void 0||f===void 0){let a=e[s]+e[s+1];throw new RangeError('hex string expected, got non-hex character "'+a+'" at index '+s)}r[o]=i*16+f}return r}function Qt(...e){let t=0;for(let r=0;r<e.length;r++){let o=e[r];$(o),t+=o.length}let n=new Uint8Array(t);for(let r=0,o=0;r<e.length;r++){let s=e[r];n.set(s,o),o+=s.length}return n}function Le(e,t={}){let n=(o,s)=>e(s).update(o).digest(),r=e(void 0);return n.outputLen=r.outputLen,n.blockLen=r.blockLen,n.canXOF=r.canXOF,n.create=o=>e(o),Object.assign(n,t),Object.freeze(n)}function Fe(e=32){Rt(e,"bytesLength");let t=typeof globalThis=="object"?globalThis.crypto:null;if(typeof t?.getRandomValues!="function")throw new Error("crypto.getRandomValues must be defined");if(e>65536)throw new RangeError(`"bytesLength" expected <= 65536, got ${e}`);return t.getRandomValues(new Uint8Array(e))}var De=e=>({oid:Uint8Array.from([6,9,96,134,72,1,101,3,4,2,e])});var Ft=class{constructor(t,n,r,o){p(this,"blockLen");p(this,"outputLen");p(this,"canXOF",!1);p(this,"padOffset");p(this,"isLE");p(this,"buffer");p(this,"view");p(this,"finished",!1);p(this,"length",0);p(this,"pos",0);p(this,"destroyed",!1);this.blockLen=t,this.outputLen=n,this.padOffset=r,this.isLE=o,this.buffer=new Uint8Array(t),this.view=It(this.buffer)}update(t){Pt(this),$(t);let{view:n,buffer:r,blockLen:o}=this,s=t.length;for(let i=0;i<s;){let f=Math.min(o-this.pos,s-i);if(f===o){let a=It(t);for(;o<=s-i;i+=o)this.process(a,i);continue}r.set(t.subarray(i,i+f),this.pos),this.pos+=f,i+=f,this.pos===o&&(this.process(n,0),this.pos=0)}return this.length+=t.length,this.roundClean(),this}digestInto(t){Pt(this),Re(t,this),this.finished=!0;let{buffer:n,view:r,blockLen:o,isLE:s}=this,{pos:i}=this;n[i++]=128,wt(this.buffer.subarray(i)),this.padOffset>o-i&&(this.process(r,0),i=0);for(let d=i;d<o;d++)n[d]=0;r.setBigUint64(o-8,BigInt(this.length*8),s),this.process(r,0);let f=It(t),a=this.outputLen;if(a%4)throw new Error("_sha2: outputLen must be aligned to 32bit");let c=a/4,u=this.get();if(c>u.length)throw new Error("_sha2: outputLen bigger than state");for(let d=0;d<c;d++)f.setUint32(4*d,u[d],s)}digest(){let{buffer:t,outputLen:n}=this;this.digestInto(t);let r=t.slice(0,n);return this.destroy(),r}_cloneInto(t){t||(t=new this.constructor),t.set(...this.get());let{blockLen:n,buffer:r,length:o,finished:s,destroyed:i,pos:f}=this;return t.destroyed=i,t.finished=s,t.length=o,t.pos=f,o%n&&t.buffer.set(r),t}clone(){return this._cloneInto()}};var M=Uint32Array.from([1779033703,4089235720,3144134277,2227873595,1013904242,4271175723,2773480762,1595750129,1359893119,2917565137,2600822924,725511199,528734635,4215389547,1541459225,327033209]);var Dt=BigInt(4294967295),He=BigInt(32);function On(e,t=!1){return t?{h:Number(e&Dt),l:Number(e>>He&Dt)}:{h:Number(e>>He&Dt)|0,l:Number(e&Dt)|0}}function Ne(e,t=!1){let n=e.length,r=new Uint32Array(n),o=new Uint32Array(n);for(let s=0;s<n;s++){let{h:i,l:f}=On(e[s],t);[r[s],o[s]]=[i,f]}return[r,o]}var Jt=(e,t,n)=>e>>>n,te=(e,t,n)=>e<<32-n|t>>>n,dt=(e,t,n)=>e>>>n|t<<32-n,lt=(e,t,n)=>e<<32-n|t>>>n,Bt=(e,t,n)=>e<<64-n|t>>>n-32,St=(e,t,n)=>e>>>n-32|t<<64-n;function W(e,t,n,r){let o=(t>>>0)+(r>>>0);return{h:e+n+(o/2**32|0)|0,l:o|0}}var qe=(e,t,n)=>(e>>>0)+(t>>>0)+(n>>>0),Ue=(e,t,n,r)=>t+n+r+(e/2**32|0)|0,Ce=(e,t,n,r)=>(e>>>0)+(t>>>0)+(n>>>0)+(r>>>0),je=(e,t,n,r,o)=>t+n+r+o+(e/2**32|0)|0,Ze=(e,t,n,r,o)=>(e>>>0)+(t>>>0)+(n>>>0)+(r>>>0)+(o>>>0),Me=(e,t,n,r,o,s)=>t+n+r+o+s+(e/2**32|0)|0;var ze=Ne(["0x428a2f98d728ae22","0x7137449123ef65cd","0xb5c0fbcfec4d3b2f","0xe9b5dba58189dbbc","0x3956c25bf348b538","0x59f111f1b605d019","0x923f82a4af194f9b","0xab1c5ed5da6d8118","0xd807aa98a3030242","0x12835b0145706fbe","0x243185be4ee4b28c","0x550c7dc3d5ffb4e2","0x72be5d74f27b896f","0x80deb1fe3b1696b1","0x9bdc06a725c71235","0xc19bf174cf692694","0xe49b69c19ef14ad2","0xefbe4786384f25e3","0x0fc19dc68b8cd5b5","0x240ca1cc77ac9c65","0x2de92c6f592b0275","0x4a7484aa6ea6e483","0x5cb0a9dcbd41fbd4","0x76f988da831153b5","0x983e5152ee66dfab","0xa831c66d2db43210","0xb00327c898fb213f","0xbf597fc7beef0ee4","0xc6e00bf33da88fc2","0xd5a79147930aa725","0x06ca6351e003826f","0x142929670a0e6e70","0x27b70a8546d22ffc","0x2e1b21385c26c926","0x4d2c6dfc5ac42aed","0x53380d139d95b3df","0x650a73548baf63de","0x766a0abb3c77b2a8","0x81c2c92e47edaee6","0x92722c851482353b","0xa2bfe8a14cf10364","0xa81a664bbc423001","0xc24b8b70d0f89791","0xc76c51a30654be30","0xd192e819d6ef5218","0xd69906245565a910","0xf40e35855771202a","0x106aa07032bbd1b8","0x19a4c116b8d2d0c8","0x1e376c085141ab53","0x2748774cdf8eeb99","0x34b0bcb5e19b48a8","0x391c0cb3c5c95a63","0x4ed8aa4ae3418acb","0x5b9cca4f7763e373","0x682e6ff3d6b2b8a3","0x748f82ee5defb2fc","0x78a5636f43172f60","0x84c87814a1f0ab72","0x8cc702081a6439ec","0x90befffa23631e28","0xa4506cebde82bde9","0xbef9a3f7b2c67915","0xc67178f2e372532b","0xca273eceea26619c","0xd186b8c721c0c207","0xeada7dd6cde0eb1e","0xf57d4f7fee6ed178","0x06f067aa72176fba","0x0a637dc5a2c898a6","0x113f9804bef90dae","0x1b710b35131c471b","0x28db77f523047d84","0x32caab7b40c72493","0x3c9ebe0a15c9bebc","0x431d67c49c100d4c","0x4cc5d4becb3e42b6","0x597f299cfc657e2a","0x5fcb6fab3ad6faec","0x6c44198c4a475817"].map(e=>BigInt(e))),Rn=ze[0],In=ze[1],rt=new Uint32Array(80),ot=new Uint32Array(80),ee=class extends Ft{constructor(t){super(128,t,16,!1)}get(){let{Ah:t,Al:n,Bh:r,Bl:o,Ch:s,Cl:i,Dh:f,Dl:a,Eh:c,El:u,Fh:d,Fl:w,Gh:E,Gl:S,Hh:g,Hl:m}=this;return[t,n,r,o,s,i,f,a,c,u,d,w,E,S,g,m]}set(t,n,r,o,s,i,f,a,c,u,d,w,E,S,g,m){this.Ah=t|0,this.Al=n|0,this.Bh=r|0,this.Bl=o|0,this.Ch=s|0,this.Cl=i|0,this.Dh=f|0,this.Dl=a|0,this.Eh=c|0,this.El=u|0,this.Fh=d|0,this.Fl=w|0,this.Gh=E|0,this.Gl=S|0,this.Hh=g|0,this.Hl=m|0}process(t,n){for(let h=0;h<16;h++,n+=4)rt[h]=t.getUint32(n),ot[h]=t.getUint32(n+=4);for(let h=16;h<80;h++){let v=rt[h-15]|0,R=ot[h-15]|0,L=dt(v,R,1)^dt(v,R,8)^Jt(v,R,7),A=lt(v,R,1)^lt(v,R,8)^te(v,R,7),O=rt[h-2]|0,T=ot[h-2]|0,F=dt(O,T,19)^Bt(O,T,61)^Jt(O,T,6),N=lt(O,T,19)^St(O,T,61)^te(O,T,6),b=Ce(A,N,ot[h-7],ot[h-16]),B=je(b,L,F,rt[h-7],rt[h-16]);rt[h]=B|0,ot[h]=b|0}let{Ah:r,Al:o,Bh:s,Bl:i,Ch:f,Cl:a,Dh:c,Dl:u,Eh:d,El:w,Fh:E,Fl:S,Gh:g,Gl:m,Hh:l,Hl:y}=this;for(let h=0;h<80;h++){let v=dt(d,w,14)^dt(d,w,18)^Bt(d,w,41),R=lt(d,w,14)^lt(d,w,18)^St(d,w,41),L=d&E^~d&g,A=w&S^~w&m,O=Ze(y,R,A,In[h],ot[h]),T=Me(O,l,v,L,Rn[h],rt[h]),F=O|0,N=dt(r,o,28)^Bt(r,o,34)^Bt(r,o,39),b=lt(r,o,28)^St(r,o,34)^St(r,o,39),B=r&s^r&f^s&f,x=o&i^o&a^i&a;l=g|0,y=m|0,g=E|0,m=S|0,E=d|0,S=w|0,{h:d,l:w}=W(c|0,u|0,T|0,F|0),c=f|0,u=a|0,f=s|0,a=i|0,s=r|0,i=o|0;let _=qe(F,b,x);r=Ue(_,T,N,B),o=_|0}({h:r,l:o}=W(this.Ah|0,this.Al|0,r|0,o|0)),{h:s,l:i}=W(this.Bh|0,this.Bl|0,s|0,i|0),{h:f,l:a}=W(this.Ch|0,this.Cl|0,f|0,a|0),{h:c,l:u}=W(this.Dh|0,this.Dl|0,c|0,u|0),{h:d,l:w}=W(this.Eh|0,this.El|0,d|0,w|0),{h:E,l:S}=W(this.Fh|0,this.Fl|0,E|0,S|0),{h:g,l:m}=W(this.Gh|0,this.Gl|0,g|0,m|0),{h:l,l:y}=W(this.Hh|0,this.Hl|0,l|0,y|0),this.set(r,o,s,i,f,a,c,u,d,w,E,S,g,m,l,y)}roundClean(){wt(rt,ot)}destroy(){this.destroyed=!0,wt(this.buffer),this.set(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)}},ne=class extends ee{constructor(){super(64);p(this,"Ah",M[0]|0);p(this,"Al",M[1]|0);p(this,"Bh",M[2]|0);p(this,"Bl",M[3]|0);p(this,"Ch",M[4]|0);p(this,"Cl",M[5]|0);p(this,"Dh",M[6]|0);p(this,"Dl",M[7]|0);p(this,"Eh",M[8]|0);p(this,"El",M[9]|0);p(this,"Fh",M[10]|0);p(this,"Fl",M[11]|0);p(this,"Gh",M[12]|0);p(this,"Gl",M[13]|0);p(this,"Hh",M[14]|0);p(this,"Hl",M[15]|0)}};var Ht=Le(()=>new ne,De(3));var D=(e,t,n)=>$(e,t,n),oe=Rt,se=Lt,P=(...e)=>Qt(...e),Ve=e=>Et(e),Ut=Wt,Ct=e=>Fe(e),qt=BigInt(0),re=BigInt(1);function mt(e,t=""){if(typeof e!="boolean"){let n=t&&`"${t}" `;throw new TypeError(n+"expected boolean, got type="+typeof e)}return e}function Ln(e){if(typeof e=="bigint"){if(!Nt(e))throw new RangeError("positive bigint expected, got "+e)}else oe(e);return e}function J(e,t=""){if(typeof e!="number"){let n=t&&`"${t}" `;throw new TypeError(n+"expected number, got type="+typeof e)}if(!Number.isSafeInteger(e)){let n=t&&`"${t}" `;throw new RangeError(n+"expected safe integer, got "+e)}}function Ye(e){if(typeof e!="string")throw new TypeError("hex string expected, got "+typeof e);return e===""?qt:BigInt("0x"+e)}function ie(e){return Ye(Lt(e))}function k(e){return Ye(Lt(st($(e)).reverse()))}function ce(e,t){if(Rt(t),t===0)throw new RangeError("zero length");e=Ln(e);let n=e.toString(16);if(n.length>t*2)throw new RangeError("number too large");return Et(n.padStart(t*2,"0"))}function jt(e,t){return ce(e,t).reverse()}function Ge(e,t){if(e=D(e),t=D(t),e.length!==t.length)return!1;let n=0;for(let r=0;r<e.length;r++)n|=e[r]^t[r];return n===0}function st(e){return Uint8Array.from(D(e))}function Zt(e){if(typeof e!="string")throw new TypeError("ascii string expected, got "+typeof e);return Uint8Array.from(e,(t,n)=>{let r=t.charCodeAt(0);if(t.length!==1||r>127)throw new RangeError(`string contains non-ASCII character "${e[n]}" with code ${r} at position ${n}`);return r})}var Nt=e=>typeof e=="bigint"&&qt<=e;function Fn(e,t,n){return Nt(e)&&Nt(t)&&Nt(n)&&t<=e&&e<n}function gt(e,t,n,r){if(!Fn(t,n,r))throw new RangeError("expected valid "+e+": "+n+" <= n < "+r+", got "+t)}function fe(e){if(e<qt)throw new Error("expected non-negative bigint, got "+e);let t;for(t=0;e>qt;e>>=re,t+=1);return t}var Xe=e=>(re<<BigInt(e))-re;function tt(e,t={},n={}){if(Object.prototype.toString.call(e)!=="[object Object]")throw new TypeError("expected valid options object");function r(s,i,f){if(!f&&i!=="function"&&!Object.hasOwn(e,s))throw new TypeError(`param "${s}" is invalid: expected own property`);let a=e[s];if(f&&a===void 0)return;let c=typeof a;if(c!==i||a===null)throw new TypeError(`param "${s}" is invalid: expected ${i}, got ${c}`)}let o=(s,i)=>Object.entries(s).forEach(([f,a])=>r(f,a,i));o(t,!1),o(n,!0)}var ae=()=>{throw new Error("not implemented")};var z=BigInt(0),C=BigInt(1),ht=BigInt(2),We=BigInt(3),Pe=BigInt(4),Qe=BigInt(5),Dn=BigInt(7),Je=BigInt(8),Hn=BigInt(9),tn=BigInt(16);function H(e,t){if(t<=z)throw new Error("mod: expected positive modulus, got "+t);let n=e%t;return n>=z?n:t+n}function K(e,t,n){if(t<z)throw new Error("pow2: expected non-negative exponent, got "+t);let r=e;for(;t-- >z;)r*=r,r%=n;return r}function ke(e,t){if(e===z)throw new Error("invert: expected non-zero number");if(t<=z)throw new Error("invert: expected positive modulus, got "+t);let n=H(e,t),r=t,o=z,s=C,i=C,f=z;for(;n!==z;){let c=r/n,u=r-n*c,d=o-i*c,w=s-f*c;r=n,n=u,o=i,s=f,i=d,f=w}if(r!==C)throw new Error("invert: does not exist");return H(o,t)}function ue(e,t,n){let r=e;if(!r.eql(r.sqr(t),n))throw new Error("Cannot find square root")}function en(e,t){let n=e,r=(n.ORDER+C)/Pe,o=n.pow(t,r);return ue(n,o,t),o}function Nn(e,t){let n=e,r=(n.ORDER-Qe)/Je,o=n.mul(t,ht),s=n.pow(o,r),i=n.mul(t,s),f=n.mul(n.mul(i,ht),s),a=n.mul(i,n.sub(f,n.ONE));return ue(n,a,t),a}function qn(e){let t=Vt(e),n=nn(e),r=n(t,t.neg(t.ONE)),o=n(t,r),s=n(t,t.neg(r)),i=(e+Dn)/tn;return((f,a)=>{let c=f,u=c.pow(a,i),d=c.mul(u,r),w=c.mul(u,o),E=c.mul(u,s),S=c.eql(c.sqr(d),a),g=c.eql(c.sqr(w),a);u=c.cmov(u,d,S),d=c.cmov(E,w,g);let m=c.eql(c.sqr(d),a),l=c.cmov(u,d,m);return ue(c,l,a),l})}function nn(e){if(e<We)throw new Error("sqrt is not defined for small field");let t=e-C,n=0;for(;t%ht===z;)t/=ht,n++;let r=ht,o=Vt(e);for(;Ke(o,r)===1;)if(r++>1e3)throw new Error("Cannot find square root: probably non-prime P");if(n===1)return en;let s=o.pow(r,t),i=(t+C)/ht;return function(a,c){let u=a;if(u.is0(c))return c;if(Ke(u,c)!==1)throw new Error("Cannot find square root");let d=n,w=u.mul(u.ONE,s),E=u.pow(c,t),S=u.pow(c,i);for(;!u.eql(E,u.ONE);){if(u.is0(E))return u.ZERO;let g=1,m=u.sqr(E);for(;!u.eql(m,u.ONE);)if(g++,m=u.sqr(m),g===d)throw new Error("Cannot find square root");let l=C<<BigInt(d-g-1),y=u.pow(w,l);d=g,w=u.sqr(y),E=u.mul(E,w),S=u.mul(S,y)}return S}}function Un(e){return e%Pe===We?en:e%Je===Qe?Nn:e%tn===Hn?qn(e):nn(e)}var et=(e,t)=>(H(e,t)&C)===C,Cn=["create","isValid","is0","neg","inv","sqrt","sqr","eql","add","sub","mul","pow","div","addN","subN","mulN","sqrN"];function rn(e){let t={ORDER:"bigint",BYTES:"number",BITS:"number"},n=Cn.reduce((r,o)=>(r[o]="function",r),t);if(tt(e,n),J(e.BYTES,"BYTES"),J(e.BITS,"BITS"),e.BYTES<1||e.BITS<1)throw new Error("invalid field: expected BYTES/BITS > 0");if(e.ORDER<=C)throw new Error("invalid field: expected ORDER > 1, got "+e.ORDER);return e}function jn(e,t,n){let r=e;if(n<z)throw new Error("invalid exponent, negatives unsupported");if(n===z)return r.ONE;if(n===C)return t;let o=r.ONE,s=t;for(;n>z;)n&C&&(o=r.mul(o,s)),s=r.sqr(s),n>>=C;return o}function zt(e,t,n=!1){let r=e,o=new Array(t.length).fill(n?r.ZERO:void 0),s=t.reduce((f,a,c)=>r.is0(a)?f:(o[c]=f,r.mul(f,a)),r.ONE),i=r.inv(s);return t.reduceRight((f,a,c)=>r.is0(a)?f:(o[c]=r.mul(f,o[c]),r.mul(f,a)),i),o}function Ke(e,t){let n=e,r=(n.ORDER-C)/ht,o=n.pow(t,r),s=n.eql(o,n.ONE),i=n.eql(o,n.ZERO),f=n.eql(o,n.neg(n.ONE));if(!s&&!i&&!f)throw new Error("invalid Legendre symbol result");return s?1:i?0:-1}function Zn(e,t){if(t!==void 0&&oe(t),e<=z)throw new Error("invalid n length: expected positive n, got "+e);if(t!==void 0&&t<1)throw new Error("invalid n length: expected positive bit length, got "+t);let n=fe(e);if(t!==void 0&&t<n)throw new Error(`invalid n length: expected bit length (${n}) >= n.length (${t})`);let r=t!==void 0?t:n,o=Math.ceil(r/8);return{nBitLength:r,nByteLength:o}}var $e=new WeakMap,Mt=class{constructor(t,n={}){p(this,"ORDER");p(this,"BITS");p(this,"BYTES");p(this,"isLE");p(this,"ZERO",z);p(this,"ONE",C);p(this,"_lengths");p(this,"_mod");if(t<=C)throw new Error("invalid field: expected ORDER > 1, got "+t);let r;this.isLE=!1,n!=null&&typeof n=="object"&&(typeof n.BITS=="number"&&(r=n.BITS),typeof n.sqrt=="function"&&Object.defineProperty(this,"sqrt",{value:n.sqrt,enumerable:!0}),typeof n.isLE=="boolean"&&(this.isLE=n.isLE),n.allowedLengths&&(this._lengths=Object.freeze(n.allowedLengths.slice())),typeof n.modFromBytes=="boolean"&&(this._mod=n.modFromBytes));let{nBitLength:o,nByteLength:s}=Zn(t,r);if(s>2048)throw new Error("invalid field: expected ORDER of <= 2048 bytes");this.ORDER=t,this.BITS=o,this.BYTES=s,Object.freeze(this)}create(t){return H(t,this.ORDER)}isValid(t){if(typeof t!="bigint")throw new TypeError("invalid field element: expected bigint, got "+typeof t);return z<=t&&t<this.ORDER}is0(t){return t===z}isValidNot0(t){return!this.is0(t)&&this.isValid(t)}isOdd(t){return(t&C)===C}neg(t){return H(-t,this.ORDER)}eql(t,n){return t===n}sqr(t){return H(t*t,this.ORDER)}add(t,n){return H(t+n,this.ORDER)}sub(t,n){return H(t-n,this.ORDER)}mul(t,n){return H(t*n,this.ORDER)}pow(t,n){return jn(this,t,n)}div(t,n){return H(t*ke(n,this.ORDER),this.ORDER)}sqrN(t){return t*t}addN(t,n){return t+n}subN(t,n){return t-n}mulN(t,n){return t*n}inv(t){return ke(t,this.ORDER)}sqrt(t){let n=$e.get(this);return n||$e.set(this,n=Un(this.ORDER)),n(this,t)}toBytes(t){return this.isLE?jt(t,this.BYTES):ce(t,this.BYTES)}fromBytes(t,n=!1){D(t);let{_lengths:r,BYTES:o,isLE:s,ORDER:i,_mod:f}=this;if(r){if(t.length<1||!r.includes(t.length)||t.length>o)throw new Error("Field.fromBytes: expected "+r+" bytes, got "+t.length);let c=new Uint8Array(o);c.set(t,s?0:c.length-t.length),t=c}if(t.length!==o)throw new Error("Field.fromBytes: expected "+o+" bytes, got "+t.length);let a=s?k(t):ie(t);if(f&&(a=H(a,i)),!n&&!this.isValid(a))throw new Error("invalid field element: outside of range 0..ORDER");return a}invertBatch(t){return zt(this,t)}cmov(t,n,r){return mt(r,"condition"),r?n:t}};Object.freeze(Mt.prototype);function Vt(e,t={}){return new Mt(e,t)}var Yt=BigInt(0),xe=BigInt(1);function on(e,t){let n=t.negate();return e?n:t}function Xt(e,t){let n=zt(e.Fp,t.map(r=>r.Z));return t.map((r,o)=>e.fromAffine(r.toAffine(n[o])))}function an(e,t){if(!Number.isSafeInteger(e)||e<=0||e>t)throw new Error("invalid window size, expected [1.."+t+"], got W="+e)}function de(e,t){an(e,t);let n=Math.ceil(t/e)+1,r=2**(e-1),o=2**e,s=Xe(e),i=BigInt(e);return{windows:n,windowSize:r,mask:s,maxNumber:o,shiftBy:i}}function sn(e,t,n){let{windowSize:r,mask:o,maxNumber:s,shiftBy:i}=n,f=Number(e&o),a=e>>i;f>r&&(f-=s,a+=xe);let c=t*r,u=c+Math.abs(f)-1,d=f===0,w=f<0,E=t%2!==0;return{nextN:a,offset:u,isZero:d,isNeg:w,isNegF:E,offsetF:c}}var le=new WeakMap,un=new WeakMap;function he(e){return un.get(e)||1}function cn(e){if(e!==Yt)throw new Error("invalid wNAF")}var Gt=class{constructor(t,n){p(this,"BASE");p(this,"ZERO");p(this,"Fn");p(this,"bits");this.BASE=t.BASE,this.ZERO=t.ZERO,this.Fn=t.Fn,this.bits=n}_unsafeLadder(t,n,r=this.ZERO){let o=t;for(;n>Yt;)n&xe&&(r=r.add(o)),o=o.double(),n>>=xe;return r}precomputeWindow(t,n){let{windows:r,windowSize:o}=de(n,this.bits),s=[],i=t,f=i;for(let a=0;a<r;a++){f=i,s.push(f);for(let c=1;c<o;c++)f=f.add(i),s.push(f);i=f.double()}return s}wNAF(t,n,r){if(!this.Fn.isValid(r))throw new Error("invalid scalar");let o=this.ZERO,s=this.BASE,i=de(t,this.bits);for(let f=0;f<i.windows;f++){let{nextN:a,offset:c,isZero:u,isNeg:d,isNegF:w,offsetF:E}=sn(r,f,i);r=a,u?s=s.add(on(w,n[E])):o=o.add(on(d,n[c]))}return cn(r),{p:o,f:s}}wNAFUnsafe(t,n,r,o=this.ZERO){let s=de(t,this.bits);for(let i=0;i<s.windows&&r!==Yt;i++){let{nextN:f,offset:a,isZero:c,isNeg:u}=sn(r,i,s);if(r=f,!c){let d=n[a];o=o.add(u?d.negate():d)}}return cn(r),o}getPrecomputes(t,n,r){let o=le.get(n);return o||(o=this.precomputeWindow(n,t),t!==1&&(typeof r=="function"&&(o=r(o)),le.set(n,o))),o}cached(t,n,r){let o=he(t);return this.wNAF(o,this.getPrecomputes(o,t,r),n)}unsafe(t,n,r,o){let s=he(t);return s===1?this._unsafeLadder(t,n,o):this.wNAFUnsafe(s,this.getPrecomputes(s,t,r),n,o)}createCache(t,n){an(n,this.bits),un.set(t,n),le.delete(t)}hasCache(t){return he(t)!==1}};function fn(e,t,n){if(t){if(t.ORDER!==e)throw new Error("Field.ORDER must match order: Fp == p, Fn == n");return rn(t),t}else return Vt(e,{isLE:n})}function dn(e,t,n={},r){if(r===void 0&&(r=e==="edwards"),!t||typeof t!="object")throw new Error(`expected valid ${e} CURVE object`);for(let a of["p","n","h"]){let c=t[a];if(!(typeof c=="bigint"&&c>Yt))throw new Error(`CURVE.${a} must be positive bigint`)}let o=fn(t.p,n.Fp,r),s=fn(t.n,n.Fn,r),f=["Gx","Gy","a",e==="weierstrass"?"b":"d"];for(let a of f)if(!o.isValid(t[a]))throw new Error(`CURVE.${a} must be valid field element of CURVE.Fp`);return t=Object.freeze(Object.assign({},t)),{CURVE:t,Fp:o,Fn:s}}function kt(e,t){return function(r){let o=e(r);return{secretKey:o,publicKey:t(o)}}}var it=BigInt(0),j=BigInt(1),pe=BigInt(2),Mn=BigInt(8);function zn(e,t,n,r){let o=e.sqr(n),s=e.sqr(r),i=e.add(e.mul(t.a,o),s),f=e.add(e.ONE,e.mul(t.d,e.mul(o,s)));return e.eql(i,f)}function ln(e,t={}){let n=t,r=dn("edwards",e,n,n.FpFnLE),{Fp:o,Fn:s}=r,i=r.CURVE,{h:f}=i;tt(n,{},{uvRatio:"function"});let a=pe<<BigInt(s.BYTES*8)-j,c=m=>o.create(m),u=n.uvRatio===void 0?(m,l)=>{try{return{isValid:!0,value:o.sqrt(o.div(m,l))}}catch{return{isValid:!1,value:it}}}:n.uvRatio;if(!zn(o,i,i.Gx,i.Gy))throw new Error("bad curve params: generator point");function d(m,l,y=!1){let h=y?j:it;return gt("coordinate "+m,l,h,a),l}function w(m){if(!(m instanceof E))throw new Error("EdwardsPoint expected")}let g=class g{constructor(l,y,h,v){p(this,"X");p(this,"Y");p(this,"Z");p(this,"T");this.X=d("x",l),this.Y=d("y",y),this.Z=d("z",h,!0),this.T=d("t",v),Object.freeze(this)}static CURVE(){return i}static fromAffine(l){if(l instanceof g)throw new Error("extended point not allowed");let{x:y,y:h}=l||{};return d("x",y),d("y",h),new g(y,h,j,c(y*h))}static fromBytes(l,y=!1){let h=o.BYTES,{a:v,d:R}=i;l=st(D(l,h,"point")),mt(y,"zip215");let L=st(l),A=l[h-1];L[h-1]=A&-129;let O=k(L),T=y?a:o.ORDER;gt("point.y",O,it,T);let F=c(O*O),N=c(F-j),b=c(R*F-v),{isValid:B,value:x}=u(N,b);if(!B)throw new Error("bad point: invalid y coordinate");let _=(x&j)===j,I=(A&128)!==0;if(!y&&x===it&&I)throw new Error("bad point: x=0 and x_0=1");return I!==_&&(x=c(-x)),g.fromAffine({x,y:O})}static fromHex(l,y=!1){return g.fromBytes(Ve(l),y)}get x(){return this.toAffine().x}get y(){return this.toAffine().y}precompute(l=8,y=!0){return S.createCache(this,l),y||this.multiply(pe),this}assertValidity(){let l=this,{a:y,d:h}=i;if(l.is0())throw new Error("bad point: ZERO");let{X:v,Y:R,Z:L,T:A}=l,O=c(v*v),T=c(R*R),F=c(L*L),N=c(F*F),b=c(O*y),B=c(F*c(b+T)),x=c(N+c(h*c(O*T)));if(B!==x)throw new Error("bad point: equation left != right (1)");let _=c(v*R),I=c(L*A);if(_!==I)throw new Error("bad point: equation left != right (2)")}equals(l){w(l);let{X:y,Y:h,Z:v}=this,{X:R,Y:L,Z:A}=l,O=c(y*A),T=c(R*v),F=c(h*A),N=c(L*v);return O===T&&F===N}is0(){return this.equals(g.ZERO)}negate(){return new g(c(-this.X),this.Y,this.Z,c(-this.T))}double(){let{a:l}=i,{X:y,Y:h,Z:v}=this,R=c(y*y),L=c(h*h),A=c(pe*c(v*v)),O=c(l*R),T=y+h,F=c(c(T*T)-R-L),N=O+L,b=N-A,B=O-L,x=c(F*b),_=c(N*B),I=c(F*B),q=c(b*N);return new g(x,_,q,I)}add(l){w(l);let{a:y,d:h}=i,{X:v,Y:R,Z:L,T:A}=this,{X:O,Y:T,Z:F,T:N}=l,b=c(v*O),B=c(R*T),x=c(A*h*N),_=c(L*F),I=c((v+R)*(O+T)-b-B),q=_-x,U=_+x,Z=c(B-y*b),V=c(I*q),Y=c(U*Z),G=c(I*Z),pt=c(q*U);return new g(V,Y,pt,G)}subtract(l){return w(l),this.add(l.negate())}multiply(l){if(!s.isValidNot0(l))throw new RangeError("invalid scalar: expected 1 <= sc < curve.n");let{p:y,f:h}=S.cached(this,l,v=>Xt(g,v));return Xt(g,[y,h])[0]}multiplyUnsafe(l){if(!s.isValid(l))throw new RangeError("invalid scalar: expected 0 <= sc < curve.n");return l===it?g.ZERO:this.is0()||l===j?this:S.unsafe(this,l,y=>Xt(g,y))}isSmallOrder(){return this.clearCofactor().is0()}isTorsionFree(){return S.unsafe(this,i.n).is0()}toAffine(l){let y=this,h=l,{X:v,Y:R,Z:L}=y,A=y.is0();h==null&&(h=A?Mn:o.inv(L));let O=c(v*h),T=c(R*h),F=o.mul(L,h);if(A)return{x:it,y:j};if(F!==j)throw new Error("invZ was invalid");return{x:O,y:T}}clearCofactor(){return f===j?this:this.multiplyUnsafe(f)}toBytes(){let{x:l,y}=this.toAffine(),h=o.toBytes(y);return h[h.length-1]|=l&j?128:0,h}toHex(){return se(this.toBytes())}toString(){return`<Point ${this.is0()?"ZERO":this.toHex()}>`}};p(g,"BASE",new g(i.Gx,i.Gy,j,c(i.Gx*i.Gy))),p(g,"ZERO",new g(it,j,j,it)),p(g,"Fp",o),p(g,"Fn",s);let E=g,S=new Gt(E,s.BITS);return s.BITS>=8&&E.BASE.precompute(8),Object.freeze(E.prototype),Object.freeze(E),E}var ct=class{constructor(t){p(this,"ep");this.ep=t}static fromBytes(t){ae()}static fromHex(t){ae()}get x(){return this.toAffine().x}get y(){return this.toAffine().y}clearCofactor(){return this}assertValidity(){this.ep.assertValidity()}toAffine(t){return this.ep.toAffine(t)}toHex(){return se(this.toBytes())}toString(){return this.toHex()}isTorsionFree(){return!0}isSmallOrder(){return!1}add(t){return this.assertSame(t),this.init(this.ep.add(t.ep))}subtract(t){return this.assertSame(t),this.init(this.ep.subtract(t.ep))}multiply(t){return this.init(this.ep.multiply(t))}multiplyUnsafe(t){return this.init(this.ep.multiplyUnsafe(t))}double(){return this.init(this.ep.double())}negate(){return this.init(this.ep.negate())}precompute(t,n){return this.ep.precompute(t,n),this}};p(ct,"BASE"),p(ct,"ZERO"),p(ct,"Fp"),p(ct,"Fn");function hn(e,t,n={}){if(typeof t!="function")throw new Error('"hash" function param is required');let r=t,o=n;tt(o,{},{adjustScalarBytes:"function",randomBytes:"function",domain:"function",prehash:"function",zip215:"boolean",mapToCurve:"function"});let{prehash:s}=o,{BASE:i,Fp:f,Fn:a}=e,c=r.outputLen,u=2*f.BYTES;if(c!==void 0&&(J(c,"hash.outputLen"),c!==u))throw new Error(`hash.outputLen must be ${u}, got ${c}`);let d=o.randomBytes===void 0?Ct:o.randomBytes,w=o.adjustScalarBytes===void 0?b=>b:o.adjustScalarBytes,E=o.domain===void 0?(b,B,x)=>{if(mt(x,"phflag"),B.length||x)throw new Error("Contexts/pre-hash are not supported");return b}:o.domain;function S(b){return a.create(k(b))}function g(b){let B=A.secretKey;D(b,A.secretKey,"secretKey");let x=D(r(b),2*B,"hashedSecretKey"),_=w(x.slice(0,B)),I=x.slice(B,2*B),q=S(_);return{head:_,prefix:I,scalar:q}}function m(b){let{head:B,prefix:x,scalar:_}=g(b),I=i.multiply(_),q=I.toBytes();return{head:B,prefix:x,scalar:_,point:I,pointBytes:q}}function l(b){return m(b).pointBytes}function y(b=Uint8Array.of(),...B){let x=P(...B);return S(r(E(x,D(b,void 0,"context"),!!s)))}function h(b,B,x={}){b=D(b,void 0,"message"),s&&(b=s(b));let{prefix:_,scalar:I,pointBytes:q}=m(B),U=y(x.context,_,b),Z=i.multiply(U).toBytes(),V=y(x.context,Z,q,b),Y=a.create(U+V*I);if(!a.isValid(Y))throw new Error("sign failed: invalid s");let G=P(Z,a.toBytes(Y));return D(G,A.signature,"result")}let v={zip215:o.zip215};function R(b,B,x,_=v){let{context:I}=_,q=_.zip215===void 0?!!v.zip215:_.zip215,U=A.signature;b=D(b,U,"signature"),B=D(B,void 0,"message"),x=D(x,A.publicKey,"publicKey"),q!==void 0&&mt(q,"zip215"),s&&(B=s(B));let Z=U/2,V=b.subarray(0,Z),Y=k(b.subarray(Z,U)),G,pt,bt;try{G=e.fromBytes(x,q),pt=e.fromBytes(V,q),bt=i.multiplyUnsafe(Y)}catch{return!1}if(!q&&G.isSmallOrder())return!1;let At=y(I,V,x,B);return pt.add(G.multiplyUnsafe(At)).subtract(bt).clearCofactor().is0()}let L=f.BYTES,A={secretKey:L,publicKey:L,signature:2*L,seed:L};function O(b){return b=b===void 0?d(A.seed):b,D(b,A.seed,"seed")}function T(b){return Ut(b)&&b.length===A.secretKey}function F(b,B){try{return!!e.fromBytes(b,B===void 0?v.zip215:B)}catch{return!1}}let N={getExtendedPublicKey:m,randomSecretKey:O,isValidSecretKey:T,isValidPublicKey:F,toMontgomery(b){let{y:B}=e.fromBytes(b),x=A.publicKey,_=x===32;if(!_&&x!==57)throw new Error("only defined for 25519 and 448");let I=_?f.div(j+B,j-B):f.div(B-j,B+j);return f.toBytes(I)},toMontgomerySecret(b){let B=A.secretKey;D(b,B);let x=r(b.subarray(0,B));return w(x).subarray(0,B)}};return Object.freeze(A),Object.freeze(N),Object.freeze({keygen:kt(O,l),getPublicKey:l,sign:h,verify:R,utils:N,Point:e,lengths:A})}function _t(e,t){if(J(e),J(t),t<0||t>4)throw new Error("invalid I2OSP length: "+t);if(e<0||e>2**(8*t)-1)throw new Error("invalid I2OSP input: "+e);let n=Array.from({length:t}).fill(0);for(let r=t-1;r>=0;r--)n[r]=e&255,e>>>=8;return new Uint8Array(n)}function Vn(e,t){let n=new Uint8Array(e.length);for(let r=0;r<e.length;r++)n[r]=e[r]^t[r];return n}function Yn(e){if(!Ut(e)&&typeof e!="string")throw new Error("DST must be Uint8Array or ascii string");let t=typeof e=="string"?Zt(e):e;if(t.length===0)throw new Error("DST must be non-empty");return t}function be(e,t,n,r){D(e),J(n),t=Yn(t),t.length>255&&(t=r(P(Zt("H2C-OVERSIZE-DST-"),t)));let{outputLen:o,blockLen:s}=r,i=Math.ceil(n/o);if(n>65535||i>255)throw new Error("expand_message_xmd: invalid lenInBytes");let f=P(t,_t(t.length,1)),a=new Uint8Array(s),c=_t(n,2),u=new Array(i),d=r(P(a,e,c,_t(0,1),f));u[0]=r(P(d,_t(1,1),f));for(let E=1;E<i;E++){let S=[Vn(d,u[E-1]),_t(E+1,1),f];u[E]=r(P(...S))}return P(...u).slice(0,n)}var xn="HashToScalar-";var vt=BigInt(0),yt=BigInt(1),Kt=BigInt(2);function Gn(e){return tt(e,{P:"bigint",type:"string",adjustScalarBytes:"function",powPminus2:"function"},{randomBytes:"function"}),Object.freeze({...e})}function pn(e){let t=Gn(e),{P:n,type:r,adjustScalarBytes:o,powPminus2:s,randomBytes:i}=t,f=r==="x25519";if(!f&&r!=="x448")throw new Error("invalid type");let a=i===void 0?Ct:i,c=f?255:448,u=f?32:56,d=BigInt(f?9:5),w=BigInt(f?121665:39081),E=f?Kt**BigInt(254):Kt**BigInt(447),S=f?BigInt(8)*Kt**BigInt(251)-yt:BigInt(4)*Kt**BigInt(445)-yt,g=E+S+yt,m=x=>H(x,n),l=y(d);function y(x){return jt(m(x),u)}function h(x){let _=st(D(x,u,"uCoordinate"));return f&&(_[31]&=127),m(k(_))}function v(x){return k(o(st(D(x,u,"scalar"))))}function R(x,_){let I=F(h(_),v(x));if(I===vt)throw new Error("invalid private or public key received");return y(I)}function L(x){return R(x,l)}let A=L,O=R;function T(x,_,I){let q=m(x*(_-I));return _=m(_-q),I=m(I+q),{x_2:_,x_3:I}}function F(x,_){gt("u",x,vt,n),gt("scalar",_,E,g);let I=_,q=x,U=yt,Z=vt,V=x,Y=yt,G=vt;for(let bt=BigInt(c-1);bt>=vt;bt--){let At=I>>bt&yt;G^=At,{x_2:U,x_3:V}=T(G,U,V),{x_2:Z,x_3:Y}=T(G,Z,Y),G=At;let Ot=U+Z,Tt=m(Ot*Ot),$t=U-Z,Be=m($t*$t),Se=Tt-Be,Bn=V+Y,Sn=V-Y,_e=m(Sn*Ot),ve=m(Bn*$t),Ae=_e+ve,Oe=_e-ve;V=m(Ae*Ae),Y=m(q*m(Oe*Oe)),U=m(Tt*Be),Z=m(Se*(Tt+m(w*Se)))}({x_2:U,x_3:V}=T(G,U,V)),{x_2:Z,x_3:Y}=T(G,Z,Y);let pt=s(Z);return m(U*pt)}let N={secretKey:u,publicKey:u,seed:u},b=x=>(x=x===void 0?a(u):x,D(x,N.seed,"seed"),x),B={randomSecretKey:b};return Object.freeze(N),Object.freeze(B),Object.freeze({keygen:kt(b,A),getSharedSecret:O,getPublicKey:A,scalarMult:R,scalarMultBase:L,utils:B,GuBytes:l.slice(),lengths:N})}var Xn=BigInt(0),nt=BigInt(1),bn=BigInt(2),kn=BigInt(3),Kn=BigInt(5),$n=BigInt(8),xt=BigInt("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed"),we={p:xt,n:BigInt("0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed"),h:$n,a:BigInt("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec"),d:BigInt("0x52036cee2b6ffe738cc740797779e89800700a4d4141d8ab75eb4dca135978a3"),Gx:BigInt("0x216936d3cd6e53fec0a4e231fdd6dc5c692cc7609525a7b2c9562d608f25d51a"),Gy:BigInt("0x6666666666666666666666666666666666666666666666666666666666666658")};function yn(e){let t=BigInt(10),n=BigInt(20),r=BigInt(40),o=BigInt(80),s=xt,f=e*e%s*e%s,a=K(f,bn,s)*f%s,c=K(a,nt,s)*e%s,u=K(c,Kn,s)*c%s,d=K(u,t,s)*u%s,w=K(d,n,s)*d%s,E=K(w,r,s)*w%s,S=K(E,o,s)*E%s,g=K(S,o,s)*E%s,m=K(g,t,s)*u%s;return{pow_p_5_8:K(m,bn,s)*e%s,b2:f}}function wn(e){return e[0]&=248,e[31]&=127,e[31]|=64,e}var me=BigInt("19681161376707505956807079304988542015446066515923890162744021073123829784752");function Ee(e,t){let n=xt,r=H(t*t*t,n),o=H(r*r*t,n),s=yn(e*o).pow_p_5_8,i=H(e*r*s,n),f=H(t*i*i,n),a=i,c=H(i*me,n),u=f===e,d=f===H(-e,n),w=f===H(-e*me,n);return u&&(i=a),(d||w)&&(i=c),et(i,n)&&(i=H(-i,n)),{isValid:u||d,value:i}}var at=ln(we,{uvRatio:Ee}),ft=at.Fp,En=at.Fn;function Wn(e){return hn(at,Ht,Object.assign({adjustScalarBytes:wn,zip215:!0},e))}var Pn=Wn({});var Qn=(()=>{let e=xt;return pn({P:e,type:"x25519",powPminus2:t=>{let{pow_p_5_8:n,b2:r}=yn(t);return H(K(n,kn,e)*r,e)},adjustScalarBytes:wn})})();var ge=me,Jn=BigInt("25063068953384623474111414158702152701244531502492656460079210482610430750235"),tr=BigInt("54469307008909316920995813868745141605393597292927456921205312896311721017578"),er=BigInt("1159843021668779879193775521855586647937357759715417654439879720876111806838"),nr=BigInt("40440834346308536858101042469323190826248399146238708352240133220865137265952"),mn=e=>Ee(nt,e),rr=BigInt("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),ye=e=>ft.create(k(e)&rr);function gn(e){let{d:t}=we,n=xt,r=l=>ft.create(l),o=r(ge*e*e),s=r((o+nt)*er),i=BigInt(-1),f=r((i-t*o)*r(o+t)),{isValid:a,value:c}=Ee(s,f),u=r(c*e);et(u,n)||(u=r(-u)),a||(c=u),a||(i=o);let d=r(i*(o-nt)*nr-f),w=c*c,E=r((c+c)*f),S=r(d*Jn),g=r(nt-w),m=r(nt+w);return new at(r(E*m),r(g*S),r(S*m),r(E*g))}var X=class X extends ct{constructor(t){super(t)}static fromAffine(t){return new X(at.fromAffine(t))}assertSame(t){if(!(t instanceof X))throw new Error("RistrettoPoint expected")}init(t){return new X(t)}static fromBytes(t){$(t,32);let{a:n,d:r}=we,o=xt,s=v=>ft.create(v),i=ye(t);if(!Ge(ft.toBytes(i),t)||et(i,o))throw new Error("invalid ristretto255 encoding 1");let f=s(i*i),a=s(nt+n*f),c=s(nt-n*f),u=s(a*a),d=s(c*c),w=s(n*r*u-d),{isValid:E,value:S}=mn(s(w*d)),g=s(S*c),m=s(S*g*w),l=s((i+i)*g);et(l,o)&&(l=s(-l));let y=s(a*m),h=s(l*y);if(!E||et(h,o)||y===Xn)throw new Error("invalid ristretto255 encoding 2");return new X(new at(l,y,nt,h))}static fromHex(t){return X.fromBytes(Et(t))}toBytes(){let{X:t,Y:n,Z:r,T:o}=this.ep,s=xt,i=m=>ft.create(m),f=i(i(r+n)*i(r-n)),a=i(t*n),c=i(a*a),{value:u}=mn(i(f*c)),d=i(u*f),w=i(u*a),E=i(d*w*o),S;if(et(o*E,s)){let m=i(n*ge),l=i(t*ge);t=m,n=l,S=i(d*tr)}else S=w;et(t*E,s)&&(n=i(-n));let g=i((r-n)*S);return et(g,s)&&(g=i(-g)),ft.toBytes(g)}equals(t){this.assertSame(t);let{X:n,Y:r}=this.ep,{X:o,Y:s}=t.ep,i=c=>ft.create(c),f=i(n*s)===i(r*o),a=i(r*s)===i(n*o);return f||a}is0(){return this.equals(X.ZERO)}};p(X,"BASE",new X(at.BASE)),p(X,"ZERO",new X(at.ZERO)),p(X,"Fp",ft),p(X,"Fn",En);var ut=X;Object.freeze(ut.BASE);Object.freeze(ut.ZERO);Object.freeze(ut.prototype);Object.freeze(ut);var or=Object.freeze({Point:ut,hashToCurve(e,t){let n=t?.DST===void 0?"ristretto255_XMD:SHA-512_R255MAP_RO_":t.DST,r=be(e,n,64,Ht);return or.deriveToCurve(r)},hashToScalar(e,t={DST:xn}){let n=be(e,t.DST,64,Ht);return En.create(k(n))},deriveToCurve(e){$(e,64);let t=ye(e.subarray(0,32)),n=gn(t),r=ye(e.subarray(32,64)),o=gn(r);return new ut(n.add(o))}});
+/*! Bundled license information:
+
+@noble/curves/utils.js:
+@noble/curves/abstract/modular.js:
+@noble/curves/abstract/curve.js:
+@noble/curves/abstract/edwards.js:
+@noble/curves/abstract/montgomery.js:
+@noble/curves/ed25519.js:
+  (*! noble-curves - MIT License (c) 2022 Paul Miller (paulmillr.com) *)
+*/
+window.__nee2pNoble = {
+  x25519: (typeof Qn !== 'undefined' ? Qn : null),
+  ed25519: (typeof Pn !== 'undefined' ? Pn : null),
+};
+</script>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗
+     ║  Nee2P Lite — main application code                         ║
+     ╚══════════════════════════════════════════════════════════════╝ -->
+<script>
+(function() {
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════
+// Tiny helpers
+// ═══════════════════════════════════════════════════════════════
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+
+const $ = (sel) => document.querySelector(sel);
+const el = (tag, attrs, ...children) => {
+  const node = document.createElement(tag);
+  if (attrs) for (const k in attrs) {
+    if (k === 'class') node.className = attrs[k];
+    else if (k === 'style') Object.assign(node.style, attrs[k]);
+    else if (k.startsWith('on')) node.addEventListener(k.slice(2), attrs[k]);
+    else node.setAttribute(k, attrs[k]);
+  }
+  for (const c of children) {
+    if (c == null) continue;
+    node.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+  }
+  return node;
+};
+
+function bytesToHex(b) {
+  let s = '';
+  for (let i = 0; i < b.length; i++) s += b[i].toString(16).padStart(2, '0');
+  return s;
+}
+function bytesToBinStr(b) {
+  let s = '';
+  for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+  return s;
+}
+function binStrToBytes(s) {
+  const b = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) b[i] = s.charCodeAt(i) & 0xff;
+  return b;
+}
+function randBytes(n) { return crypto.getRandomValues(new Uint8Array(n)); }
+
+// ═══════════════════════════════════════════════════════════════
+// Crypto layer
+// ═══════════════════════════════════════════════════════════════
+const Crypto = (function() {
+  let kdfMode = 'unknown';
+  let kemAvailable = false;
+  let x25519Source = 'unknown';
+
+  // Argon2id from phrase. Returns 32-byte master key + AES-GCM key.
+  // Mirrors crypto.js deriveKey() — same params for compat with main project.
+  async function deriveMasterKey(phrase) {
+    const phraseStr = String(phrase || '');
+    const argon = window.argon2 || window.Argon2;
+    let raw = null;
+
+    if (argon && typeof argon.hash === 'function') {
+      try {
+        const ArgonType = (argon.ArgonType && argon.ArgonType.Argon2id != null) ? argon.ArgonType.Argon2id : 2;
+        const r = await argon.hash({
+          pass: phraseStr,
+          salt: 'nee2p-lite.v1.argon2id:' + phraseStr,
+          type: ArgonType,
+          time: 3,
+          mem: 65536,
+          parallelism: 1,
+          hashLen: 32,
+        });
+        if (r && r.hash && r.hash.length === 32) {
+          raw = new Uint8Array(r.hash);
+          kdfMode = 'argon2id';
+        }
+      } catch (e) {
+        console.warn('argon2 failed, falling back to PBKDF2:', e);
+      }
+    }
+
+    if (!raw) {
+      const baseKey = await crypto.subtle.importKey(
+        'raw', enc.encode(phraseStr), { name: 'PBKDF2' }, false, ['deriveBits']
+      );
+      const bits = await crypto.subtle.deriveBits(
+        { name: 'PBKDF2', salt: enc.encode('nee2p-lite.v1.pbkdf2:' + phraseStr),
+          iterations: 600000, hash: 'SHA-256' },
+        baseKey, 256
+      );
+      raw = new Uint8Array(bits);
+      kdfMode = 'pbkdf2';
+    }
+
+    return raw;
+  }
+
+  // HKDF-SHA256 for key separation
+  async function hkdf(ikm, salt, info, length) {
+    const baseKey = await crypto.subtle.importKey('raw', ikm, 'HKDF', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits(
+      { name: 'HKDF', hash: 'SHA-256',
+        salt: salt instanceof Uint8Array ? salt : enc.encode(salt),
+        info: info instanceof Uint8Array ? info : enc.encode(info) },
+      baseKey, length * 8
+    );
+    return new Uint8Array(bits);
+  }
+
+  async function hmacSha256(key, data) {
+    const k = await crypto.subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const sig = await crypto.subtle.sign('HMAC', k, data instanceof Uint8Array ? data : enc.encode(data));
+    return new Uint8Array(sig);
+  }
+
+  async function sha1(data) {
+    const buf = await crypto.subtle.digest('SHA-1', data instanceof Uint8Array ? data : enc.encode(data));
+    return new Uint8Array(buf);
+  }
+  async function sha256(data) {
+    const buf = await crypto.subtle.digest('SHA-256', data instanceof Uint8Array ? data : enc.encode(data));
+    return new Uint8Array(buf);
+  }
+
+  // ─── X25519 ─────────────────────────────────────────────
+  // Prefer WebCrypto Subtle (Chrome 133+, Safari 18.4+, Firefox 130+).
+  // Fall back to noble bundle exposed as window.__nee2pNoble.x25519.
+  let _subtleX25519 = null;
+  async function probeSubtleX25519() {
+    if (_subtleX25519 !== null) return _subtleX25519;
+    try {
+      const kp = await crypto.subtle.generateKey({ name: 'X25519' }, true, ['deriveBits']);
+      _subtleX25519 = !!(kp && kp.publicKey);
+    } catch { _subtleX25519 = false; }
+    return _subtleX25519;
+  }
+
+  async function generateX25519() {
+    if (await probeSubtleX25519()) {
+      const kp = await crypto.subtle.generateKey({ name: 'X25519' }, true, ['deriveBits']);
+      const pubRaw = new Uint8Array(await crypto.subtle.exportKey('raw', kp.publicKey));
+      x25519Source = 'subtle';
+      return { pub: pubRaw, priv: { kind: 'subtle', priv: kp.privateKey } };
+    }
+    const noble = window.__nee2pNoble && window.__nee2pNoble.x25519;
+    if (noble && typeof noble.getPublicKey === 'function') {
+      const priv = (noble.utils && typeof noble.utils.randomSecretKey === 'function')
+        ? noble.utils.randomSecretKey()
+        : (noble.utils && typeof noble.utils.randomPrivateKey === 'function')
+          ? noble.utils.randomPrivateKey()
+          : randBytes(32);
+      const pub = noble.getPublicKey(priv);
+      x25519Source = 'noble';
+      return { pub: new Uint8Array(pub), priv: { kind: 'noble', priv: new Uint8Array(priv) } };
+    }
+    x25519Source = 'unavailable';
+    throw new Error('No X25519 implementation available');
+  }
+
+  async function x25519Ecdh(privObj, peerPubBytes) {
+    if (privObj.kind === 'subtle') {
+      const peerKey = await crypto.subtle.importKey('raw', peerPubBytes, { name: 'X25519' }, true, []);
+      const bits = await crypto.subtle.deriveBits({ name: 'X25519', public: peerKey }, privObj.priv, 256);
+      return new Uint8Array(bits);
+    }
+    if (privObj.kind === 'noble') {
+      const noble = window.__nee2pNoble && window.__nee2pNoble.x25519;
+      return new Uint8Array(noble.getSharedSecret(privObj.priv, peerPubBytes));
+    }
+    throw new Error('Unknown X25519 privkey kind');
+  }
+
+  // ─── ML-KEM-768 ──────────────────────────────────────────
+  async function generateMlKem() {
+    const mod = window.__nee2pMlKem;
+    if (!mod || !mod.MlKem768) {
+      kemAvailable = false;
+      throw new Error('ML-KEM-768 not available');
+    }
+    const kem = new mod.MlKem768();
+    const [pk, sk] = await kem.generateKeyPair();
+    kemAvailable = true;
+    return { pub: new Uint8Array(pk), priv: { kind: 'mlkem768', kem, sk: new Uint8Array(sk) } };
+  }
+
+  async function mlKemEncap(peerPub) {
+    const mod = window.__nee2pMlKem;
+    const sender = new mod.MlKem768();
+    const [ct, ss] = await sender.encap(peerPub instanceof Uint8Array ? peerPub : new Uint8Array(peerPub));
+    return { sharedSecret: new Uint8Array(ss), ct: new Uint8Array(ct) };
+  }
+
+  async function mlKemDecap(privObj, ctBytes) {
+    if (privObj.kind !== 'mlkem768') throw new Error('Bad ML-KEM privkey');
+    const ct = ctBytes instanceof Uint8Array ? ctBytes : new Uint8Array(ctBytes);
+    const ss = await privObj.kem.decap(ct, privObj.sk);
+    return new Uint8Array(ss);
+  }
+
+  // ─── AES-GCM ─────────────────────────────────────────────
+  async function importAesKey(rawKey) {
+    return crypto.subtle.importKey('raw', rawKey, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  }
+  async function aesEncrypt(key, plaintext) {
+    const iv = randBytes(12);
+    const ctBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(String(plaintext)));
+    return { iv, ct: new Uint8Array(ctBuf) };
+  }
+  async function aesDecrypt(key, iv, ct) {
+    const ptBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+    return dec.decode(ptBuf);
+  }
+
+  // ─── Safety fingerprint (BIP-39 12 words) ────────────────
+  async function safetyFingerprint(myPub, theirPub) {
+    // sort so both sides compute the same fingerprint
+    const a = bytesToHex(myPub);
+    const b = bytesToHex(theirPub);
+    const concat = a < b ? (myPub + theirPub) : (theirPub + myPub);
+    const combined = new Uint8Array(myPub.length + theirPub.length);
+    if (a < b) { combined.set(myPub, 0); combined.set(theirPub, myPub.length); }
+    else      { combined.set(theirPub, 0); combined.set(myPub, theirPub.length); }
+    const hash = await sha256(combined);
+    const words = window.Nee2PBip39English || [];
+    if (!words.length) return ['(bip39 unavailable)'];
+    const out = [];
+    // 12 words: each word = 11 bits, but we just use first 22 bytes → 12 words via byte pairs
+    // Simple scheme: take 12 bytes, map each byte to word via byte % 2048 (loses some entropy but OK for fingerprint)
+    // Better: 12 words × 11 bits = 132 bits = 16.5 bytes. Use first 17 bytes packed.
+    for (let i = 0; i < 12; i++) {
+      const bitOffset = i * 11;
+      const byteOffset = Math.floor(bitOffset / 8);
+      const shift = bitOffset % 8;
+      const v = ((hash[byteOffset] << 16) | (hash[byteOffset+1] << 8) | hash[byteOffset+2]);
+      const w = (v >> (24 - shift - 11)) & 0x7ff;
+      out.push(words[w]);
+    }
+    return out;
+  }
+
+  return {
+    deriveMasterKey, hkdf, hmacSha256, sha1, sha256,
+    generateX25519, x25519Ecdh,
+    generateMlKem, mlKemEncap, mlKemDecap,
+    importAesKey, aesEncrypt, aesDecrypt,
+    safetyFingerprint,
+    get kdfMode() { return kdfMode; },
+    get kemAvailable() { return kemAvailable; },
+    get x25519Source() { return x25519Source; },
+  };
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// WebTorrent tracker client
+// ═══════════════════════════════════════════════════════════════
+//
+// Protocol: WebTorrent uses WebSocket trackers (BEP doesn't cover it, but it's
+// a de-facto standard). Wire format:
+//
+//   Send announce with offers:
+//     { action: 'announce', info_hash, peer_id, uploaded:0, downloaded:0,
+//       left:0, numwant:5, offers: [{offer_id, offer:{type,sdp}}] }
+//
+//   Receive someone's offer:
+//     { action: 'announce', info_hash, peer_id, offer_id, offer:{type,sdp} }
+//   → respond with answer:
+//     { action: 'announce', info_hash, peer_id, to_peer_id, offer_id,
+//       answer: {type,sdp} }
+//
+//   Receive answer to our offer:
+//     { action: 'announce', info_hash, peer_id, to_peer_id, offer_id, answer }
+//
+// info_hash, peer_id, offer_id are 20-byte binary strings (each char = 1 byte).
+const TRACKERS = [
+  'wss://tracker.openwebtorrent.com',
+  'wss://tracker.btorrent.xyz',
+  'wss://tracker.webtorrent.dev',
+  'wss://tracker.files.fm:7073/announce',
+];
+
+class TrackerSwarm {
+  constructor(infoHash20, peerId20, onOffer, onAnswer, log) {
+    this.infoHash = bytesToBinStr(infoHash20);
+    this.peerId = bytesToBinStr(peerId20);
+    this.onOffer = onOffer;     // ({fromPeerId, offerId, sdp})
+    this.onAnswer = onAnswer;   // ({fromPeerId, offerId, sdp})
+    this.log = log || (() => {});
+    this.conns = [];
+    this.connected = 0;
+  }
+
+  start() {
+    for (const url of TRACKERS) this._connectOne(url);
+  }
+
+  _connectOne(url) {
+    let ws;
+    try { ws = new WebSocket(url); }
+    catch (e) { this.log('tracker', `${url}: ${e.message}`, 'err'); return; }
+
+    const entry = { url, ws, alive: false, reconnectTimer: null };
+    this.conns.push(entry);
+
+    ws.onopen = () => {
+      entry.alive = true;
+      this.connected++;
+      this.log('tracker', `${shortHost(url)} ✓`, 'ok');
+    };
+    ws.onerror = () => { this.log('tracker', `${shortHost(url)} ✗`, 'warn'); };
+    ws.onclose = () => {
+      if (entry.alive) this.connected--;
+      entry.alive = false;
+      this.log('tracker', `${shortHost(url)} closed`, 'warn');
+    };
+    ws.onmessage = (evt) => this._onMessage(entry, evt);
+  }
+
+  _onMessage(entry, evt) {
+    let msg;
+    try { msg = JSON.parse(evt.data); } catch { return; }
+    if (!msg || msg.action !== 'announce') return;
+    // ignore messages for other info-hashes (shouldn't happen, but tracker may forward)
+    if (msg.info_hash && msg.info_hash !== this.infoHash) return;
+    // Ignore our own peer_id echoes
+    if (msg.peer_id === this.peerId) return;
+
+    if (msg.offer && msg.offer.sdp) {
+      this.onOffer({
+        fromPeerId: msg.peer_id,
+        offerId: msg.offer_id,
+        sdp: msg.offer.sdp,
+        viaTracker: entry,
+      });
+    } else if (msg.answer && msg.answer.sdp) {
+      this.onAnswer({
+        fromPeerId: msg.peer_id,
+        offerId: msg.offer_id,
+        sdp: msg.answer.sdp,
+        viaTracker: entry,
+      });
+    }
+  }
+
+  // Broadcast our offer to ALL connected trackers — the first peer to answer wins,
+  // others get dropped silently.
+  announceOffer(offerId20, sdp) {
+    const offerIdStr = bytesToBinStr(offerId20);
+    const payload = JSON.stringify({
+      action: 'announce',
+      info_hash: this.infoHash,
+      peer_id: this.peerId,
+      uploaded: 0,
+      downloaded: 0,
+      left: 0,
+      numwant: 5,
+      offers: [{ offer_id: offerIdStr, offer: { type: 'offer', sdp } }],
+    });
+    let sent = 0;
+    for (const c of this.conns) {
+      if (c.alive && c.ws.readyState === WebSocket.OPEN) {
+        try { c.ws.send(payload); sent++; } catch {}
+      }
+    }
+    return sent;
+  }
+
+  // Reply to someone's offer with our answer, sent ONLY to the tracker that
+  // forwarded it (otherwise other trackers reject "to_peer_id" they don't know).
+  sendAnswer(viaTrackerEntry, toPeerId, offerId, sdp) {
+    const payload = JSON.stringify({
+      action: 'announce',
+      info_hash: this.infoHash,
+      peer_id: this.peerId,
+      to_peer_id: toPeerId,
+      offer_id: offerId,
+      answer: { type: 'answer', sdp },
+    });
+    try { viaTrackerEntry.ws.send(payload); return true; } catch { return false; }
+  }
+
+  close() {
+    for (const c of this.conns) {
+      try { c.ws.close(); } catch {}
+    }
+    this.conns = [];
+  }
+}
+
+function shortHost(url) {
+  try { return new URL(url).host.replace(/^tracker\./, ''); }
+  catch { return url; }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// WebRTC peer with PQ-handshake + PSK auth
+// ═══════════════════════════════════════════════════════════════
+const STUN = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun.cloudflare.com:3478' },
+];
+
+class P2PSession {
+  constructor({ psk, role, log }) {
+    this.psk = psk;             // 32-byte PSK derived from phrase
+    this.role = role;           // 'initiator' or 'responder' (informational)
+    this.log = log || (() => {});
+    this.pc = null;
+    this.dc = null;
+    this.onMessage = null;      // (text) => {}
+    this.onOpen = null;         // () => {}
+    this.onClose = null;        // () => {}
+    this.onKeys = null;         // ({ myKemPub, theirKemPub, myX25519Pub, theirX25519Pub, sessionKey }) => {}
+    this.sessionKey = null;     // CryptoKey for AES-GCM after handshake
+    this.handshakeState = 'pending';
+    this._x25519 = null;
+    this._mlkem = null;
+    this._theirX25519Pub = null;
+    this._theirKemPub = null;
+    this._myKemPub = null;
+    this._myX25519Pub = null;
+  }
+
+  // ─── PSK MAC: protects SDP from tracker MITM ─────────────
+  // The signed payload is the SDP text + a 16-byte nonce supplied alongside.
+  // Tracker passes our extra fields through transparently.
+  async signSdp(sdpText) {
+    const nonce = randBytes(16);
+    const data = new Uint8Array(sdpText.length + nonce.length);
+    data.set(enc.encode(sdpText), 0);
+    data.set(nonce, sdpText.length);
+    const mac = await Crypto.hmacSha256(this.psk, data);
+    return {
+      nonce: bytesToBinStr(nonce),
+      mac: bytesToBinStr(mac),
+    };
+  }
+  async verifySdp(sdpText, nonceBinStr, macBinStr) {
+    if (!nonceBinStr || !macBinStr) return false;
+    const nonce = binStrToBytes(nonceBinStr);
+    if (nonce.length !== 16) return false;
+    const expectedMac = binStrToBytes(macBinStr);
+    const data = new Uint8Array(sdpText.length + nonce.length);
+    data.set(enc.encode(sdpText), 0);
+    data.set(nonce, sdpText.length);
+    const actual = await Crypto.hmacSha256(this.psk, data);
+    if (actual.length !== expectedMac.length) return false;
+    let diff = 0;
+    for (let i = 0; i < actual.length; i++) diff |= actual[i] ^ expectedMac[i];
+    return diff === 0;
+  }
+
+  // ─── WebRTC setup ────────────────────────────────────────
+  _setupPc() {
+    this.pc = new RTCPeerConnection({ iceServers: STUN });
+    this.pc.oniceconnectionstatechange = () => {
+      this.log('webrtc', 'ice: ' + this.pc.iceConnectionState);
+      if (['failed', 'disconnected', 'closed'].includes(this.pc.iceConnectionState)) {
+        if (this.onClose) this.onClose();
+      }
+    };
+  }
+
+  // Initiator creates DataChannel; responder waits for ondatachannel.
+  async createOffer() {
+    this._setupPc();
+    this.dc = this.pc.createDataChannel('nee2p', { ordered: true });
+    this._wireDc();
+    const offer = await this.pc.createOffer();
+    await this.pc.setLocalDescription(offer);
+    // Wait for ICE gathering (no trickle for simplicity in MVP)
+    await this._awaitIceComplete();
+    return this.pc.localDescription.sdp;
+  }
+
+  async createAnswer(remoteSdp) {
+    this._setupPc();
+    this.pc.ondatachannel = (evt) => {
+      this.dc = evt.channel;
+      this._wireDc();
+    };
+    await this.pc.setRemoteDescription({ type: 'offer', sdp: remoteSdp });
+    const answer = await this.pc.createAnswer();
+    await this.pc.setLocalDescription(answer);
+    await this._awaitIceComplete();
+    return this.pc.localDescription.sdp;
+  }
+
+  async acceptAnswer(remoteSdp) {
+    await this.pc.setRemoteDescription({ type: 'answer', sdp: remoteSdp });
+  }
+
+  _awaitIceComplete() {
+    return new Promise((resolve) => {
+      if (this.pc.iceGatheringState === 'complete') return resolve();
+      const check = () => {
+        if (this.pc.iceGatheringState === 'complete') {
+          this.pc.removeEventListener('icegatheringstatechange', check);
+          resolve();
+        }
+      };
+      this.pc.addEventListener('icegatheringstatechange', check);
+      // safety timeout — 4s is enough for STUN to gather candidates
+      setTimeout(resolve, 4000);
+    });
+  }
+
+  _wireDc() {
+    this.dc.binaryType = 'arraybuffer';
+    this.dc.onopen = () => {
+      this.log('webrtc', 'DataChannel open ✓', 'ok');
+      this._startPqHandshake();
+    };
+    this.dc.onclose = () => {
+      this.log('webrtc', 'DataChannel closed');
+      if (this.onClose) this.onClose();
+    };
+    this.dc.onmessage = (evt) => this._onDcMessage(evt.data);
+  }
+
+  // ─── PQ handshake over the DataChannel ────────────────────
+  // 1) Both sides generate X25519 + ML-KEM ephemeral keypairs.
+  // 2) Both send: { t:'hello', x25519Pub, kemPub }
+  // 3) On receiving peer hello:
+  //    - encapsulate against peer's kemPub → ct + ssSender
+  //    - send: { t:'kem', ct }
+  //    - ECDH against peer's x25519Pub → ssECDH
+  // 4) On receiving peer's kem ct: decap → ssReceiver
+  // 5) Both sides: session_key = HKDF(ssECDH || ssSender || ssReceiver || psk,
+  //                                    salt=info_hash, info='nee2p-lite.v1.session')
+  // 6) Send 'ready' (encrypted with session_key). Both must receive 'ready' to flip to chat state.
+  async _startPqHandshake() {
+    try {
+      this._x25519 = await Crypto.generateX25519();
+      this._mlkem = await Crypto.generateMlKem();
+      this._myX25519Pub = this._x25519.pub;
+      this._myKemPub = this._mlkem.pub;
+      this._send({
+        t: 'hello',
+        x25519: bytesToBinStr(this._x25519.pub),
+        kem: bytesToBinStr(this._mlkem.pub),
+      });
+      this.handshakeState = 'sent-hello';
+      this.log('handshake', 'hello sent (X25519+MLKEM)', 'ok');
+    } catch (e) {
+      this.log('handshake', 'init failed: ' + e.message, 'err');
+    }
+  }
+
+  _send(obj) {
+    if (this.dc && this.dc.readyState === 'open') {
+      this.dc.send(JSON.stringify(obj));
+    }
+  }
+
+  async _onDcMessage(data) {
+    let raw = data;
+    if (data instanceof ArrayBuffer) raw = dec.decode(new Uint8Array(data));
+    // pre-handshake: plain JSON. post-handshake: encrypted envelopes.
+    let msg;
+    try { msg = JSON.parse(raw); } catch { return; }
+
+    if (msg.t === 'hello' && this.handshakeState === 'sent-hello') {
+      try {
+        this._theirX25519Pub = binStrToBytes(msg.x25519);
+        this._theirKemPub = binStrToBytes(msg.kem);
+        this.log('handshake', 'peer hello received', 'ok');
+        // Compute ECDH
+        const ssEcdh = await Crypto.x25519Ecdh(this._x25519.priv, this._theirX25519Pub);
+        // Encap against peer's KEM pubkey
+        const { sharedSecret: ssSender, ct } = await Crypto.mlKemEncap(this._theirKemPub);
+        this._ssSender = ssSender;
+        this._ssEcdh = ssEcdh;
+        this._send({ t: 'kem', ct: bytesToBinStr(ct) });
+        this.handshakeState = 'sent-kem';
+        this.log('handshake', 'KEM ciphertext sent', 'ok');
+        await this._maybeDeriveKey();
+      } catch (e) {
+        this.log('handshake', 'hello-handler failed: ' + e.message, 'err');
+      }
+      return;
+    }
+    if (msg.t === 'kem') {
+      try {
+        const ct = binStrToBytes(msg.ct);
+        this._ssReceiver = await Crypto.mlKemDecap(this._mlkem.priv, ct);
+        this.log('handshake', 'KEM ciphertext received, decap ✓', 'ok');
+        await this._maybeDeriveKey();
+      } catch (e) {
+        this.log('handshake', 'kem-handler failed: ' + e.message, 'err');
+      }
+      return;
+    }
+    if (msg.t === 'ready') {
+      this.handshakeState = 'ready';
+      this.log('handshake', 'peer ready, chat unlocked ✓', 'ok');
+      if (this.onOpen) this.onOpen();
+      return;
+    }
+    if (msg.t === 'msg' && this.sessionKey) {
+      try {
+        const iv = binStrToBytes(msg.iv);
+        const ct = binStrToBytes(msg.ct);
+        const text = await Crypto.aesDecrypt(this.sessionKey, iv, ct);
+        if (this.onMessage) this.onMessage(text);
+      } catch (e) {
+        this.log('chat', 'decrypt failed: ' + e.message, 'err');
+      }
+    }
+  }
+
+  async _maybeDeriveKey() {
+    if (!this._ssEcdh || !this._ssSender || !this._ssReceiver) return;
+    if (this.sessionKey) return; // already derived
+
+    // IKM = ECDH || ssSender || ssReceiver || PSK
+    // (PSK already authenticated SDP, but mixing here defends against
+    //  classical attacker who somehow ran successful handshake without phrase)
+    const ikm = new Uint8Array(
+      this._ssEcdh.length + this._ssSender.length + this._ssReceiver.length + this.psk.length
+    );
+    let off = 0;
+    ikm.set(this._ssEcdh, off); off += this._ssEcdh.length;
+    ikm.set(this._ssSender, off); off += this._ssSender.length;
+    ikm.set(this._ssReceiver, off); off += this._ssReceiver.length;
+    ikm.set(this.psk, off);
+
+    const rawKey = await Crypto.hkdf(ikm, this.psk /* salt */, 'nee2p-lite.v1.session', 32);
+    this.sessionKey = await Crypto.importAesKey(rawKey);
+    this.log('handshake', 'session key derived (HKDF over X25519+MLKEM+PSK) ✓', 'ok');
+    this._send({ t: 'ready' });
+    if (this.onKeys) {
+      this.onKeys({
+        myKemPub: this._myKemPub,
+        theirKemPub: this._theirKemPub,
+        myX25519Pub: this._myX25519Pub,
+        theirX25519Pub: this._theirX25519Pub,
+      });
+    }
+    // local-side ready
+    if (this.handshakeState !== 'ready') {
+      this.handshakeState = 'sent-ready';
+    }
+  }
+
+  async sendText(text) {
+    if (!this.sessionKey) throw new Error('session not established');
+    const { iv, ct } = await Crypto.aesEncrypt(this.sessionKey, text);
+    this._send({ t: 'msg', iv: bytesToBinStr(iv), ct: bytesToBinStr(ct) });
+  }
+
+  close() {
+    try { if (this.dc) this.dc.close(); } catch {}
+    try { if (this.pc) this.pc.close(); } catch {}
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Application orchestrator
+// ═══════════════════════════════════════════════════════════════
+const App = {
+  state: 'welcome', // welcome | connecting | chat
+  phrase: '',
+  masterKey: null,
+  psk: null,
+  infoHash: null,        // 20 bytes
+  peerId: null,          // 20 bytes
+  tracker: null,         // TrackerSwarm
+  session: null,         // P2PSession
+  messages: [],
+  status: [],
+  fingerprint: null,
+  showFp: false,
+
+  log(tag, msg, level) {
+    this.status.unshift({ tag, msg, level: level || '', ts: Date.now() });
+    if (this.status.length > 100) this.status.length = 100;
+    this.render();
+  },
+
+  pushMsg(from, text) {
+    this.messages.push({ from, text, ts: Date.now() });
+    this.render();
+  },
+
+  async start(phrase) {
+    this.phrase = phrase;
+    this.state = 'connecting';
+    this.status = [];
+    this.messages = [];
+    this.render();
+
+    try {
+      this.log('crypto', 'deriving master key (Argon2id, ~1.5s)…');
+      this.masterKey = await Crypto.deriveMasterKey(phrase);
+      this.log('crypto', `KDF: ${Crypto.kdfMode} ✓`, 'ok');
+
+      this.infoHash = await Crypto.sha1(this.masterKey);
+      this.psk = await Crypto.hkdf(this.masterKey, enc.encode('nee2p-lite.v1.psk'), 'psk', 32);
+      this.peerId = randBytes(20);
+
+      this.log('discovery', `room: ${bytesToHex(this.infoHash).slice(0, 16)}…`, 'ok');
+
+      // Set up session as initiator (we'll create offers; if someone offered us first, we'll switch to responder)
+      this.session = new P2PSession({
+        psk: this.psk,
+        role: 'initiator',
+        log: (t, m, l) => this.log(t, m, l),
+      });
+      this.session.onMessage = (text) => this.pushMsg('them', text);
+      this.session.onOpen = async () => {
+        const fp = await Crypto.safetyFingerprint(
+          new Uint8Array([...this.session._myKemPub.slice(0, 32), ...this.session._myX25519Pub]),
+          new Uint8Array([...this.session._theirKemPub.slice(0, 32), ...this.session._theirX25519Pub])
+        );
+        this.fingerprint = fp;
+        this.state = 'chat';
+        this.pushMsg('sys', 'соединение установлено');
+        this.log('chat', 'ready to send messages ✓', 'ok');
+        this.render();
+      };
+      this.session.onClose = () => {
+        this.log('webrtc', 'peer disconnected', 'warn');
+        if (this.state === 'chat') {
+          this.pushMsg('sys', 'связь потеряна');
+        }
+      };
+
+      // Connect to trackers and start announcing
+      this.tracker = new TrackerSwarm(
+        this.infoHash,
+        this.peerId,
+        async (offer) => this._handleIncomingOffer(offer),
+        async (answer) => this._handleIncomingAnswer(answer),
+        (t, m, l) => this.log(t, m, l),
+      );
+      this.tracker.start();
+
+      // Wait a bit for trackers to connect, then announce our offer
+      await new Promise(r => setTimeout(r, 1500));
+
+      const sdp = await this.session.createOffer();
+      const signed = await this.session.signSdp(sdp);
+      // Embed PSK-MAC in the SDP as comment lines (trackers pass SDP through opaquely)
+      const sdpWithAuth = sdp +
+        `a=x-nee2p-nonce:${btoa(signed.nonce)}\r\n` +
+        `a=x-nee2p-mac:${btoa(signed.mac)}\r\n`;
+      const offerId = randBytes(20);
+      this._myOfferId = bytesToBinStr(offerId);
+      const sent = this.tracker.announceOffer(offerId, sdpWithAuth);
+      this.log('discovery', `announce → ${sent} trackers`, sent ? 'ok' : 'warn');
+    } catch (e) {
+      this.log('error', e.message, 'err');
+    }
+  },
+
+  async _handleIncomingOffer(o) {
+    if (this._gotPeer) return; // already paired
+    this.log('discovery', `peer offer received via ${shortHost(o.viaTracker.url)}`);
+
+    // Parse PSK-MAC from SDP custom attributes
+    const sdpText = o.sdp;
+    const nonceMatch = sdpText.match(/a=x-nee2p-nonce:([^\r\n]+)/);
+    const macMatch = sdpText.match(/a=x-nee2p-mac:([^\r\n]+)/);
+    if (!nonceMatch || !macMatch) {
+      this.log('handshake', 'rejected: missing PSK-MAC', 'warn');
+      return;
+    }
+    const nonce = atob(nonceMatch[1]);
+    const mac = atob(macMatch[1]);
+    // Compute MAC over SDP WITHOUT our custom attributes
+    const cleanSdp = sdpText.replace(/a=x-nee2p-(?:nonce|mac):[^\r\n]+\r?\n/g, '');
+    // Need a session to verify. Reuse psk from our session.
+    const ok = await this.session.verifySdp(cleanSdp, nonce, mac);
+    if (!ok) {
+      this.log('handshake', 'rejected: bad PSK-MAC (fake peer or wrong phrase)', 'err');
+      return;
+    }
+    this.log('handshake', 'peer SDP authenticated by PSK ✓', 'ok');
+
+    // We are now the "responder" — drop our outgoing offer/initiator role,
+    // create answer to this peer.
+    this._gotPeer = true;
+    try {
+      // Close our outgoing peer connection and start fresh as responder
+      if (this.session.pc) {
+        try { this.session.pc.close(); } catch {}
+      }
+      this.session.pc = null;
+      this.session.dc = null;
+      const answerSdp = await this.session.createAnswer(cleanSdp);
+      const signed = await this.session.signSdp(answerSdp);
+      const answerWithAuth = answerSdp +
+        `a=x-nee2p-nonce:${btoa(signed.nonce)}\r\n` +
+        `a=x-nee2p-mac:${btoa(signed.mac)}\r\n`;
+      this.tracker.sendAnswer(o.viaTracker, o.fromPeerId, o.offerId, answerWithAuth);
+      this.log('discovery', 'answer sent', 'ok');
+    } catch (e) {
+      this.log('handshake', 'answer failed: ' + e.message, 'err');
+      this._gotPeer = false;
+    }
+  },
+
+  async _handleIncomingAnswer(a) {
+    if (this._gotPeer) return;
+    if (a.offerId !== this._myOfferId) return; // not for our offer
+    this.log('discovery', `answer received via ${shortHost(a.viaTracker.url)}`);
+
+    const sdpText = a.sdp;
+    const nonceMatch = sdpText.match(/a=x-nee2p-nonce:([^\r\n]+)/);
+    const macMatch = sdpText.match(/a=x-nee2p-mac:([^\r\n]+)/);
+    if (!nonceMatch || !macMatch) {
+      this.log('handshake', 'rejected: missing PSK-MAC', 'warn');
+      return;
+    }
+    const nonce = atob(nonceMatch[1]);
+    const mac = atob(macMatch[1]);
+    const cleanSdp = sdpText.replace(/a=x-nee2p-(?:nonce|mac):[^\r\n]+\r?\n/g, '');
+    const ok = await this.session.verifySdp(cleanSdp, nonce, mac);
+    if (!ok) {
+      this.log('handshake', 'rejected: bad PSK-MAC', 'err');
+      return;
+    }
+    this.log('handshake', 'peer answer authenticated by PSK ✓', 'ok');
+    this._gotPeer = true;
+    try {
+      await this.session.acceptAnswer(cleanSdp);
+      this.log('webrtc', 'connecting…', 'ok');
+    } catch (e) {
+      this.log('handshake', 'acceptAnswer failed: ' + e.message, 'err');
+    }
+  },
+
+  reset() {
+    if (this.tracker) { this.tracker.close(); this.tracker = null; }
+    if (this.session) { this.session.close(); this.session = null; }
+    this._gotPeer = false;
+    this._myOfferId = null;
+    this.state = 'welcome';
+    this.phrase = '';
+    this.masterKey = null;
+    this.psk = null;
+    this.infoHash = null;
+    this.peerId = null;
+    this.messages = [];
+    this.status = [];
+    this.fingerprint = null;
+    this.render();
+  },
+
+  render() { renderApp(); }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// UI rendering (vanilla JS)
+// ═══════════════════════════════════════════════════════════════
+function renderApp() {
+  const root = $('#app');
+  root.innerHTML = '';
+  if (App.state === 'welcome') root.appendChild(renderWelcome());
+  else if (App.state === 'connecting') root.appendChild(renderConnecting());
+  else if (App.state === 'chat') root.appendChild(renderChat());
+  if (App.showFp) root.appendChild(renderFpModal());
+}
+
+function renderWelcome() {
+  const screen = el('div', { class: 'screen screen-pad' });
+  const col = el('div', { class: 'center-col' });
+
+  col.appendChild(el('div', null,
+    el('div', { class: 'logo' }, 'Nee2P.', el('span', { class: 'lite' }, 'lite')),
+    el('div', { class: 'tagline' }, 'один файл · zero server · post-quantum')
+  ));
+
+  const inputWrap = el('div', null);
+  inputWrap.appendChild(el('label', { class: 'label' }, 'Общая фраза'));
+  const input = el('textarea', {
+    class: 'textarea',
+    placeholder: 'например: горный олень шепчет ночью\n\nдоговоритесь с собеседником о фразе через любой отдельный канал',
+    rows: '4',
+  });
+  input.value = App.phrase || '';
+  inputWrap.appendChild(input);
+  col.appendChild(inputWrap);
+
+  const start = el('button', {
+    class: 'btn btn-primary',
+    onclick: () => {
+      const phrase = input.value.trim();
+      if (phrase.length < 4) { input.focus(); return; }
+      App.start(phrase);
+    }
+  }, 'Подключиться');
+  col.appendChild(start);
+
+  const tips = el('div', { class: 'status-panel', style: { marginTop: '4px' } },
+    'Как это работает:\n' +
+    '1. Введите одну и ту же фразу что и собеседник\n' +
+    '2. Браузеры находят друг друга через публичные WebTorrent trackers\n' +
+    '3. Соединение идёт peer-to-peer, минуя любые серверы Nee2P\n' +
+    '4. Сообщения зашифрованы X25519+ML-KEM+AES-256-GCM\n\n' +
+    'Что увидит tracker:\n' +
+    '• Хеш фразы (необратимый, защищён Argon2id)\n' +
+    '• IP-адреса пиров\n' +
+    '• Зашифрованные SDP-пакеты до handshake\n\n' +
+    'Что НЕ увидит:\n' +
+    '• Фразу · содержимое сообщений · ключи · трафик после handshake'
+  );
+  col.appendChild(tips);
+
+  screen.appendChild(col);
+  return screen;
+}
+
+function renderConnecting() {
+  const screen = el('div', { class: 'screen screen-pad' });
+  const col = el('div', { class: 'center-col' });
+
+  col.appendChild(el('div', null,
+    el('div', { class: 'logo' }, 'Nee2P.', el('span', { class: 'lite' }, 'lite')),
+    el('div', { class: 'tagline' }, el('span', { class: 'spinner' }), ' подключение…')
+  ));
+
+  // status log
+  const panel = el('div', { class: 'status-panel' });
+  for (const s of App.status) {
+    const line = el('div', { class: 'status-line ' + (s.level || '') });
+    line.appendChild(el('span', { class: 'tag' }, s.tag));
+    line.appendChild(el('span', { class: 'val' }, s.msg));
+    panel.appendChild(line);
+  }
+  col.appendChild(panel);
+
+  const cancel = el('button', { class: 'btn', onclick: () => App.reset() }, 'Отменить');
+  col.appendChild(cancel);
+
+  screen.appendChild(col);
+  return screen;
+}
+
+function renderChat() {
+  const screen = el('div', { class: 'chat-screen' });
+
+  const header = el('div', { class: 'chat-header' });
+  header.appendChild(el('div', { class: 'dot online' }));
+  header.appendChild(el('div', { style: { flex: '1' } },
+    el('div', { class: 'title' }, 'Nee2P Lite'),
+    el('div', { class: 'sub' }, 'PQ-зашифровано · peer-to-peer')
+  ));
+  header.appendChild(el('button', {
+    class: 'icon-btn',
+    title: 'Safety fingerprint',
+    onclick: () => { App.showFp = true; App.render(); }
+  }, '🛡'));
+  header.appendChild(el('button', {
+    class: 'icon-btn',
+    title: 'Закрыть сессию',
+    onclick: () => { if (confirm('Закрыть сессию? История будет потеряна.')) App.reset(); }
+  }, '✕'));
+  screen.appendChild(header);
+
+  const msgs = el('div', { class: 'messages' });
+  if (App.messages.length === 0) {
+    msgs.appendChild(el('div', { class: 'msg sys' }, 'напишите первое сообщение'));
+  }
+  for (const m of App.messages) {
+    msgs.appendChild(el('div', { class: 'msg ' + m.from }, m.text));
+  }
+  screen.appendChild(msgs);
+
+  const bar = el('div', { class: 'input-bar' });
+  const input = el('input', {
+    class: 'input',
+    type: 'text',
+    placeholder: 'сообщение…',
+    autocomplete: 'off',
+  });
+  const sendBtn = el('button', { class: 'send-btn', disabled: 'disabled' }, '→');
+
+  const updateBtn = () => { sendBtn.disabled = !input.value.trim(); };
+  input.addEventListener('input', updateBtn);
+
+  const doSend = async () => {
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    updateBtn();
+    App.pushMsg('me', text);
+    try { await App.session.sendText(text); }
+    catch (e) { App.pushMsg('sys', 'ошибка отправки: ' + e.message); }
+  };
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(); }
+  });
+  sendBtn.addEventListener('click', doSend);
+
+  bar.appendChild(input);
+  bar.appendChild(sendBtn);
+  screen.appendChild(bar);
+
+  // auto-scroll to bottom
+  setTimeout(() => { msgs.scrollTop = msgs.scrollHeight; input.focus(); }, 0);
+
+  return screen;
+}
+
+function renderFpModal() {
+  const bg = el('div', {
+    class: 'modal-bg',
+    onclick: (e) => { if (e.target === bg) { App.showFp = false; App.render(); } }
+  });
+  const modal = el('div', { class: 'modal' });
+  modal.appendChild(el('h2', null, 'Safety fingerprint'));
+  modal.appendChild(el('p', null,
+    'Сравните эти 12 слов с собеседником через отдельный канал (голосом, в другом мессенджере). ' +
+    'Если совпадают — между вами нет MITM. Если нет — закройте сессию.'
+  ));
+  const grid = el('div', { class: 'fp-words' });
+  const fp = App.fingerprint || [];
+  for (let i = 0; i < fp.length; i++) {
+    grid.appendChild(el('div', { class: 'fp-word' },
+      el('span', { class: 'num' }, (i + 1).toString().padStart(2, '0') + '.'),
+      fp[i]
+    ));
+  }
+  modal.appendChild(grid);
+  modal.appendChild(el('button', {
+    class: 'btn',
+    onclick: () => { App.showFp = false; App.render(); }
+  }, 'Закрыть'));
+  bg.appendChild(modal);
+  return bg;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Boot
+// ═══════════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  // Sanity checks
+  if (!window.crypto || !window.crypto.subtle) {
+    document.body.innerHTML = '<div style="padding:40px;color:#f87171;font-family:monospace">' +
+      'WebCrypto unavailable. Откройте через https:// или localhost (не file://) для работы криптографии.' +
+      '</div>';
+    return;
+  }
+  if (!window.RTCPeerConnection) {
+    document.body.innerHTML = '<div style="padding:40px;color:#f87171">WebRTC недоступен в этом браузере.</div>';
+    return;
+  }
+  App.render();
+});
+
+// Expose for debug
+window.__nee2pLite = { App, Crypto };
+
+})();
+</script>
+</body>
+</html>
