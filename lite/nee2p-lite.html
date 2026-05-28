@@ -269,6 +269,23 @@
   }
   .fp-word .num { color: var(--text-faint); margin-right: 4px; }
 
+  /* ── Phase banner ───────────────────────────────────────── */
+  .phase-banner {
+    padding: 16px 18px;
+    border-radius: 12px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+  }
+  .phase-banner.ok  { border-left-color: var(--ok);    background: rgba(74, 222, 128, 0.06); }
+  .phase-banner.warn { border-left-color: var(--warn); background: rgba(251, 191, 36, 0.06); }
+  .phase-banner.err  { border-left-color: var(--err);  background: rgba(248, 113, 113, 0.06); }
+  .phase-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .phase-hint  { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+  .phase-hint code { background: var(--bg-elev-2); padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+  .phase-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .phase-actions .btn { padding: 8px 14px; min-height: 36px; font-size: 13px; }
+
   /* ── Spinner ────────────────────────────────────────────── */
   .spinner {
     width: 20px; height: 20px;
@@ -1055,9 +1072,32 @@ class P2PSession {
   _setupPc() {
     this.pc = new RTCPeerConnection({ iceServers: STUN });
     this.pc.oniceconnectionstatechange = () => {
-      this.log('webrtc', 'ice: ' + this.pc.iceConnectionState);
-      if (['failed', 'disconnected', 'closed'].includes(this.pc.iceConnectionState)) {
-        if (this.onClose) this.onClose();
+      const s = this.pc.iceConnectionState;
+      const level = (s === 'connected' || s === 'completed') ? 'ok'
+                  : (s === 'failed' || s === 'disconnected') ? 'err' : '';
+      this.log('webrtc', 'ice: ' + s, level);
+      if (this.onIceState) this.onIceState(s);
+      if (['failed', 'disconnected', 'closed'].includes(s)) {
+        if (this.onClose) this.onClose(s);
+      }
+    };
+    this.pc.onconnectionstatechange = () => {
+      const s = this.pc.connectionState;
+      const level = s === 'connected' ? 'ok' : (s === 'failed' ? 'err' : '');
+      this.log('webrtc', 'pc: ' + s, level);
+    };
+    this.pc.onsignalingstatechange = () => {
+      this.log('webrtc', 'sig: ' + this.pc.signalingState);
+    };
+    this._candCount = 0;
+    this.pc.onicecandidate = (evt) => {
+      if (evt.candidate) {
+        this._candCount++;
+        const c = evt.candidate.candidate || '';
+        const typ = (c.match(/typ (\w+)/) || [, '?'])[1];
+        if (this._candCount <= 6) this.log('webrtc', `cand ${this._candCount}: ${typ}`);
+      } else {
+        this.log('webrtc', `gathered ${this._candCount} candidates`, this._candCount > 0 ? 'ok' : 'warn');
       }
     };
   }
@@ -1101,8 +1141,8 @@ class P2PSession {
         }
       };
       this.pc.addEventListener('icegatheringstatechange', check);
-      // safety timeout — 4s is enough for STUN to gather candidates
-      setTimeout(resolve, 4000);
+      // safety timeout — 8s gives STUN time even on slow networks
+      setTimeout(resolve, 8000);
     });
   }
 
@@ -1261,6 +1301,12 @@ class P2PSession {
 // ═══════════════════════════════════════════════════════════════
 const App = {
   state: 'welcome', // welcome | connecting | chat
+  // High-level phase — drives the big status banner in renderConnecting.
+  // Used to give the user a clear "are we seeing the peer or not" signal
+  // separate from the low-level technical log.
+  phase: 'init', // init | discovering | waitingPeer | peerFound | iceCheck | connected | failed | error
+  phaseSince: 0,
+  phaseHint: '',
   phrase: '',
   masterKey: null,
   psk: null,
@@ -1272,10 +1318,38 @@ const App = {
   status: [],
   fingerprint: null,
   showFp: false,
+  _waitingHintTimer: null,
+  _iceTimeoutTimer: null,
 
   log(tag, msg, level) {
     this.status.unshift({ tag, msg, level: level || '', ts: Date.now() });
     if (this.status.length > 100) this.status.length = 100;
+    this.render();
+  },
+
+  setPhase(phase, hint) {
+    this.phase = phase;
+    this.phaseSince = Date.now();
+    this.phaseHint = hint || '';
+    if (this._waitingHintTimer) { clearTimeout(this._waitingHintTimer); this._waitingHintTimer = null; }
+    if (this._iceTimeoutTimer) { clearTimeout(this._iceTimeoutTimer); this._iceTimeoutTimer = null; }
+    // After 10s of waiting for a peer, add a helpful hint
+    if (phase === 'waitingPeer') {
+      this._waitingHintTimer = setTimeout(() => {
+        if (this.phase === 'waitingPeer') {
+          this.phaseHint = 'Если вы ещё не поделились фразой с собеседником — самое время. Без второй стороны, вводящей ту же фразу, соединение не установится.';
+          this.render();
+        }
+      }, 10000);
+    }
+    // After 25s of ICE checking with no progress, fail with NAT explanation
+    if (phase === 'iceCheck') {
+      this._iceTimeoutTimer = setTimeout(() => {
+        if (this.phase === 'iceCheck') {
+          this.setPhase('failed', 'Соединение не установилось за 25 секунд. Скорее всего блокирует NAT (строгий/симметричный) с одной из сторон. См. ниже.');
+        }
+      }, 25000);
+    }
     this.render();
   },
 
@@ -1289,7 +1363,7 @@ const App = {
     this.state = 'connecting';
     this.status = [];
     this.messages = [];
-    this.render();
+    this.setPhase('init', 'Готовим ключи. Это занимает ~1-2 секунды.');
 
     try {
       this.log('crypto', 'deriving master key (Argon2id, ~1.5s)…');
@@ -1301,6 +1375,7 @@ const App = {
       this.peerId = randBytes(20);
 
       this.log('discovery', `room: ${bytesToHex(this.infoHash).slice(0, 16)}…`, 'ok');
+      this.setPhase('discovering', 'Подключаемся к публичным WebTorrent-трекерам — через них мы найдём собеседника.');
 
       // Set up session as initiator (we'll create offers; if someone offered us first, we'll switch to responder)
       this.session = new P2PSession({
@@ -1315,15 +1390,31 @@ const App = {
           new Uint8Array([...this.session._theirKemPub.slice(0, 32), ...this.session._theirX25519Pub])
         );
         this.fingerprint = fp;
+        this.setPhase('connected');
         this.state = 'chat';
         this.pushMsg('sys', 'соединение установлено');
         this.log('chat', 'ready to send messages ✓', 'ok');
         this.render();
       };
-      this.session.onClose = () => {
-        this.log('webrtc', 'peer disconnected', 'warn');
+      // ICE state callback — drives phase transitions for connection progress
+      this.session.onIceState = (s) => {
+        if (s === 'checking' && this.phase !== 'connected') {
+          this.setPhase('iceCheck', 'Браузеры подбирают сетевой путь друг к другу. Обычно ~2-10 секунд.');
+        } else if ((s === 'connected' || s === 'completed') && this.phase !== 'connected') {
+          // Don't set 'connected' yet — wait for DataChannel + PQ handshake (onOpen).
+          // But this tells us network path exists.
+        }
+      };
+      this.session.onClose = (reason) => {
+        // Suppress noise from role-transition PC swap (we detached handlers before close,
+        // so this only fires for true peer-side disconnects).
         if (this.state === 'chat') {
+          this.log('webrtc', 'peer disconnected', 'warn');
           this.pushMsg('sys', 'связь потеряна');
+        } else if (this.phase === 'iceCheck' || this.phase === 'peerFound') {
+          // ICE failed during establishment — likely NAT
+          this.setPhase('failed',
+            'Сетевой путь между вами и собеседником не нашёлся. Самая частая причина — у одного из вас «строгий» NAT (часто на мобильных операторах, корпоративных сетях, hotel WiFi). Попробуйте: попасть в одну Wi-Fi-сеть, либо одной из сторон включить VPN.');
         }
       };
 
@@ -1350,14 +1441,34 @@ const App = {
       this._myOfferId = bytesToBinStr(offerId);
       const sent = this.tracker.announceOffer(offerId, sdpWithAuth);
       this.log('discovery', `announce → ${sent} trackers`, sent ? 'ok' : 'warn');
+      if (sent > 0) {
+        this.setPhase('waitingPeer', 'Объявили о себе на ' + sent + ' трекерах. Ждём, когда собеседник введёт ту же фразу.');
+      } else {
+        this.setPhase('failed', 'Ни один трекер не доступен. Проверьте интернет или сеть может блокировать WebSocket-соединения.');
+      }
     } catch (e) {
       this.log('error', e.message, 'err');
+      this.setPhase('error', e.message);
     }
   },
 
   async _handleIncomingOffer(o) {
     if (this._gotPeer) return; // already paired
-    this.log('discovery', `peer offer received via ${shortHost(o.viaTracker.url)}`);
+    // ─── Deterministic role tie-breaker ───────────────────────
+    // Both peers announce offers simultaneously. Without this rule, BOTH
+    // sides would receive each other's offer and BOTH would close their
+    // initiator PC and create orphan responder PCs — nobody answers
+    // those orphans, ICE never establishes, stuck at "connecting…".
+    //
+    // Rule: peer with LOWER peer_id is initiator (keeps offer-PC, waits
+    // for answer). Peer with HIGHER peer_id is responder (answers the
+    // lower side's offer; their own offer is orphaned and ignored).
+    const myPidStr = bytesToBinStr(this.peerId);
+    if (o.fromPeerId >= myPidStr) {
+      this.log('discovery', 'ignoring offer from higher peer_id (we → initiator)');
+      return;
+    }
+    this.log('discovery', `peer offer received via ${shortHost(o.viaTracker.url)} (we → responder)`);
 
     // Parse PSK-MAC from SDP custom attributes
     const sdpText = o.sdp;
@@ -1378,13 +1489,26 @@ const App = {
       return;
     }
     this.log('handshake', 'peer SDP authenticated by PSK ✓', 'ok');
+    this.setPhase('peerFound', 'Собеседник найден через ' + shortHost(o.viaTracker.url) + '. Обмениваемся ключами…');
 
     // We are now the "responder" — drop our outgoing offer/initiator role,
     // create answer to this peer.
     this._gotPeer = true;
     try {
-      // Close our outgoing peer connection and start fresh as responder
+      // Detach handlers BEFORE closing old PC/DC — otherwise old PC's
+      // close event fires session.onClose with "peer disconnected" which
+      // is misleading: we're just swapping our own PC for the responder
+      // PC, not losing the peer.
+      if (this.session.dc) {
+        this.session.dc.onopen = null;
+        this.session.dc.onclose = null;
+        this.session.dc.onmessage = null;
+      }
       if (this.session.pc) {
+        this.session.pc.oniceconnectionstatechange = null;
+        this.session.pc.onconnectionstatechange = null;
+        this.session.pc.onsignalingstatechange = null;
+        this.session.pc.onicecandidate = null;
         try { this.session.pc.close(); } catch {}
       }
       this.session.pc = null;
@@ -1423,21 +1547,27 @@ const App = {
       return;
     }
     this.log('handshake', 'peer answer authenticated by PSK ✓', 'ok');
+    this.setPhase('peerFound', 'Собеседник ответил через ' + shortHost(a.viaTracker.url) + '. Обмениваемся ключами…');
     this._gotPeer = true;
     try {
       await this.session.acceptAnswer(cleanSdp);
       this.log('webrtc', 'connecting…', 'ok');
     } catch (e) {
       this.log('handshake', 'acceptAnswer failed: ' + e.message, 'err');
+      this.setPhase('failed', 'Не удалось применить ответ собеседника: ' + e.message);
     }
   },
 
   reset() {
+    if (this._waitingHintTimer) { clearTimeout(this._waitingHintTimer); this._waitingHintTimer = null; }
+    if (this._iceTimeoutTimer) { clearTimeout(this._iceTimeoutTimer); this._iceTimeoutTimer = null; }
     if (this.tracker) { this.tracker.close(); this.tracker = null; }
     if (this.session) { this.session.close(); this.session = null; }
     this._gotPeer = false;
     this._myOfferId = null;
     this.state = 'welcome';
+    this.phase = 'init';
+    this.phaseHint = '';
     this.phrase = '';
     this.masterKey = null;
     this.psk = null;
@@ -1513,16 +1643,65 @@ function renderWelcome() {
   return screen;
 }
 
+// Maps App.phase → user-facing copy + colour level.
+// "Seeing the peer or not" is the key question — answered explicitly here.
+const PHASE_COPY = {
+  init:          { title: 'Подготовка…',                 level: '',     spinner: true,  seePeer: 'не ищем ещё' },
+  discovering:   { title: 'Подключаемся к трекерам',     level: '',     spinner: true,  seePeer: 'не ищем ещё' },
+  waitingPeer:   { title: 'Ждём собеседника',            level: 'warn', spinner: true,  seePeer: '⊘ собеседник не появился' },
+  peerFound:     { title: 'Собеседник найден',           level: 'ok',   spinner: true,  seePeer: '✓ видим собеседника' },
+  iceCheck:      { title: 'Подбираем сетевой путь',      level: 'ok',   spinner: true,  seePeer: '✓ видим собеседника' },
+  connected:     { title: 'Готово!',                     level: 'ok',   spinner: false, seePeer: '✓ соединены' },
+  failed:        { title: 'Не удалось соединиться',      level: 'err',  spinner: false, seePeer: '✗ соединение не установилось' },
+  error:         { title: 'Ошибка',                      level: 'err',  spinner: false, seePeer: '' },
+};
+
 function renderConnecting() {
   const screen = el('div', { class: 'screen screen-pad' });
   const col = el('div', { class: 'center-col' });
 
   col.appendChild(el('div', null,
-    el('div', { class: 'logo' }, 'Nee2P.', el('span', { class: 'lite' }, 'lite')),
-    el('div', { class: 'tagline' }, el('span', { class: 'spinner' }), ' подключение…')
+    el('div', { class: 'logo' }, 'Nee2P.', el('span', { class: 'lite' }, 'lite'))
   ));
 
-  // status log
+  // ── Big phase banner — the "do I see the peer?" answer ──
+  const copy = PHASE_COPY[App.phase] || PHASE_COPY.init;
+  const banner = el('div', { class: 'phase-banner ' + copy.level });
+  const titleNode = el('div', { class: 'phase-title' });
+  if (copy.spinner) titleNode.appendChild(el('span', { class: 'spinner' }));
+  titleNode.appendChild(document.createTextNode(copy.title));
+  banner.appendChild(titleNode);
+  if (App.phaseHint) {
+    banner.appendChild(el('div', { class: 'phase-hint' }, App.phaseHint));
+  }
+  // Peer-visibility indicator
+  if (copy.seePeer) {
+    const see = el('div', { class: 'phase-hint', style: { marginTop: '8px', fontFamily: 'var(--ff-mono)', fontSize: '12px' } }, copy.seePeer);
+    banner.appendChild(see);
+  }
+  // Failure → recovery actions
+  if (App.phase === 'failed' || App.phase === 'error') {
+    const actions = el('div', { class: 'phase-actions' });
+    actions.appendChild(el('button', {
+      class: 'btn btn-primary',
+      onclick: () => { const p = App.phrase; App.reset(); App.start(p); }
+    }, 'Попробовать снова'));
+    actions.appendChild(el('button', {
+      class: 'btn',
+      onclick: () => App.reset()
+    }, 'Сменить фразу'));
+    banner.appendChild(actions);
+  }
+  col.appendChild(banner);
+
+  // ── Status log (low-level, collapsed-feeling but always visible) ──
+  const aliveTr = App.tracker ? App.tracker.conns.filter(c => c.alive).length : 0;
+  const totalTr = App.tracker ? App.tracker.conns.length : 0;
+  const meta = el('div', { class: 'phase-hint', style: { fontFamily: 'var(--ff-mono)', fontSize: '11px', textAlign: 'center' } },
+    `трекеров: ${aliveTr}/${totalTr} живы` + (App.peerId ? ` · peer_id ${bytesToHex(App.peerId).slice(0, 6)}…` : '')
+  );
+  col.appendChild(meta);
+
   const panel = el('div', { class: 'status-panel' });
   for (const s of App.status) {
     const line = el('div', { class: 'status-line ' + (s.level || '') });
@@ -1532,8 +1711,10 @@ function renderConnecting() {
   }
   col.appendChild(panel);
 
-  const cancel = el('button', { class: 'btn', onclick: () => App.reset() }, 'Отменить');
-  col.appendChild(cancel);
+  if (App.phase !== 'failed' && App.phase !== 'error') {
+    const cancel = el('button', { class: 'btn', onclick: () => App.reset() }, 'Отменить');
+    col.appendChild(cancel);
+  }
 
   screen.appendChild(col);
   return screen;
