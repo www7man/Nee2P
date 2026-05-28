@@ -310,6 +310,47 @@
   <!-- 01 — Последнее обновление -->
   <section>
     <div class="section-num">01 — Последнее обновление</div>
+    <h2 class="section-heading">v0.8.7 — Критический фикс парного соединения + Nee2P Lite</h2>
+
+    <div class="release">
+      <div class="release-meta">
+        <span class="release-version">v0.8.7</span>
+        <span class="release-date">май 2026</span>
+        <span class="release-tag">фикс</span>
+        <span class="release-tag">relay</span>
+        <span class="release-tag">lite</span>
+        <span class="release-tag">i18n</span>
+      </div>
+      <h3 class="release-title">Исправлено: собеседник показывался как Offline и сообщения не доходили в одну сторону</h3>
+
+      <h4>Критический фикс — асимметричное присутствие</h4>
+      <ul>
+        <li>Когда второй пользователь подключался к комнате, relay отправлял ему событие <code>peer-online</code> только о самом себе, но не о партнёре, который уже был в комнате — тот выглядел как «Offline» навсегда</li>
+        <li>Исправлено: при подключении новый участник теперь сразу получает <code>peer-online</code> для каждого уже подключённого слота. Работает для HTTP/SSE и WS транспортов, а также при восстановлении сессии</li>
+        <li>«Сообщения только в одну сторону» — был downstream-эффект той же проблемы: клиент не отправлял, пока не видел партнёра онлайн</li>
+        <li>Добавлен регрессионный тест <code>tools/smoke-presence.js</code> — покрывает двустороннюю доставку и восстановление сессии; интегрирован в CI</li>
+      </ul>
+
+      <h4>Nee2P Lite</h4>
+      <ul>
+        <li>Добавлен <code>lite/nee2p-lite.html</code> — альтернативная архитектура: один HTML-файл, никаких серверов Nee2P в цепочке данных</li>
+        <li>Discovery через федеративные WebTorrent trackers, затем WebRTC peer-to-peer напрямую</li>
+        <li>Тот же крипто-стек: Argon2id + X25519 + ML-KEM-768 + AES-256-GCM, доменно изолирован от основного Nee2P</li>
+        <li>Когда выбирать Lite: цензуроустойчивость, off-grid, максимальный аудит. Ограничения: нет async-доставки, нет push, только 2 пира</li>
+      </ul>
+
+      <h4>Страница безопасности</h4>
+      <ul>
+        <li><a href="trust.html">trust.html</a> теперь полностью двуязычна (RU/EN) — переключается вместе с языком интерфейса</li>
+      </ul>
+    </div>
+  </section>
+
+  <hr />
+
+  <!-- 02 — Предыдущий релиз -->
+  <section>
+    <div class="section-num">02 — Предыдущий релиз</div>
     <h2 class="section-heading">v0.8.5 — Полная локализация + умный Service Worker</h2>
 
     <div class="release">
@@ -353,9 +394,9 @@
 
   <hr />
 
-  <!-- 01a — предыдущий релиз (теперь в истории) -->
+  <!-- 03 — История версий (v0.8.4 и старше) -->
   <section>
-    <div class="section-num">02 — Предыдущий релиз</div>
+    <div class="section-num">03 — История версий</div>
     <h2 class="section-heading">v0.8.4 — Двуязычный интерфейс + прозрачность</h2>
 
     <div class="release">
@@ -406,12 +447,6 @@
     </div>
   </section>
 
-  <hr />
-
-  <!-- 03 — История версий -->
-  <section>
-    <div class="section-num">03 — История версий</div>
-    <h2 class="section-heading">Полная история</h2>
 
     <!-- v0.8.3 -->
     <div class="release">
