@@ -1392,6 +1392,13 @@ function App() {
       await recomputePairwiseKey(fromNum, epoch);
       // Replay any buffered legacy-pairwise msgs.
       await replayPendingFor(fromNum);
+      // Pairwise just upgraded pre-PQ → PQ-augmented. Our previous ship
+      // (in applyPeerPubKey, before KEM ct arrived) was wrapped under the
+      // pre-PQ pairwise, which the peer cannot unwrap because their pairwise
+      // for us is the PQ-augmented version. Invalidate the dedup marker so
+      // the guard in shipSenderKeyToPeer doesn't block the PQ re-ship.
+      peer.sentSenderKey = null;
+      peer.sentSenderKeyEpoch = null;
       // Re-ship our sender key now that we have a PQ-upgraded pairwise key.
       await shipSenderKeyToPeer(fromNum, epoch);
     } catch (e) {
@@ -1430,6 +1437,14 @@ function App() {
         await replayPendingSignalsFor(fromNum);
       }
     } catch (e) {
+      // Unwrap failed — most likely because our pairwise key changed
+      // between the sender's wrap and our unwrap (pre-PQ ↔ PQ transition
+      // during the KEM round-trip). Buffer the envelope under 'sk:N' so
+      // the FIX 11 drain in recomputePairwiseKey can retry it the next
+      // time our pairwise refreshes.
+      const list = pendingDecryptRef.current.get(`sk:${fromNum}`) || [];
+      list.push({ ivB64, ctB64, senderKeyEpoch, epoch });
+      pendingDecryptRef.current.set(`sk:${fromNum}`, list);
       console.warn('unwrapSenderKey failed:', e && e.message ? e.message : e);
     }
   }, [replayPendingFor, replayPendingSignalsFor]);
