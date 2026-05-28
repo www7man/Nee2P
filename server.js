@@ -873,6 +873,26 @@ async function handleClaim(req, res) {
     broadcastPubKeyChange(out.room);
   }
 
+  // ── FIX: inform the new joiner about peers that are ALREADY online. ──
+  // The `broadcastAll(peer-online, except: {token})` above tells *others*
+  // that THIS slot just came online — but the joiner itself receives no
+  // presence events for incumbent peers, because their original peer-online
+  // events were broadcast before this session existed. Without this loop the
+  // joiner's `peerOnline` Map stays empty for incumbents and the UI shows
+  // them as offline indefinitely (until they happen to drop + reconnect).
+  // Events go into pendingEvents — handleStream drains them as soon as SSE
+  // opens, and the long-poll path picks them up on the next /r/poll.
+  for (let i = 0; i < out.room.slots.length; i++) {
+    if (i === out.slot) continue;
+    if (!out.room.slots[i]) continue;
+    if (!out.room.isSlotOnline(i)) continue;
+    pushEvent(sess, {
+      type: 'peer-online',
+      peer: toSlotId(i, out.room.groupMax),
+      online: true,
+    });
+  }
+
   const reply = { ...out.result, sessionToken: token };
   if (out.batch && out.batch.length) reply.batch = out.batch;
   if (out.room.isPaired()) reply.pairedAt = out.room.pairedAt;
@@ -1784,6 +1804,19 @@ server.on('upgrade', (req, socket, head) => {
           type: 'peer-state', slots: myRoom.occupants(), paired: myRoom.isPaired(),
         }, { ws });
         broadcastAll(myRoom, { type: 'peer-online', peer: mySlotId, online: true }, { ws });
+        // FIX (mirrors HTTP path in handleClaim): tell the new joiner about
+        // peers already online. broadcastAll informs others — safeSend
+        // informs the joiner. No-op when nobody else is online yet.
+        for (let i = 0; i < myRoom.slots.length; i++) {
+          if (i === mySlot) continue;
+          if (!myRoom.slots[i]) continue;
+          if (!myRoom.isSlotOnline(i)) continue;
+          safeSend({
+            type: 'peer-online',
+            peer: toSlotId(i, myRoom.groupMax),
+            online: true,
+          });
+        }
         if (out.justPaired) {
           broadcastAll(myRoom, { type: 'paired', pairedAt: myRoom.pairedAt }, null);
           safeSend({ type: 'paired', pairedAt: myRoom.pairedAt });
