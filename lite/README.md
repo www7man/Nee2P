@@ -1,115 +1,117 @@
 # Nee2P Lite
 
-**Один HTML-файл. Никаких серверов от Nee2P. Federated discovery через WebTorrent trackers. End-to-end PQ-крипто.**
+**One HTML file. Zero Nee2P-controlled servers. Federated discovery via WebTorrent trackers. End-to-end post-quantum crypto.**
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│  Алиса                              Боб             │
-│  ────                               ───             │
+│  Alice                              Bob              │
+│  ─────                              ───              │
 │  open nee2p-lite.html              open nee2p-lite.html
-│  вводит фразу ────────────────────► та же фраза     │
-│       │                                 │           │
-│       ▼                                 ▼           │
-│   Argon2id → info_hash + PSK + AES-key             │
-│       │                                 │           │
-│       └─►  WebTorrent trackers (~6 публичных)  ◄──┘ │
-│              wss://tracker.openwebtorrent.com       │
-│              wss://tracker.btorrent.xyz             │
-│              wss://tracker.webtorrent.dev           │
-│              ...                                    │
-│       │                                 │           │
-│       ▼      SDP/ICE обмен              ▼           │
-│       │   (защищён PSK-HMAC)            │           │
-│       │                                 │           │
-│       └─► WebRTC peer-to-peer ◄────────┘            │
-│              DataChannel                            │
-│              AES-256-GCM поверх                     │
+│  enter shared phrase ─────────────► same phrase      │
+│       │                                 │            │
+│       ▼                                 ▼            │
+│   Argon2id → info_hash + PSK + AES-key              │
+│       │                                 │            │
+│       └─►  WebTorrent trackers (~4 public)  ◄───────┘ │
+│              wss://tracker.openwebtorrent.com        │
+│              wss://tracker.btorrent.xyz              │
+│              wss://tracker.webtorrent.dev            │
+│              ...                                     │
+│       │                                 │            │
+│       ▼      SDP/ICE exchange           ▼            │
+│       │   (protected by PSK-HMAC)       │            │
+│       │                                 │            │
+│       └─► WebRTC peer-to-peer ◄─────────┘            │
+│              DataChannel                             │
+│              AES-256-GCM on top                      │
 └─────────────────────────────────────────────────────┘
 ```
 
-## Что это и чем отличается от основного Nee2P
+## What it is and how it differs from main Nee2P
 
-Lite — это **альтернативная архитектура** для специфичных сценариев, не замена основного Nee2P.
+Lite is an **alternative architecture** for specific scenarios — not a replacement for main Nee2P.
 
-| | Nee2P (основной) | Nee2P Lite |
+| | Nee2P (main) | Nee2P Lite |
 |---|---|---|
-| Серверов от Nee2P | 1 relay | 0 |
-| Discovery | свой relay | federated WebTorrent trackers |
-| Хостинг | свой VPS / Docker / Render | нечего хостить |
-| Распространение | URL: `Nee2P.com` | один HTML-файл |
-| Async-доставка | работает (TTL до 7 дней) | **не работает** (оба должны быть онлайн) |
-| Push-уведомления | через relay | невозможны |
-| Group chat | 2–8 | пока только 2 |
-| Voice calls | есть (WebRTC) | пока нет |
-| File transfer | через `/r/blob` | пока нет |
+| Nee2P-controlled servers | 1 relay | 0 |
+| Discovery | own relay | federated WebTorrent trackers |
+| Hosting | your VPS / Docker / Render | nothing to host |
+| Distribution | URL: `Nee2P.com` | single HTML file |
+| Async delivery | works (TTL up to 7 days) | **no** (both peers must be online) |
+| Push notifications | via relay | not possible |
+| Group chat | 2–8 | 2 only (MVP) |
+| Voice calls | yes (WebRTC) | not yet |
+| File transfer | via `/r/blob` | not yet |
 
-## Когда выбирать Lite
+## When to choose Lite
 
-- Высокие требования к аудиту — один файл, читается `nano`'ом
-- Цензуроустойчивость — нет single point to block (10+ независимых trackers)
-- Off-grid / sneakernet — файл передаётся через любой канал
-- Долговечность — файл работает через 10 лет независимо от того, существует ли проект
-- Параноидальный сценарий — пользователь не доверяет никаким серверам, включая Nee2P
+- **Maximum auditability** — one file, readable with `nano`
+- **Censorship resistance** — no single point to block (4+ independent trackers)
+- **Off-grid / sneakernet** — the file travels over any channel (USB, QR, email)
+- **Longevity** — the file works in 10 years regardless of whether the project still exists
+- **Zero server trust** — user does not trust any server, including Nee2P's
 
-## Когда выбирать основной Nee2P
+## When to choose main Nee2P
 
-- Нужны async-сообщения (пир получит когда зайдёт)
-- Нужны push-уведомления
-- Группы 3-8 человек
+- Async messages needed (peer receives when they come back online)
+- Push notifications needed
+- Groups of 3–8 people
 - Voice calls
-- Mobile-first (iOS Safari имеет ограничения на background WebRTC)
+- Mobile-first (iOS Safari has limitations on background WebRTC)
 
-## Как использовать
+## How to use
 
-1. Скачайте `nee2p-lite.html` (с GitHub Releases, IPFS, или у друга на флешке)
-2. Откройте двойным кликом в браузере
-3. Введите общую фразу с собеседником
-4. Дождитесь установки соединения (обычно 3-10 секунд)
-5. Сравните 12 BIP-39 слов через отдельный канал (защита от MITM)
-6. Пишите
+1. Download `nee2p-lite.html` (from GitHub Releases, IPFS, or a friend's USB drive)
+2. Open it with a double-click in your browser
+3. Enter the same shared phrase as your contact
+4. Wait for the connection to establish (usually 3–10 seconds)
+5. Compare the 12 BIP-39 safety words over a separate channel (MITM protection)
+6. Chat
 
-## Крипто-стек
+## Crypto stack
 
-Идентичен основному Nee2P:
+Identical to main Nee2P:
 
-- **KDF:** Argon2id (t=3, m=64MiB, p=1) от фразы → 32 байта master key
-- **Discovery:** `info_hash = SHA-1(master_key)` — детерминированный room ID для tracker'ов
-- **PSK:** `psk = HKDF(master_key, "nee2p-lite-psk-v1")` — защищает handshake от подсадки tracker'ом fake-пира
-- **PQ key exchange:** X25519 (ephemeral) + ML-KEM-768 (FIPS 203) гибрид через HKDF
-- **Session key:** AES-256-GCM, свежий 12-байт IV на каждое сообщение
-- **Safety fingerprint:** SHA-256 публичных ключей → 12 BIP-39 слов (сравнить out-of-band)
+- **KDF:** Argon2id (t=3, m=64MiB, p=1) from phrase → 32-byte master key
+- **Discovery:** `info_hash = SHA-1(master_key)` — deterministic room ID for trackers
+- **PSK:** `psk = HKDF(master_key, "nee2p-lite-psk-v1")` — prevents tracker from injecting a fake peer into the handshake
+- **PQ key exchange:** X25519 (ephemeral) + ML-KEM-768 (FIPS 203) hybrid via HKDF
+- **Session key:** AES-256-GCM, fresh 12-byte IV per message
+- **Safety fingerprint:** SHA-256 of public keys → 12 BIP-39 words (compare out-of-band)
 
-## Защита от tracker'а
+Domain-separated from main Nee2P via distinct HKDF info strings (`nee2p-lite.v1.*` vs `hush.v3.*`), so a same-phrase session in Lite and main Nee2P do **not** interoperate — by design.
 
-Tracker видит:
-- `info_hash` — детерминированный, но без знания фразы реверсу не подлежит (Argon2id)
-- IP-адреса пиров
-- Зашифрованные SDP/ICE пакеты
-- Момент handshake
+## Tracker threat model
 
-Tracker **не видит**:
-- Фразу
-- Содержимое сообщений
-- Ключи
-- Метаданные после handshake (всё идёт peer-to-peer)
+The tracker **sees:**
+- `info_hash` — deterministic, but not reversible without the phrase (Argon2id)
+- IP addresses of peers
+- Encrypted SDP/ICE packets
+- The moment of the handshake
 
-Tracker **не может**:
-- Подсадить fake-пира — PSK-HMAC отбрасывает любой SDP без знания фразы
-- Расшифровать сообщения — даже если он MITM'ит handshake, X25519+ML-KEM session key недостижим без фразы
-- Залогировать содержимое — после WebRTC handshake tracker'а в data-path больше нет
+The tracker **does not see:**
+- The phrase
+- Message contents
+- Keys
+- Any metadata after the handshake (everything goes peer-to-peer)
 
-## Известные ограничения
+The tracker **cannot:**
+- Inject a fake peer — PSK-HMAC rejects any SDP without knowledge of the phrase
+- Decrypt messages — even if it MITMs the handshake, the X25519+ML-KEM session key is unreachable without the phrase
+- Log content — after the WebRTC handshake, the tracker is no longer in the data path
 
-1. **Symmetric NAT (~10% сетей)** — для прохода нужен TURN-сервер. Lite использует только публичные STUN, без TURN. В strict NAT соединение может не установиться.
-2. **iOS Safari в standalone PWA** — WebRTC ограничено в фоне.
-3. **Async** — оба пира должны быть онлайн одновременно. Если Боб открыл файл через 3 часа после Алисы — Алиса должна быть всё ещё в комнате.
-4. **Hot security fixes** — нет автообновления. Юзер сам качает новый HTML, когда находит критичный fix.
+## Known limitations
 
-## Файлы
+1. **Symmetric NAT (~10% of networks)** — traversal requires a TURN server. Lite uses public STUN only, no TURN. Under strict NAT the connection may fail.
+2. **iOS Safari in standalone PWA mode** — WebRTC is unreliable in the background.
+3. **Both peers must be online simultaneously** — if Bob opens the file 3 hours after Alice, Alice must still have the tab open.
+4. **No auto-updates** — there is no service worker or auto-refresh. Users must download a new HTML file when a security fix is released.
 
-- `nee2p-lite.html` — единственный артефакт. Открывается двойным кликом.
-- `README.md` — этот файл.
+## Files
 
-## Лицензия
+- `nee2p-lite.html` — the single artifact. Open with a double-click.
+- `README.md` — this file.
 
-MIT, как и основной проект.
+## License
+
+MIT, same as the main project.
