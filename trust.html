@@ -6,6 +6,8 @@
 <meta name="robots" content="noindex" />
 <meta name="color-scheme" content="dark" />
 <title>Nee2P. — как проверить честность</title>
+<!-- i18n: shared dictionary so the lang picker stays in sync with the rest of the app. -->
+<script src="./i18n.js"></script>
 <style>
   :root {
     --bg: #06060a;
@@ -46,6 +48,7 @@
     align-items: center;
     justify-content: space-between;
     margin-bottom: 56px;
+    gap: 12px;
   }
   .logo {
     font-family: var(--serif);
@@ -63,6 +66,59 @@
     border-bottom: 0;
   }
   .back:hover { color: var(--accent); border-bottom: 0; }
+  .header-right {
+    display: flex; align-items: center; gap: 10px; margin-left: auto;
+  }
+
+  /* Lang pill — mirrors the React LangToggle visually but vanilla JS. */
+  .lang-toggle {
+    position: relative; display: inline-flex; align-items: center;
+  }
+  .lang-toggle button.pill {
+    height: 28px; padding: 0 10px;
+    border: 0; background: rgba(255,255,255,0.025);
+    box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.07);
+    border-radius: 9999px;
+    color: var(--fg-mute);
+    font: 600 9.5px/1 var(--sans);
+    letter-spacing: 1.6px; text-transform: uppercase;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+    -webkit-tap-highlight-color: transparent; user-select: none;
+  }
+  .lang-toggle button.pill[aria-expanded="true"] { background: rgba(255,255,255,0.08); }
+  .lang-menu {
+    position: fixed; min-width: 132px; padding: 4px;
+    border-radius: 12px;
+    background: rgba(20,20,28,0.96);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.12), 0 18px 38px rgba(0,0,0,0.6);
+    z-index: 99999;
+  }
+  .lang-menu button {
+    display: flex; align-items: center; justify-content: space-between;
+    width: 100%; padding: 8px 10px;
+    border: 0; cursor: pointer; border-radius: 8px;
+    background: transparent;
+    color: var(--fg-dim);
+    font: 500 13px/1.2 var(--sans);
+    letter-spacing: -0.1px; text-align: left;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .lang-menu button[aria-selected="true"] {
+    background: rgba(255,255,255,0.08); color: #fff;
+  }
+  .lang-menu button .code {
+    font: 700 9px/1 var(--mono);
+    letter-spacing: 1.4px; text-transform: uppercase;
+    color: var(--fg-mute);
+  }
+
+  /* i18n: hide elements whose [lang] does not match the active document
+     language. We pin lang on the <html> root (updated by inline script) and
+     mark each translatable span with lang="ru" / lang="en". */
+  html[lang="ru"] [lang="en"] { display: none; }
+  html[lang="en"] [lang="ru"] { display: none; }
 
   /* Hero */
   .hero {
@@ -299,16 +355,26 @@
 
   <header class="top">
     <a href="./" class="logo">Nee2P.</a>
-    <a href="./" class="back">← назад</a>
+    <div class="header-right">
+      <a href="./" class="back"><span lang="ru">← назад</span><span lang="en">← back</span></a>
+      <span class="lang-toggle" id="lang-toggle"></span>
+    </div>
   </header>
 
   <div class="hero">
-    <h1>Как убедиться, что мы не врём</h1>
-    <p>Мы не просим доверять нам на слово. Вот что можно проверить самостоятельно.</p>
+    <h1>
+      <span lang="ru">Как убедиться, что мы не врём</span>
+      <span lang="en">How to verify we are not lying</span>
+    </h1>
+    <p>
+      <span lang="ru">Мы не просим доверять нам на слово. Вот что можно проверить самостоятельно.</span>
+      <span lang="en">We are not asking you to take our word for it. Here is what you can check yourself.</span>
+    </p>
   </div>
 
   <div class="gh-card">
-    <strong>Код проекта открыт.</strong> Любой может прочитать его, форкнуть и поднять свою копию — чтобы убедиться, что у нас на сервере именно то, что мы говорим. Никакой магии за кулисами.
+    <span lang="ru"><strong>Код проекта открыт.</strong> Любой может прочитать его, форкнуть и поднять свою копию — чтобы убедиться, что у нас на сервере именно то, что мы говорим. Никакой магии за кулисами.</span>
+    <span lang="en"><strong>The project is open source.</strong> Anyone can read the code, fork it, and run their own copy — to verify that exactly what we describe is running on the server. No magic behind the curtain.</span>
     <br />
     <a class="gh-link" href="https://github.com/www7man/Nee2P" target="_blank" rel="noopener">github.com/www7man/Nee2P →</a>
   </div>
@@ -317,57 +383,179 @@
 
   <!-- 1. Сервер слепой -->
   <section>
-    <h2 class="kicker">01 — Главное</h2>
-    <h3 class="lead">Сервер физически не видит ваши сообщения</h3>
+    <h2 class="kicker">
+      <span lang="ru">01 — Главное</span>
+      <span lang="en">01 — The main thing</span>
+    </h2>
+    <h3 class="lead">
+      <span lang="ru">Сервер физически не видит ваши сообщения</span>
+      <span lang="en">The server physically cannot see your messages</span>
+    </h3>
 
-    <p>Самая распространённая угроза — «сервис читает вашу переписку». В Nee2P. сервер не может этого сделать, даже если захочет или будет взломан. Ключ шифрования не покидает ваш браузер.</p>
+    <p>
+      <span lang="ru">Самая распространённая угроза — «сервис читает вашу переписку». В Nee2P. сервер не может этого сделать, даже если захочет или будет взломан. Ключ шифрования не покидает ваш браузер.</span>
+      <span lang="en">The most common threat is "the service reads your messages". In Nee2P. the server cannot do that — even if it wanted to, or if it was breached. The encryption key never leaves your browser.</span>
+    </p>
 
-    <h4>Что происходит при подключении</h4>
+    <h4>
+      <span lang="ru">Что происходит при подключении</span>
+      <span lang="en">What happens during the handshake</span>
+    </h4>
     <ul>
-      <li>Ваша фраза → через <a href="https://ru.wikipedia.org/wiki/Argon2" target="_blank" rel="noopener">Argon2id</a> → часть ключа (не покидает браузер)</li>
-      <li>Браузер генерирует одноразовую <a href="https://ru.wikipedia.org/wiki/Curve25519" target="_blank" rel="noopener">X25519</a>-пару (новую при каждом подключении)</li>
-      <li>Браузеры обмениваются <em>публичными</em> ключами через сервер — он видит только их</li>
-      <li><a href="https://ru.wikipedia.org/wiki/Протокол_Диффи_—_Хеллмана_на_эллиптических_кривых" target="_blank" rel="noopener">ECDH</a> + <a href="https://en.wikipedia.org/wiki/Kyber" target="_blank" rel="noopener">ML-KEM-768</a> + phrase → итоговый <a href="https://ru.wikipedia.org/wiki/Galois/Counter_Mode" target="_blank" rel="noopener">AES-256-GCM</a> ключ (только в браузере)</li>
-      <li>Сообщение шифруется: <code>AES-256-GCM(key, <a href="https://ru.wikipedia.org/wiki/Инициализирующий_вектор" target="_blank" rel="noopener">iv</a>, plaintext)</code></li>
-      <li>Сервер получает <code>{iv, ct}</code> и пересылает второму участнику — содержимое ему недоступно</li>
+      <li>
+        <span lang="ru">Ваша фраза → через <a href="https://ru.wikipedia.org/wiki/Argon2" target="_blank" rel="noopener">Argon2id</a> → часть ключа (не покидает браузер)</span>
+        <span lang="en">Your phrase → through <a href="https://en.wikipedia.org/wiki/Argon2" target="_blank" rel="noopener">Argon2id</a> → part of the key (never leaves the browser)</span>
+      </li>
+      <li>
+        <span lang="ru">Браузер генерирует одноразовую <a href="https://ru.wikipedia.org/wiki/Curve25519" target="_blank" rel="noopener">X25519</a>-пару (новую при каждом подключении)</span>
+        <span lang="en">The browser generates a one-time <a href="https://en.wikipedia.org/wiki/Curve25519" target="_blank" rel="noopener">X25519</a> key pair (fresh on every connection)</span>
+      </li>
+      <li>
+        <span lang="ru">Браузеры обмениваются <em>публичными</em> ключами через сервер — он видит только их</span>
+        <span lang="en">The browsers exchange <em>public</em> keys through the server — it only ever sees those</span>
+      </li>
+      <li>
+        <span lang="ru"><a href="https://ru.wikipedia.org/wiki/Протокол_Диффи_—_Хеллмана_на_эллиптических_кривых" target="_blank" rel="noopener">ECDH</a> + <a href="https://en.wikipedia.org/wiki/Kyber" target="_blank" rel="noopener">ML-KEM-768</a> + phrase → итоговый <a href="https://ru.wikipedia.org/wiki/Galois/Counter_Mode" target="_blank" rel="noopener">AES-256-GCM</a> ключ (только в браузере)</span>
+        <span lang="en"><a href="https://en.wikipedia.org/wiki/Elliptic-curve_Diffie%E2%80%93Hellman" target="_blank" rel="noopener">ECDH</a> + <a href="https://en.wikipedia.org/wiki/Kyber" target="_blank" rel="noopener">ML-KEM-768</a> + phrase → the final <a href="https://en.wikipedia.org/wiki/Galois/Counter_Mode" target="_blank" rel="noopener">AES-256-GCM</a> key (browser only)</span>
+      </li>
+      <li>
+        <span lang="ru">Сообщение шифруется: <code>AES-256-GCM(key, <a href="https://ru.wikipedia.org/wiki/Инициализирующий_вектор" target="_blank" rel="noopener">iv</a>, plaintext)</code></span>
+        <span lang="en">Each message is encrypted: <code>AES-256-GCM(key, <a href="https://en.wikipedia.org/wiki/Initialization_vector" target="_blank" rel="noopener">iv</a>, plaintext)</code></span>
+      </li>
+      <li>
+        <span lang="ru">Сервер получает <code>{iv, ct}</code> и пересылает второму участнику — содержимое ему недоступно</span>
+        <span lang="en">The server receives <code>{iv, ct}</code> and forwards it to the other participant — the contents are not available to it</span>
+      </li>
     </ul>
 
-    <h4>Что сервер реально видит</h4>
-<pre><code>{
+    <h4>
+      <span lang="ru">Что сервер реально видит</span>
+      <span lang="en">What the server actually sees</span>
+    </h4>
+<pre lang="ru"><code>{
   "iv": "&lt;12 случайных байт, base64&gt;",
   "ct": "&lt;зашифрованный текст, base64&gt;"
 }</code></pre>
-    <p class="dim">Это всё. Без ключа — бессмысленный набор байт.</p>
+<pre lang="en"><code>{
+  "iv": "&lt;12 random bytes, base64&gt;",
+  "ct": "&lt;encrypted text, base64&gt;"
+}</code></pre>
+    <p class="dim">
+      <span lang="ru">Это всё. Без ключа — бессмысленный набор байт.</span>
+      <span lang="en">That's all. Without the key, it's a meaningless pile of bytes.</span>
+    </p>
 
-    <h4>Как проверить самому</h4>
-    <p class="dim">Открой DevTools → Network → WS (или вкладку <code>/r/send</code>). Все исходящие пакеты содержат только <code>iv</code> и <code>ct</code>. Plaintext там нет.</p>
+    <h4>
+      <span lang="ru">Как проверить самому</span>
+      <span lang="en">How to verify it yourself</span>
+    </h4>
+    <p class="dim">
+      <span lang="ru">Открой DevTools → Network → WS (или вкладку <code>/r/send</code>). Все исходящие пакеты содержат только <code>iv</code> и <code>ct</code>. Plaintext там нет.</span>
+      <span lang="en">Open DevTools → Network → WS (or the <code>/r/send</code> tab). Every outgoing packet contains only <code>iv</code> and <code>ct</code>. No plaintext.</span>
+    </p>
   </section>
 
   <hr />
 
   <!-- 2. Криптостек -->
   <section>
-    <h2 class="kicker">02 — Криптографический стек</h2>
-    <h3 class="lead">Конкретные алгоритмы и параметры</h3>
+    <h2 class="kicker">
+      <span lang="ru">02 — Криптографический стек</span>
+      <span lang="en">02 — Cryptographic stack</span>
+    </h2>
+    <h3 class="lead">
+      <span lang="ru">Конкретные алгоритмы и параметры</span>
+      <span lang="en">Concrete algorithms and parameters</span>
+    </h3>
 
     <table>
       <thead>
-        <tr><th>Компонент</th><th>Алгоритм</th><th>Параметры</th></tr>
+        <tr>
+          <th><span lang="ru">Компонент</span><span lang="en">Component</span></th>
+          <th><span lang="ru">Алгоритм</span><span lang="en">Algorithm</span></th>
+          <th><span lang="ru">Параметры</span><span lang="en">Parameters</span></th>
+        </tr>
       </thead>
       <tbody>
-        <tr><td><a href="https://ru.wikipedia.org/wiki/Функция_формирования_ключа" target="_blank" rel="noopener">KDF</a> (основной)</td><td><a href="https://ru.wikipedia.org/wiki/Argon2" target="_blank" rel="noopener">Argon2id</a></td><td>t=3, mem=64 МиБ, p=1, out=32B</td></tr>
-        <tr><td>KDF (fallback)</td><td><a href="https://ru.wikipedia.org/wiki/PBKDF2" target="_blank" rel="noopener">PBKDF2</a>-<a href="https://ru.wikipedia.org/wiki/SHA-2" target="_blank" rel="noopener">SHA256</a></td><td>600 000 итераций, out=32B</td></tr>
-        <tr><td><a href="https://ru.wikipedia.org/wiki/Функция_формирования_ключа" target="_blank" rel="noopener">KDF</a> соль</td><td>domain-separated</td><td>hush.v3.argon2id:&lt;roomId&gt;</td></tr>
-        <tr><td>Key exchange</td><td><a href="https://ru.wikipedia.org/wiki/Curve25519" target="_blank" rel="noopener">X25519</a> (<a href="https://ru.wikipedia.org/wiki/Протокол_Диффи_—_Хеллмана_на_эллиптических_кривых" target="_blank" rel="noopener">ECDH</a>)</td><td>эфемерная пара, забывается после сессии</td></tr>
-        <tr><td>Post-quantum</td><td><a href="https://en.wikipedia.org/wiki/Kyber" target="_blank" rel="noopener">ML-KEM-768</a> (FIPS 203)</td><td>pk 1184B, ct 1088B, ss 32B</td></tr>
-        <tr><td>Финальный ключ</td><td><a href="https://en.wikipedia.org/wiki/HKDF" target="_blank" rel="noopener">HKDF</a>-<a href="https://ru.wikipedia.org/wiki/SHA-2" target="_blank" rel="noopener">SHA256</a></td><td>mix: <a href="https://ru.wikipedia.org/wiki/Протокол_Диффи_—_Хеллмана_на_эллиптических_кривых" target="_blank" rel="noopener">ECDH</a> ‖ phrase ‖ <a href="https://en.wikipedia.org/wiki/Key_encapsulation_mechanism" target="_blank" rel="noopener">KEM</a> shared</td></tr>
-        <tr><td>Шифрование</td><td><a href="https://ru.wikipedia.org/wiki/Galois/Counter_Mode" target="_blank" rel="noopener">AES-256-GCM</a></td><td><a href="https://ru.wikipedia.org/wiki/Инициализирующий_вектор" target="_blank" rel="noopener">IV</a> 12B, уникальный на сообщение</td></tr>
-        <tr><td>Fingerprint</td><td><a href="https://ru.wikipedia.org/wiki/SHA-2" target="_blank" rel="noopener">SHA-256</a> → <a href="https://en.bitcoin.it/wiki/BIP_0039" target="_blank" rel="noopener">BIP-39</a></td><td>12 слов = 132 бита энтропии</td></tr>
+        <tr>
+          <td>
+            <span lang="ru"><a href="https://ru.wikipedia.org/wiki/Функция_формирования_ключа" target="_blank" rel="noopener">KDF</a> (основной)</span>
+            <span lang="en"><a href="https://en.wikipedia.org/wiki/Key_derivation_function" target="_blank" rel="noopener">KDF</a> (primary)</span>
+          </td>
+          <td><a href="https://en.wikipedia.org/wiki/Argon2" target="_blank" rel="noopener">Argon2id</a></td>
+          <td>
+            <span lang="ru">t=3, mem=64 МиБ, p=1, out=32B</span>
+            <span lang="en">t=3, mem=64 MiB, p=1, out=32B</span>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <span lang="ru">KDF (fallback)</span>
+            <span lang="en">KDF (fallback)</span>
+          </td>
+          <td><a href="https://en.wikipedia.org/wiki/PBKDF2" target="_blank" rel="noopener">PBKDF2</a>-<a href="https://en.wikipedia.org/wiki/SHA-2" target="_blank" rel="noopener">SHA256</a></td>
+          <td>
+            <span lang="ru">600 000 итераций, out=32B</span>
+            <span lang="en">600,000 iterations, out=32B</span>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <span lang="ru"><a href="https://ru.wikipedia.org/wiki/Функция_формирования_ключа" target="_blank" rel="noopener">KDF</a> соль</span>
+            <span lang="en"><a href="https://en.wikipedia.org/wiki/Key_derivation_function" target="_blank" rel="noopener">KDF</a> salt</span>
+          </td>
+          <td>domain-separated</td>
+          <td>hush.v3.argon2id:&lt;roomId&gt;</td>
+        </tr>
+        <tr>
+          <td>Key exchange</td>
+          <td><a href="https://en.wikipedia.org/wiki/Curve25519" target="_blank" rel="noopener">X25519</a> (<a href="https://en.wikipedia.org/wiki/Elliptic-curve_Diffie%E2%80%93Hellman" target="_blank" rel="noopener">ECDH</a>)</td>
+          <td>
+            <span lang="ru">эфемерная пара, забывается после сессии</span>
+            <span lang="en">ephemeral pair, forgotten after the session</span>
+          </td>
+        </tr>
+        <tr>
+          <td>Post-quantum</td>
+          <td><a href="https://en.wikipedia.org/wiki/Kyber" target="_blank" rel="noopener">ML-KEM-768</a> (FIPS 203)</td>
+          <td>pk 1184B, ct 1088B, ss 32B</td>
+        </tr>
+        <tr>
+          <td>
+            <span lang="ru">Финальный ключ</span>
+            <span lang="en">Final key</span>
+          </td>
+          <td><a href="https://en.wikipedia.org/wiki/HKDF" target="_blank" rel="noopener">HKDF</a>-<a href="https://en.wikipedia.org/wiki/SHA-2" target="_blank" rel="noopener">SHA256</a></td>
+          <td>
+            <span lang="ru">mix: <a href="https://ru.wikipedia.org/wiki/Протокол_Диффи_—_Хеллмана_на_эллиптических_кривых" target="_blank" rel="noopener">ECDH</a> ‖ phrase ‖ <a href="https://en.wikipedia.org/wiki/Key_encapsulation_mechanism" target="_blank" rel="noopener">KEM</a> shared</span>
+            <span lang="en">mix: <a href="https://en.wikipedia.org/wiki/Elliptic-curve_Diffie%E2%80%93Hellman" target="_blank" rel="noopener">ECDH</a> ‖ phrase ‖ <a href="https://en.wikipedia.org/wiki/Key_encapsulation_mechanism" target="_blank" rel="noopener">KEM</a> shared</span>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <span lang="ru">Шифрование</span>
+            <span lang="en">Encryption</span>
+          </td>
+          <td><a href="https://en.wikipedia.org/wiki/Galois/Counter_Mode" target="_blank" rel="noopener">AES-256-GCM</a></td>
+          <td>
+            <span lang="ru"><a href="https://ru.wikipedia.org/wiki/Инициализирующий_вектор" target="_blank" rel="noopener">IV</a> 12B, уникальный на сообщение</span>
+            <span lang="en"><a href="https://en.wikipedia.org/wiki/Initialization_vector" target="_blank" rel="noopener">IV</a> 12B, unique per message</span>
+          </td>
+        </tr>
+        <tr>
+          <td>Fingerprint</td>
+          <td><a href="https://en.wikipedia.org/wiki/SHA-2" target="_blank" rel="noopener">SHA-256</a> → <a href="https://en.bitcoin.it/wiki/BIP_0039" target="_blank" rel="noopener">BIP-39</a></td>
+          <td>
+            <span lang="ru">12 слов = 132 бита энтропии</span>
+            <span lang="en">12 words = 132 bits of entropy</span>
+          </td>
+        </tr>
       </tbody>
     </table>
 
     <div class="note">
-      Если будет взломан <a href="https://ru.wikipedia.org/wiki/Curve25519" target="_blank" rel="noopener">X25519</a> — защищает <a href="https://en.wikipedia.org/wiki/Kyber" target="_blank" rel="noopener">ML-KEM-768</a>. Если будет взломан <a href="https://en.wikipedia.org/wiki/Kyber" target="_blank" rel="noopener">ML-KEM</a> — защищает <a href="https://ru.wikipedia.org/wiki/Curve25519" target="_blank" rel="noopener">X25519</a>. Оба должны быть скомпрометированы одновременно, чтобы расшифровать сессию.
+      <span lang="ru">Если будет взломан <a href="https://ru.wikipedia.org/wiki/Curve25519" target="_blank" rel="noopener">X25519</a> — защищает <a href="https://en.wikipedia.org/wiki/Kyber" target="_blank" rel="noopener">ML-KEM-768</a>. Если будет взломан <a href="https://en.wikipedia.org/wiki/Kyber" target="_blank" rel="noopener">ML-KEM</a> — защищает <a href="https://ru.wikipedia.org/wiki/Curve25519" target="_blank" rel="noopener">X25519</a>. Оба должны быть скомпрометированы одновременно, чтобы расшифровать сессию.</span>
+      <span lang="en">If <a href="https://en.wikipedia.org/wiki/Curve25519" target="_blank" rel="noopener">X25519</a> is broken — <a href="https://en.wikipedia.org/wiki/Kyber" target="_blank" rel="noopener">ML-KEM-768</a> still protects you. If <a href="https://en.wikipedia.org/wiki/Kyber" target="_blank" rel="noopener">ML-KEM</a> is broken — <a href="https://en.wikipedia.org/wiki/Curve25519" target="_blank" rel="noopener">X25519</a> still protects you. Both must be compromised at the same time to decrypt the session.</span>
     </div>
   </section>
 
@@ -376,86 +564,179 @@
   <!-- 3. Safety Fingerprint -->
   <section>
     <h2 class="kicker">03 — Safety Fingerprint</h2>
-    <h3 class="lead">Проверка человеком, что между вами нет посредника</h3>
+    <h3 class="lead">
+      <span lang="ru">Проверка человеком, что между вами нет посредника</span>
+      <span lang="en">A human check that there is no middleman between you</span>
+    </h3>
 
-    <p>После установки соединения оба участника видят одни и те же <strong>12 слов <a href="https://en.bitcoin.it/wiki/BIP_0039" target="_blank" rel="noopener">BIP-39</a></strong>. Это отпечаток ваших публичных ключей — <a href="https://ru.wikipedia.org/wiki/SHA-2" target="_blank" rel="noopener">SHA-256</a> от их конкатенации, отсортированной по значению.</p>
+    <p>
+      <span lang="ru">После установки соединения оба участника видят одни и те же <strong>12 слов <a href="https://en.bitcoin.it/wiki/BIP_0039" target="_blank" rel="noopener">BIP-39</a></strong>. Это отпечаток ваших публичных ключей — <a href="https://ru.wikipedia.org/wiki/SHA-2" target="_blank" rel="noopener">SHA-256</a> от их конкатенации, отсортированной по значению.</span>
+      <span lang="en">Once the connection is established, both participants see the same <strong>12 <a href="https://en.bitcoin.it/wiki/BIP_0039" target="_blank" rel="noopener">BIP-39</a> words</strong>. This is the fingerprint of your public keys — <a href="https://en.wikipedia.org/wiki/SHA-2" target="_blank" rel="noopener">SHA-256</a> over their concatenation, sorted by value.</span>
+    </p>
 
     <ul>
-      <li>Слова <strong>совпали</strong> (вы сверили их через голос или другой канал) → между вами нет <a href="https://ru.wikipedia.org/wiki/Атака_посредника" target="_blank" rel="noopener">MITM</a>.</li>
-      <li>Слова <strong>не совпали</strong> → кто-то подменяет ключи. Сессию пересоздать.</li>
+      <li>
+        <span lang="ru">Слова <strong>совпали</strong> (вы сверили их через голос или другой канал) → между вами нет <a href="https://ru.wikipedia.org/wiki/Атака_посредника" target="_blank" rel="noopener">MITM</a>.</span>
+        <span lang="en">The words <strong>match</strong> (you verified them by voice or another channel) → there is no <a href="https://en.wikipedia.org/wiki/Man-in-the-middle_attack" target="_blank" rel="noopener">MITM</a> between you.</span>
+      </li>
+      <li>
+        <span lang="ru">Слова <strong>не совпали</strong> → кто-то подменяет ключи. Сессию пересоздать.</span>
+        <span lang="en">The words <strong>do not match</strong> → someone is swapping the keys. Recreate the session.</span>
+      </li>
     </ul>
 
-    <p class="mute">Где смотреть: в чате → «Безопасность сессии» → 12 слов и полный hex <a href="https://ru.wikipedia.org/wiki/SHA-2" target="_blank" rel="noopener">SHA-256</a>.</p>
+    <p class="mute">
+      <span lang="ru">Где смотреть: в чате → «Безопасность сессии» → 12 слов и полный hex <a href="https://ru.wikipedia.org/wiki/SHA-2" target="_blank" rel="noopener">SHA-256</a>.</span>
+      <span lang="en">Where to find it: in the chat → "Session security" → 12 words and the full <a href="https://en.wikipedia.org/wiki/SHA-2" target="_blank" rel="noopener">SHA-256</a> hex.</span>
+    </p>
   </section>
 
   <hr />
 
   <!-- 4. Время жизни данных -->
   <section>
-    <h2 class="kicker">04 — Время жизни данных</h2>
-    <h3 class="lead">Только в оперативной памяти, без диска</h3>
+    <h2 class="kicker">
+      <span lang="ru">04 — Время жизни данных</span>
+      <span lang="en">04 — Data lifetime</span>
+    </h2>
+    <h3 class="lead">
+      <span lang="ru">Только в оперативной памяти, без диска</span>
+      <span lang="en">RAM only — never on disk</span>
+    </h3>
 
     <ul>
-      <li>Сообщения хранятся <strong>только в RAM сервера</strong>, пока сессия активна</li>
-      <li>TTL комнаты — на выбор: 1 час, 6 часов, 24 часа, 3 дня, 7 дней</li>
-      <li>По истечении TTL (или когда все закрыли вкладку) — комната удаляется, данные исчезают</li>
-      <li>Никакой базы данных, никакого диска, никаких бэкапов</li>
-      <li>Файлы и голосовые: лежат в RAM как зашифрованный blob (до 5 МБ), удаляются вместе с комнатой</li>
-      <li>Журнала сообщений на сервере не ведётся</li>
+      <li>
+        <span lang="ru">Сообщения хранятся <strong>только в RAM сервера</strong>, пока сессия активна</span>
+        <span lang="en">Messages are stored <strong>only in server RAM</strong>, for as long as the session is active</span>
+      </li>
+      <li>
+        <span lang="ru">TTL комнаты — на выбор: 1 час, 6 часов, 24 часа, 3 дня, 7 дней</span>
+        <span lang="en">Room TTL is your choice: 1 hour, 6 hours, 24 hours, 3 days, 7 days</span>
+      </li>
+      <li>
+        <span lang="ru">По истечении TTL (или когда все закрыли вкладку) — комната удаляется, данные исчезают</span>
+        <span lang="en">When the TTL expires (or everyone closes the tab) — the room is removed, the data disappears</span>
+      </li>
+      <li>
+        <span lang="ru">Никакой базы данных, никакого диска, никаких бэкапов</span>
+        <span lang="en">No database, no disk, no backups</span>
+      </li>
+      <li>
+        <span lang="ru">Файлы и голосовые: лежат в RAM как зашифрованный blob (до 5 МБ), удаляются вместе с комнатой</span>
+        <span lang="en">Files and voice notes: sit in RAM as encrypted blobs (up to 5 MB), removed together with the room</span>
+      </li>
+      <li>
+        <span lang="ru">Журнала сообщений на сервере не ведётся</span>
+        <span lang="en">The server keeps no message log</span>
+      </li>
     </ul>
 
-    <p class="mute">Как проверить: исходный код <code>server.js</code> — <code>class Room</code> использует <code>this.history = []</code>. Обычный массив в памяти, без вызовов в БД.</p>
+    <p class="mute">
+      <span lang="ru">Как проверить: исходный код <code>server.js</code> — <code>class Room</code> использует <code>this.history = []</code>. Обычный массив в памяти, без вызовов в БД.</span>
+      <span lang="en">How to verify: source code <code>server.js</code> — <code>class Room</code> uses <code>this.history = []</code>. A plain in-memory array, no database calls.</span>
+    </p>
   </section>
 
   <hr />
 
   <!-- 5. Нет трекеров -->
   <section>
-    <h2 class="kicker">05 — Никаких трекеров и CDN</h2>
-    <h3 class="lead">Браузер ходит только на ваш relay</h3>
+    <h2 class="kicker">
+      <span lang="ru">05 — Никаких трекеров и CDN</span>
+      <span lang="en">05 — No trackers, no CDN</span>
+    </h2>
+    <h3 class="lead">
+      <span lang="ru">Браузер ходит только на ваш relay</span>
+      <span lang="en">The browser only talks to your relay</span>
+    </h3>
 
     <ul>
-      <li>Google Analytics — нет</li>
-      <li>Яндекс.Метрика — нет</li>
-      <li>Facebook Pixel и прочие — нет</li>
-      <li>Google Fonts — убраны (для <a href="https://ru.wikipedia.org/wiki/Tor" target="_blank" rel="noopener">Tor</a>-совместимости)</li>
-      <li>Внешние CDN — <strong>нет</strong>. Все библиотеки лежат локально в <code>vendor/</code></li>
+      <li><span lang="ru">Google Analytics — нет</span><span lang="en">Google Analytics — none</span></li>
+      <li><span lang="ru">Яндекс.Метрика — нет</span><span lang="en">Yandex.Metrica — none</span></li>
+      <li><span lang="ru">Facebook Pixel и прочие — нет</span><span lang="en">Facebook Pixel and friends — none</span></li>
+      <li>
+        <span lang="ru">Google Fonts — убраны (для <a href="https://ru.wikipedia.org/wiki/Tor" target="_blank" rel="noopener">Tor</a>-совместимости)</span>
+        <span lang="en">Google Fonts — removed (for <a href="https://en.wikipedia.org/wiki/Tor_(network)" target="_blank" rel="noopener">Tor</a> compatibility)</span>
+      </li>
+      <li>
+        <span lang="ru">Внешние CDN — <strong>нет</strong>. Все библиотеки лежат локально в <code>vendor/</code></span>
+        <span lang="en">External CDNs — <strong>none</strong>. All libraries live locally under <code>vendor/</code></span>
+      </li>
     </ul>
 
-    <h4>Что входит в vendor</h4>
+    <h4>
+      <span lang="ru">Что входит в vendor</span>
+      <span lang="en">What's inside vendor/</span>
+    </h4>
     <ul>
-      <li><code><a href="https://ru.wikipedia.org/wiki/React" target="_blank" rel="noopener">react</a>@18.3.1</code> + <code>react-dom@18.3.1</code> — UI</li>
-      <li><code>@babel/standalone@7.29.0</code> — компиляция JSX в браузере</li>
-      <li><code>argon2-browser@1.18.0</code> — Argon2id (<a href="https://ru.wikipedia.org/wiki/WebAssembly" target="_blank" rel="noopener">WebAssembly</a>)</li>
-      <li><code>noble-ed25519</code> — <a href="https://ru.wikipedia.org/wiki/Curve25519" target="_blank" rel="noopener">X25519</a> для браузеров без нативной поддержки</li>
+      <li><code><a href="https://en.wikipedia.org/wiki/React_(JavaScript_library)" target="_blank" rel="noopener">react</a>@18.3.1</code> + <code>react-dom@18.3.1</code> — UI</li>
+      <li>
+        <span lang="ru"><code>@babel/standalone@7.29.0</code> — компиляция JSX в браузере</span>
+        <span lang="en"><code>@babel/standalone@7.29.0</code> — in-browser JSX compilation</span>
+      </li>
+      <li>
+        <span lang="ru"><code>argon2-browser@1.18.0</code> — Argon2id (<a href="https://ru.wikipedia.org/wiki/WebAssembly" target="_blank" rel="noopener">WebAssembly</a>)</span>
+        <span lang="en"><code>argon2-browser@1.18.0</code> — Argon2id (<a href="https://en.wikipedia.org/wiki/WebAssembly" target="_blank" rel="noopener">WebAssembly</a>)</span>
+      </li>
+      <li>
+        <span lang="ru"><code>noble-ed25519</code> — <a href="https://ru.wikipedia.org/wiki/Curve25519" target="_blank" rel="noopener">X25519</a> для браузеров без нативной поддержки</span>
+        <span lang="en"><code>noble-ed25519</code> — <a href="https://en.wikipedia.org/wiki/Curve25519" target="_blank" rel="noopener">X25519</a> for browsers without native support</span>
+      </li>
       <li><code>mlkem.bundle.mjs</code> — <a href="https://en.wikipedia.org/wiki/Kyber" target="_blank" rel="noopener">ML-KEM-768</a> (FIPS 203)</li>
-      <li><code>bip39-en.js</code> — 2048 английских слов для fingerprint</li>
-      <li><code>qrcode.min.js</code> — генерация QR-кода (офлайн)</li>
+      <li>
+        <span lang="ru"><code>bip39-en.js</code> — 2048 английских слов для fingerprint</span>
+        <span lang="en"><code>bip39-en.js</code> — 2048 English words for the fingerprint</span>
+      </li>
+      <li>
+        <span lang="ru"><code>qrcode.min.js</code> — генерация QR-кода (офлайн)</span>
+        <span lang="en"><code>qrcode.min.js</code> — QR code generation (offline)</span>
+      </li>
     </ul>
 
-    <p class="mute">Как проверить: DevTools → Network. Никаких запросов на fonts.googleapis.com, cdn.jsdelivr.net, аналитику и т.п. — только ваш relay.</p>
+    <p class="mute">
+      <span lang="ru">Как проверить: DevTools → Network. Никаких запросов на fonts.googleapis.com, cdn.jsdelivr.net, аналитику и т.п. — только ваш relay.</span>
+      <span lang="en">How to verify: DevTools → Network. No requests to fonts.googleapis.com, cdn.jsdelivr.net, analytics endpoints, etc. — only your relay.</span>
+    </p>
   </section>
 
   <hr />
 
   <!-- 6. Открытый код -->
   <section>
-    <h2 class="kicker">06 — Исходный код</h2>
-    <h3 class="lead">Открыт и читаем</h3>
+    <h2 class="kicker">
+      <span lang="ru">06 — Исходный код</span>
+      <span lang="en">06 — Source code</span>
+    </h2>
+    <h3 class="lead">
+      <span lang="ru">Открыт и читаем</span>
+      <span lang="en">Open and readable</span>
+    </h3>
 
-    <p>Весь код — открытый. Можно прочитать <code>crypto.js</code> (вся криптография в одном файле), <code>server.js</code> (реле, ~600 строк), <code>nee2p-app.jsx</code> (логика клиента), <code>nee2p-screens.jsx</code> (интерфейс). Форкни и подними сам — инструкция в <code>DEPLOY.md</code>.</p>
+    <p>
+      <span lang="ru">Весь код — открытый. Можно прочитать <code>crypto.js</code> (вся криптография в одном файле), <code>server.js</code> (реле, ~600 строк), <code>nee2p-app.jsx</code> (логика клиента), <code>nee2p-screens.jsx</code> (интерфейс). Форкни и подними сам — инструкция в <code>DEPLOY.md</code>.</span>
+      <span lang="en">All code is open. You can read <code>crypto.js</code> (all cryptography in one file), <code>server.js</code> (the relay, ~600 lines), <code>nee2p-app.jsx</code> (client logic), <code>nee2p-screens.jsx</code> (interface). Fork it and run your own — instructions in <code>DEPLOY.md</code>.</span>
+    </p>
 
-    <p class="mute">Репозиторий: <a href="https://github.com/www7man/Nee2P" target="_blank" rel="noopener">github.com/www7man/Nee2P</a></p>
+    <p class="mute">
+      <span lang="ru">Репозиторий: <a href="https://github.com/www7man/Nee2P" target="_blank" rel="noopener">github.com/www7man/Nee2P</a></span>
+      <span lang="en">Repository: <a href="https://github.com/www7man/Nee2P" target="_blank" rel="noopener">github.com/www7man/Nee2P</a></span>
+    </p>
   </section>
 
   <hr />
 
   <!-- 7. Локально -->
   <section>
-    <h2 class="kicker">07 — Запустить локально</h2>
-    <h3 class="lead">Свой relay за минуту</h3>
+    <h2 class="kicker">
+      <span lang="ru">07 — Запустить локально</span>
+      <span lang="en">07 — Run locally</span>
+    </h2>
+    <h3 class="lead">
+      <span lang="ru">Свой relay за минуту</span>
+      <span lang="en">Your own relay in under a minute</span>
+    </h3>
 
-<pre><code># склонировать репозиторий
+<pre lang="ru"><code># склонировать репозиторий
 git clone https://github.com/www7man/Nee2P
 cd Nee2P
 
@@ -465,63 +746,276 @@ npm install
 # запустить локальный relay
 node server.js
 # → http://127.0.0.1:8787</code></pre>
+<pre lang="en"><code># clone the repository
+git clone https://github.com/www7man/Nee2P
+cd Nee2P
 
-    <p class="dim">Подняв свой relay и открыв DevTools, можно убедиться, что сервер действительно видит только <code>{iv, ct}</code> — и больше ничего.</p>
+# install dependencies
+npm install
+
+# start a local relay
+node server.js
+# → http://127.0.0.1:8787</code></pre>
+
+    <p class="dim">
+      <span lang="ru">Подняв свой relay и открыв DevTools, можно убедиться, что сервер действительно видит только <code>{iv, ct}</code> — и больше ничего.</span>
+      <span lang="en">Running your own relay and opening DevTools, you can confirm that the server really sees only <code>{iv, ct}</code> — and nothing else.</span>
+    </p>
   </section>
 
   <hr />
 
   <!-- 8. Чего нельзя проверить -->
   <section>
-    <h2 class="kicker">08 — Честно: чего проверить нельзя</h2>
-    <h3 class="lead">Границы того, что вы можете подтвердить сами</h3>
+    <h2 class="kicker">
+      <span lang="ru">08 — Честно: чего проверить нельзя</span>
+      <span lang="en">08 — Honestly: what you cannot check</span>
+    </h2>
+    <h3 class="lead">
+      <span lang="ru">Границы того, что вы можете подтвердить сами</span>
+      <span lang="en">The limits of what you can verify yourself</span>
+    </h3>
 
-    <h4>Соответствие prod-кода исходнику</h4>
-    <p class="dim">Вы видите код на GitHub, но не можете автоматически проверить, что именно он крутится на нашем сервере. Решение: запустите свой relay (см. выше) или сверьте JS-файлы в DevTools с тем, что в репозитории.</p>
+    <h4>
+      <span lang="ru">Соответствие prod-кода исходнику</span>
+      <span lang="en">Production code matching the source</span>
+    </h4>
+    <p class="dim">
+      <span lang="ru">Вы видите код на GitHub, но не можете автоматически проверить, что именно он крутится на нашем сервере. Решение: запустите свой relay (см. выше) или сверьте JS-файлы в DevTools с тем, что в репозитории.</span>
+      <span lang="en">You can see the code on GitHub, but you cannot automatically verify that exactly that code is running on our server. Solution: run your own relay (see above), or diff the JS files in DevTools against what's in the repo.</span>
+    </p>
 
-    <h4>Память сервера после краша</h4>
-    <p class="dim">Мы говорим, что не логируем — но извне это не подтвердить. Доверяйте RAM-only архитектуре или запустите свой сервер на машине, к которой имеете доступ.</p>
+    <h4>
+      <span lang="ru">Память сервера после краша</span>
+      <span lang="en">Server memory after a crash</span>
+    </h4>
+    <p class="dim">
+      <span lang="ru">Мы говорим, что не логируем — но извне это не подтвердить. Доверяйте RAM-only архитектуре или запустите свой сервер на машине, к которой имеете доступ.</span>
+      <span lang="en">We say we do not log — but that cannot be confirmed from outside. Trust the RAM-only architecture, or run your own server on a machine you control.</span>
+    </p>
 
-    <h4>Компрометация браузера или ОС</h4>
-    <p class="dim">Если у вас установлено вредоносное расширение, кейлоггер, или ОС под чужим контролем — никакая криптография на стороне приложения не поможет. Это общий предел сквозного шифрования.</p>
+    <h4>
+      <span lang="ru">Компрометация браузера или ОС</span>
+      <span lang="en">Compromise of your browser or OS</span>
+    </h4>
+    <p class="dim">
+      <span lang="ru">Если у вас установлено вредоносное расширение, кейлоггер, или ОС под чужим контролем — никакая криптография на стороне приложения не поможет. Это общий предел сквозного шифрования.</span>
+      <span lang="en">If you have a malicious extension installed, a keylogger, or an OS under someone else's control — no application-side cryptography will save you. This is a fundamental limit of end-to-end encryption.</span>
+    </p>
 
-    <h4>Нашли уязвимость?</h4>
-    <p class="dim">Сообщите через приватный канал — см. <a href="https://github.com/www7man/Nee2P/blob/main/SECURITY.md" target="_blank" rel="noopener">SECURITY.md</a>. Спасибо, что не публикуете её в публичных issues до того, как мы успеем починить.</p>
+    <h4>
+      <span lang="ru">Нашли уязвимость?</span>
+      <span lang="en">Found a vulnerability?</span>
+    </h4>
+    <p class="dim">
+      <span lang="ru">Сообщите через приватный канал — см. <a href="https://github.com/www7man/Nee2P/blob/main/SECURITY.md" target="_blank" rel="noopener">SECURITY.md</a>. Спасибо, что не публикуете её в публичных issues до того, как мы успеем починить.</span>
+      <span lang="en">Report it through a private channel — see <a href="https://github.com/www7man/Nee2P/blob/main/SECURITY.md" target="_blank" rel="noopener">SECURITY.md</a>. Thanks for not posting it in a public issue before we have a chance to fix it.</span>
+    </p>
   </section>
 
   <hr />
 
   <!-- 9. FAQ -->
   <section>
-    <h2 class="kicker">09 — Короткий FAQ</h2>
+    <h2 class="kicker">
+      <span lang="ru">09 — Короткий FAQ</span>
+      <span lang="en">09 — Short FAQ</span>
+    </h2>
 
-    <p class="faq-q">Вы видите IP-адреса пользователей?</p>
-    <p class="faq-a">Технически — да, как любой сервер. IP не связан с содержимым переписки, но если нужна анонимность сетевого уровня — используйте <a href="https://ru.wikipedia.org/wiki/Tor" target="_blank" rel="noopener">Tor</a>.</p>
+    <p class="faq-q">
+      <span lang="ru">Вы видите IP-адреса пользователей?</span>
+      <span lang="en">Do you see user IP addresses?</span>
+    </p>
+    <p class="faq-a">
+      <span lang="ru">Технически — да, как любой сервер. IP не связан с содержимым переписки, но если нужна анонимность сетевого уровня — используйте <a href="https://ru.wikipedia.org/wiki/Tor" target="_blank" rel="noopener">Tor</a>.</span>
+      <span lang="en">Technically yes, as any server does. The IP is not tied to message content, but if you need network-level anonymity — use <a href="https://en.wikipedia.org/wiki/Tor_(network)" target="_blank" rel="noopener">Tor</a>.</span>
+    </p>
 
-    <p class="faq-q">Фраза улетает на сервер?</p>
-    <p class="faq-a">Нет. Фраза обрабатывается только в вашем браузере через <a href="https://ru.wikipedia.org/wiki/Argon2" target="_blank" rel="noopener">Argon2id</a> и становится частью ключа шифрования. На сервер уходит только идентификатор комнаты — <code><a href="https://ru.wikipedia.org/wiki/MD5" target="_blank" rel="noopener">md5</a>(phrase)</code>, по которому невозможно восстановить исходную фразу.</p>
+    <p class="faq-q">
+      <span lang="ru">Фраза улетает на сервер?</span>
+      <span lang="en">Does the phrase leave the device?</span>
+    </p>
+    <p class="faq-a">
+      <span lang="ru">Нет. Фраза обрабатывается только в вашем браузере через <a href="https://ru.wikipedia.org/wiki/Argon2" target="_blank" rel="noopener">Argon2id</a> и становится частью ключа шифрования. На сервер уходит только идентификатор комнаты — <code><a href="https://ru.wikipedia.org/wiki/MD5" target="_blank" rel="noopener">md5</a>(phrase)</code>, по которому невозможно восстановить исходную фразу.</span>
+      <span lang="en">No. The phrase is processed only in your browser via <a href="https://en.wikipedia.org/wiki/Argon2" target="_blank" rel="noopener">Argon2id</a> and becomes part of the encryption key. Only the room identifier reaches the server — <code><a href="https://en.wikipedia.org/wiki/MD5" target="_blank" rel="noopener">md5</a>(phrase)</code>, from which the original phrase cannot be recovered.</span>
+    </p>
 
-    <p class="faq-q">Что если сервер упадёт во время переписки?</p>
-    <p class="faq-a">Сообщения теряются — они только в RAM. Это намеренно: никакого постоянного хранилища нет.</p>
+    <p class="faq-q">
+      <span lang="ru">Что если сервер упадёт во время переписки?</span>
+      <span lang="en">What if the server crashes mid-conversation?</span>
+    </p>
+    <p class="faq-a">
+      <span lang="ru">Сообщения теряются — они только в RAM. Это намеренно: никакого постоянного хранилища нет.</span>
+      <span lang="en">Messages are lost — they only live in RAM. This is intentional: there is no persistent storage.</span>
+    </p>
 
-    <p class="faq-q">Можно ли это прослушать на уровне сети?</p>
-    <p class="faq-a">Трафик идёт через <a href="https://ru.wikipedia.org/wiki/HTTPS" target="_blank" rel="noopener">HTTPS</a> (<a href="https://ru.wikipedia.org/wiki/TLS" target="_blank" rel="noopener">TLS</a>). Даже если перехватить его — видны только зашифрованные пакеты <code>{iv, ct}</code>, без <a href="https://ru.wikipedia.org/wiki/Galois/Counter_Mode" target="_blank" rel="noopener">AES</a>-ключа их не расшифровать.</p>
+    <p class="faq-q">
+      <span lang="ru">Можно ли это прослушать на уровне сети?</span>
+      <span lang="en">Can this be wiretapped at the network level?</span>
+    </p>
+    <p class="faq-a">
+      <span lang="ru">Трафик идёт через <a href="https://ru.wikipedia.org/wiki/HTTPS" target="_blank" rel="noopener">HTTPS</a> (<a href="https://ru.wikipedia.org/wiki/TLS" target="_blank" rel="noopener">TLS</a>). Даже если перехватить его — видны только зашифрованные пакеты <code>{iv, ct}</code>, без <a href="https://ru.wikipedia.org/wiki/Galois/Counter_Mode" target="_blank" rel="noopener">AES</a>-ключа их не расшифровать.</span>
+      <span lang="en">Traffic goes over <a href="https://en.wikipedia.org/wiki/HTTPS" target="_blank" rel="noopener">HTTPS</a> (<a href="https://en.wikipedia.org/wiki/Transport_Layer_Security" target="_blank" rel="noopener">TLS</a>). Even if intercepted, only the encrypted <code>{iv, ct}</code> packets are visible — without the <a href="https://en.wikipedia.org/wiki/Galois/Counter_Mode" target="_blank" rel="noopener">AES</a> key they cannot be decrypted.</span>
+    </p>
   </section>
 
   <div class="cta-wrap">
     <a href="./" class="btn-deal">
-      Безопасность сделки <span class="arr">→</span>
+      <span lang="ru">Безопасность сделки <span class="arr">→</span></span>
+      <span lang="en">Secure deals <span class="arr">→</span></span>
     </a>
-    <p class="mute" style="margin:0">Создать зашифрованную сессию — фраза, один секрет, без следов.</p>
+    <p class="mute" style="margin:0">
+      <span lang="ru">Создать зашифрованную сессию — фраза, один секрет, без следов.</span>
+      <span lang="en">Create an encrypted session — one phrase, one secret, no trace.</span>
+    </p>
   </div>
 
   <footer>
     <div class="links">
-      <a href="./">← назад</a>
+      <a href="./"><span lang="ru">← назад</span><span lang="en">← back</span></a>
     </div>
     <div class="sig">Nee2P. — anonymous paired messenger</div>
   </footer>
 
 </div>
+
+<!-- ─── i18n binder + lang picker (owner: i18n) ───────────────────────────
+     • Initial lang comes from window.Nee2Pi18n.getLang() if i18n.js loaded,
+       otherwise from localStorage.nee2p_lang, otherwise 'en' (matches main
+       app default).
+     • Picker mirrors the React LangToggle visually — dropdown with native
+       names, click outside / Escape closes.
+     • CSS rules above (html[lang="…"] [lang="…"]) swap the visible content.
+-->
+<script>
+(function () {
+  'use strict';
+
+  function currentLang() {
+    var i18n = window.Nee2Pi18n;
+    if (i18n && typeof i18n.getLang === 'function') return i18n.getLang();
+    try { return localStorage.getItem('nee2p_lang') || 'en'; }
+    catch (_) { return 'en'; }
+  }
+
+  function applyLang(lang) {
+    document.documentElement.setAttribute('lang', lang);
+  }
+
+  // Bind initial lang ASAP.
+  applyLang(currentLang());
+
+  // Subscribe to cross-tab/cross-component lang changes once i18n.js is up.
+  if (window.Nee2Pi18n && typeof window.Nee2Pi18n.onLangChange === 'function') {
+    window.Nee2Pi18n.onLangChange(applyLang);
+  }
+
+  // ── Lang picker pill ────────────────────────────────────────────────
+  function buildPicker() {
+    var i18n = window.Nee2Pi18n;
+    var LANGS = (i18n && i18n.LANGS) || ['en', 'ru'];
+    var NAMES = (i18n && i18n.LANG_NAMES) || { en: 'English', ru: 'Русский' };
+
+    var host = document.getElementById('lang-toggle');
+    if (!host) return;
+
+    var btn = document.createElement('button');
+    btn.className = 'pill';
+    btn.type = 'button';
+    btn.setAttribute('aria-haspopup', 'listbox');
+    btn.setAttribute('aria-expanded', 'false');
+    var globe = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    globe.setAttribute('width', '12'); globe.setAttribute('height', '12');
+    globe.setAttribute('viewBox', '0 0 24 24'); globe.setAttribute('fill', 'none');
+    globe.innerHTML = '<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/>'
+                    + '<path d="M12 3c-2.5 3-4 5.5-4 9s1.5 6 4 9M12 3c2.5 3 4 5.5 4 9s-1.5 6-4 9" stroke="currentColor" stroke-width="1.4"/>'
+                    + '<path d="M3.5 9h17M3.5 15h17" stroke="currentColor" stroke-width="1.4"/>';
+    btn.appendChild(globe);
+    var codeSpan = document.createElement('span');
+    codeSpan.textContent = currentLang();
+    btn.appendChild(codeSpan);
+    host.appendChild(btn);
+
+    var menu = null;
+
+    function closeMenu() {
+      if (!menu) return;
+      menu.remove(); menu = null;
+      btn.setAttribute('aria-expanded', 'false');
+      document.removeEventListener('pointerdown', onDoc, true);
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', positionMenu);
+      window.removeEventListener('scroll', positionMenu, true);
+    }
+    function positionMenu() {
+      if (!menu) return;
+      var r = btn.getBoundingClientRect();
+      menu.style.top = Math.round(r.bottom + 6) + 'px';
+      menu.style.right = Math.round(window.innerWidth - r.right) + 'px';
+    }
+    function onDoc(e) {
+      if (!menu) return;
+      if (menu.contains(e.target) || btn.contains(e.target)) return;
+      closeMenu();
+    }
+    function onKey(e) { if (e.key === 'Escape') closeMenu(); }
+
+    function openMenu() {
+      menu = document.createElement('div');
+      menu.className = 'lang-menu';
+      menu.setAttribute('role', 'listbox');
+      menu.setAttribute('data-lang-menu', '');
+      LANGS.forEach(function (code) {
+        var item = document.createElement('button');
+        item.type = 'button';
+        item.setAttribute('role', 'option');
+        var active = (code === currentLang());
+        item.setAttribute('aria-selected', String(active));
+        var label = document.createElement('span');
+        label.textContent = NAMES[code] || code.toUpperCase();
+        var tag = document.createElement('span');
+        tag.className = 'code';
+        tag.textContent = active ? '✓' : code;
+        item.appendChild(label);
+        item.appendChild(tag);
+        item.addEventListener('click', function () {
+          if (window.Nee2Pi18n && typeof window.Nee2Pi18n.setLang === 'function') {
+            window.Nee2Pi18n.setLang(code);
+          } else {
+            try { localStorage.setItem('nee2p_lang', code); } catch (_) {}
+            applyLang(code);
+          }
+          codeSpan.textContent = code;
+          closeMenu();
+        });
+        menu.appendChild(item);
+      });
+      document.body.appendChild(menu);
+      positionMenu();
+      btn.setAttribute('aria-expanded', 'true');
+      document.addEventListener('pointerdown', onDoc, true);
+      document.addEventListener('keydown', onKey);
+      window.addEventListener('resize', positionMenu);
+      window.addEventListener('scroll', positionMenu, true);
+    }
+
+    btn.addEventListener('click', function () {
+      if (menu) closeMenu(); else openMenu();
+    });
+
+    // Keep the pill label in sync with external lang changes.
+    if (window.Nee2Pi18n && typeof window.Nee2Pi18n.onLangChange === 'function') {
+      window.Nee2Pi18n.onLangChange(function (l) { codeSpan.textContent = l; });
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', buildPicker);
+  } else {
+    buildPicker();
+  }
+})();
+</script>
+
 </body>
 </html>
