@@ -6,6 +6,8 @@
 <meta name="robots" content="noindex" />
 <meta name="color-scheme" content="dark" />
 <title>Nee2P. — журнал изменений</title>
+<!-- i18n: shared dictionary so the lang picker stays in sync with the rest of the app. -->
+<script src="./i18n.js"></script>
 <style>
   :root {
     --bg:       #06060a;
@@ -44,6 +46,7 @@
     align-items: center;
     justify-content: space-between;
     margin-bottom: 56px;
+    gap: 12px;
   }
   .logo {
     font-family: var(--serif);
@@ -61,6 +64,57 @@
     border-bottom: 0;
   }
   .back:hover { color: var(--accent); border-bottom: 0; }
+  .header-right {
+    display: flex; align-items: center; gap: 10px; margin-left: auto;
+  }
+
+  /* Lang pill — mirrors the React LangToggle visually but vanilla JS. */
+  .lang-toggle {
+    position: relative; display: inline-flex; align-items: center;
+  }
+  .lang-toggle button.pill {
+    height: 28px; padding: 0 10px;
+    border: 0; background: rgba(255,255,255,0.025);
+    box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.07);
+    border-radius: 9999px;
+    color: var(--fg-mute);
+    font: 600 9.5px/1 var(--sans);
+    letter-spacing: 1.6px; text-transform: uppercase;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+    -webkit-tap-highlight-color: transparent; user-select: none;
+  }
+  .lang-toggle button.pill[aria-expanded="true"] { background: rgba(255,255,255,0.08); }
+  .lang-menu {
+    position: fixed; min-width: 132px; padding: 4px;
+    border-radius: 12px;
+    background: rgba(20,20,28,0.96);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.12), 0 18px 38px rgba(0,0,0,0.6);
+    z-index: 99999;
+  }
+  .lang-menu button {
+    display: flex; align-items: center; justify-content: space-between;
+    width: 100%; padding: 8px 10px;
+    border: 0; cursor: pointer; border-radius: 8px;
+    background: transparent;
+    color: var(--fg-dim);
+    font: 500 13px/1.2 var(--sans);
+    letter-spacing: -0.1px; text-align: left;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .lang-menu button[aria-selected="true"] {
+    background: rgba(255,255,255,0.08); color: #fff;
+  }
+  .lang-menu button .code {
+    font: 700 9px/1 var(--mono);
+    letter-spacing: 1.4px; text-transform: uppercase;
+    color: var(--fg-mute);
+  }
+
+  /* i18n: hide elements whose [lang] does not match the active document language. */
+  html[lang="ru"] [lang="en"] { display: none; }
+  html[lang="en"] [lang="ru"] { display: none; }
 
   /* ── Hero ── */
   .hero {
@@ -299,150 +353,264 @@
 
   <header class="top">
     <a href="./" class="logo">Nee2P.</a>
-    <a href="./" class="back">← назад</a>
+    <div class="header-right">
+      <a href="./" class="back"><span lang="ru">← назад</span><span lang="en">← back</span></a>
+      <span class="lang-toggle" id="lang-toggle"></span>
+    </div>
   </header>
 
   <div class="hero">
-    <h1>Журнал изменений.</h1>
-    <p>Что нового в каждой версии.</p>
+    <h1><span lang="ru">Журнал изменений.</span><span lang="en">Changelog.</span></h1>
+    <p><span lang="ru">Что нового в каждой версии.</span><span lang="en">What's new in each version.</span></p>
   </div>
 
-  <!-- 01 — Последнее обновление -->
+  <!-- 01 — Latest update -->
   <section>
-    <div class="section-num">01 — Последнее обновление</div>
-    <h2 class="section-heading">v0.8.7 — Критический фикс парного соединения + Nee2P Lite</h2>
+    <div class="section-num"><span lang="ru">01 — Последнее обновление</span><span lang="en">01 — Latest update</span></div>
+    <h2 class="section-heading"><span lang="ru">v0.8.7 — Критический фикс парного соединения + Nee2P Lite</span><span lang="en">v0.8.7 — Critical pairing fix + Nee2P Lite</span></h2>
 
     <div class="release">
       <div class="release-meta">
         <span class="release-version">v0.8.7</span>
-        <span class="release-date">май 2026</span>
-        <span class="release-tag">фикс</span>
+        <span class="release-date"><span lang="ru">май 2026</span><span lang="en">May 2026</span></span>
+        <span class="release-tag"><span lang="ru">фикс</span><span lang="en">fix</span></span>
         <span class="release-tag">relay</span>
         <span class="release-tag">lite</span>
         <span class="release-tag">i18n</span>
       </div>
-      <h3 class="release-title">Исправлено: собеседник показывался как Offline и сообщения не доходили в одну сторону</h3>
+      <h3 class="release-title">
+        <span lang="ru">Исправлено: собеседник показывался как Offline и сообщения не доходили в одну сторону</span>
+        <span lang="en">Fixed: peer showed as Offline and messages were delivered one-way only</span>
+      </h3>
 
-      <h4>Критический фикс — асимметричное присутствие</h4>
+      <h4><span lang="ru">Критический фикс — асимметричное присутствие</span><span lang="en">Critical fix — asymmetric presence</span></h4>
       <ul>
-        <li>Когда второй пользователь подключался к комнате, relay отправлял ему событие <code>peer-online</code> только о самом себе, но не о партнёре, который уже был в комнате — тот выглядел как «Offline» навсегда</li>
-        <li>Исправлено: при подключении новый участник теперь сразу получает <code>peer-online</code> для каждого уже подключённого слота. Работает для HTTP/SSE и WS транспортов, а также при восстановлении сессии</li>
-        <li>«Сообщения только в одну сторону» — был downstream-эффект той же проблемы: клиент не отправлял, пока не видел партнёра онлайн</li>
-        <li>Добавлен регрессионный тест <code>tools/smoke-presence.js</code> — покрывает двустороннюю доставку и восстановление сессии; интегрирован в CI</li>
+        <li>
+          <span lang="ru">Когда второй пользователь подключался к комнате, relay отправлял ему событие <code>peer-online</code> только о самом себе, но не о партнёре, который уже был в комнате — тот выглядел как «Offline» навсегда</span>
+          <span lang="en">When the second user joined a room, the relay only sent them a <code>peer-online</code> event about themselves — not about the partner already in the room, who appeared as "Offline" forever</span>
+        </li>
+        <li>
+          <span lang="ru">Исправлено: при подключении новый участник теперь сразу получает <code>peer-online</code> для каждого уже подключённого слота. Работает для HTTP/SSE и WS транспортов, а также при восстановлении сессии</span>
+          <span lang="en">Fixed: on join, the new participant now immediately receives <code>peer-online</code> for every already-connected slot. Works for HTTP/SSE and WS transports, and on session resume</span>
+        </li>
+        <li>
+          <span lang="ru">«Сообщения только в одну сторону» — был downstream-эффект той же проблемы: клиент не отправлял, пока не видел партнёра онлайн</span>
+          <span lang="en">"Messages only one way" was a downstream effect of the same issue: the client would not send until it saw the peer online</span>
+        </li>
+        <li>
+          <span lang="ru">Добавлен регрессионный тест <code>tools/smoke-presence.js</code> — покрывает двустороннюю доставку и восстановление сессии; интегрирован в CI</span>
+          <span lang="en">Added regression test <code>tools/smoke-presence.js</code> — covers two-way delivery and session resume; integrated into CI</span>
+        </li>
       </ul>
 
       <h4>Nee2P Lite</h4>
       <ul>
-        <li>Добавлен <code>lite/nee2p-lite.html</code> — альтернативная архитектура: один HTML-файл, никаких серверов Nee2P в цепочке данных</li>
-        <li>Discovery через федеративные WebTorrent trackers, затем WebRTC peer-to-peer напрямую</li>
-        <li>Тот же крипто-стек: Argon2id + X25519 + ML-KEM-768 + AES-256-GCM, доменно изолирован от основного Nee2P</li>
-        <li>Когда выбирать Lite: цензуроустойчивость, off-grid, максимальный аудит. Ограничения: нет async-доставки, нет push, только 2 пира</li>
+        <li>
+          <span lang="ru">Добавлен <code>lite/nee2p-lite.html</code> — альтернативная архитектура: один HTML-файл, никаких серверов Nee2P в цепочке данных</span>
+          <span lang="en">Added <code>lite/nee2p-lite.html</code> — alternative architecture: a single HTML file, no Nee2P servers in the data path</span>
+        </li>
+        <li>
+          <span lang="ru">Discovery через федеративные WebTorrent trackers, затем WebRTC peer-to-peer напрямую</span>
+          <span lang="en">Discovery via federated WebTorrent trackers, then WebRTC peer-to-peer directly</span>
+        </li>
+        <li>
+          <span lang="ru">Тот же крипто-стек: Argon2id + X25519 + ML-KEM-768 + AES-256-GCM, доменно изолирован от основного Nee2P</span>
+          <span lang="en">Same crypto stack: Argon2id + X25519 + ML-KEM-768 + AES-256-GCM, domain-isolated from the main Nee2P</span>
+        </li>
+        <li>
+          <span lang="ru">Когда выбирать Lite: цензуроустойчивость, off-grid, максимальный аудит. Ограничения: нет async-доставки, нет push, только 2 пира</span>
+          <span lang="en">When to choose Lite: censorship resistance, off-grid, maximum auditability. Limitations: no async delivery, no push, 2 peers only</span>
+        </li>
       </ul>
 
-      <h4>Страница безопасности</h4>
+      <h4><span lang="ru">Страница безопасности</span><span lang="en">Security page</span></h4>
       <ul>
-        <li><a href="trust.html">trust.html</a> теперь полностью двуязычна (RU/EN) — переключается вместе с языком интерфейса</li>
+        <li>
+          <span lang="ru"><a href="trust.html">trust.html</a> теперь полностью двуязычна (RU/EN) — переключается вместе с языком интерфейса</span>
+          <span lang="en"><a href="trust.html">trust.html</a> is now fully bilingual (RU/EN) — switches together with the UI language</span>
+        </li>
       </ul>
     </div>
   </section>
 
   <hr />
 
-  <!-- 02 — Предыдущий релиз -->
+  <!-- 02 — Previous release -->
   <section>
-    <div class="section-num">02 — Предыдущий релиз</div>
-    <h2 class="section-heading">v0.8.5 — Полная локализация + умный Service Worker</h2>
+    <div class="section-num"><span lang="ru">02 — Предыдущий релиз</span><span lang="en">02 — Previous release</span></div>
+    <h2 class="section-heading"><span lang="ru">v0.8.5 — Полная локализация + умный Service Worker</span><span lang="en">v0.8.5 — Full localization + smart Service Worker</span></h2>
 
     <div class="release">
       <div class="release-meta">
         <span class="release-version">v0.8.5</span>
-        <span class="release-date">май 2026</span>
-        <span class="release-tag">локализация</span>
+        <span class="release-date"><span lang="ru">май 2026</span><span lang="en">May 2026</span></span>
+        <span class="release-tag"><span lang="ru">локализация</span><span lang="en">localization</span></span>
         <span class="release-tag">UX</span>
         <span class="release-tag">PWA</span>
-        <span class="release-tag">безопасность</span>
+        <span class="release-tag"><span lang="ru">безопасность</span><span lang="en">security</span></span>
       </div>
-      <h3 class="release-title">Все экраны переведены полностью, переключатель языка больше не застревает, Service Worker не перезагружает страницу зря</h3>
+      <h3 class="release-title">
+        <span lang="ru">Все экраны переведены полностью, переключатель языка больше не застревает, Service Worker не перезагружает страницу зря</span>
+        <span lang="en">All screens fully translated, language switcher no longer gets stuck, Service Worker no longer reloads the page needlessly</span>
+      </h3>
 
-      <h4>Локализация — финальный sweep</h4>
+      <h4><span lang="ru">Локализация — финальный sweep</span><span lang="en">Localization — final sweep</span></h4>
       <ul>
-        <li>Все оставшиеся экраны теперь переведены: ожидание партнёра, шаринг-карточка, заблокированный / истёкший экраны, экран информации (7 тезисов), модальное окно Safety Numbers</li>
-        <li>Новые ключи: временны́е метки (<code>fmtAgo</code>, <code>fmtLeft</code>, склонение месяцев), меню сообщений (копировать / процитировать / удалить), статус записи голоса, авто-удаление (burn), описания криптоалгоритмов в Safety Numbers</li>
-        <li>Итого в каталоге: 300+ ключей на RU и EN — ни одной захардкоженной строки в интерфейсе</li>
+        <li>
+          <span lang="ru">Все оставшиеся экраны теперь переведены: ожидание партнёра, шаринг-карточка, заблокированный / истёкший экраны, экран информации (7 тезисов), модальное окно Safety Numbers</span>
+          <span lang="en">All remaining screens are now translated: waiting for partner, sharing card, locked/expired screens, info screen (7 points), Safety Numbers modal</span>
+        </li>
+        <li>
+          <span lang="ru">Новые ключи: временны́е метки (<code>fmtAgo</code>, <code>fmtLeft</code>, склонение месяцев), меню сообщений (копировать / процитировать / удалить), статус записи голоса, авто-удаление (burn), описания криптоалгоритмов в Safety Numbers</span>
+          <span lang="en">New keys: timestamps (<code>fmtAgo</code>, <code>fmtLeft</code>, month declension), message menu (copy / quote / delete), voice recording status, auto-delete (burn), cryptoalgorithm descriptions in Safety Numbers</span>
+        </li>
+        <li>
+          <span lang="ru">Итого в каталоге: 300+ ключей на RU и EN — ни одной захардкоженной строки в интерфейсе</span>
+          <span lang="en">Catalog total: 300+ keys in RU and EN — not a single hardcoded string in the UI</span>
+        </li>
       </ul>
 
-      <h4>Переключатель языка</h4>
+      <h4><span lang="ru">Переключатель языка</span><span lang="en">Language switcher</span></h4>
       <ul>
-        <li>Выпадающий список теперь рендерится через <code>ReactDOM.createPortal</code> прямо в <code>document.body</code>. Раньше он застревал внутри CSS-анимации родителя и не мог «вырваться» наружу — теперь всплывает поверх всего корректно</li>
-        <li>Позиция меню пересчитывается при скролле и ресайзе окна</li>
+        <li>
+          <span lang="ru">Выпадающий список теперь рендерится через <code>ReactDOM.createPortal</code> прямо в <code>document.body</code>. Раньше он застревал внутри CSS-анимации родителя и не мог «вырваться» наружу — теперь всплывает поверх всего корректно</span>
+          <span lang="en">The dropdown now renders via <code>ReactDOM.createPortal</code> directly into <code>document.body</code>. Previously it got stuck inside the parent's CSS animation and couldn't escape — now it floats above everything correctly</span>
+        </li>
+        <li>
+          <span lang="ru">Позиция меню пересчитывается при скролле и ресайзе окна</span>
+          <span lang="en">Menu position is recalculated on scroll and window resize</span>
+        </li>
       </ul>
 
       <h4>Service Worker</h4>
       <ul>
-        <li>Главная страница (<code>index.html</code>) теперь всегда грузится с сервера, а не из кеша — обновления видны сразу, без «хард-рефреша»</li>
-        <li>Исправлен сценарий с новым туннельным URL (pinggy, localtunnel): раньше SW вызывал лишнюю перезагрузку при первой установке. Теперь — только при реальном обновлении</li>
-        <li>Остальные ресурсы: stale-while-revalidate — моментальная загрузка из кеша + фоновое обновление</li>
+        <li>
+          <span lang="ru">Главная страница (<code>index.html</code>) теперь всегда грузится с сервера, а не из кеша — обновления видны сразу, без «хард-рефреша»</span>
+          <span lang="en">The home page (<code>index.html</code>) now always loads from the server rather than cache — updates are visible immediately, no hard refresh needed</span>
+        </li>
+        <li>
+          <span lang="ru">Исправлен сценарий с новым туннельным URL (pinggy, localtunnel): раньше SW вызывал лишнюю перезагрузку при первой установке. Теперь — только при реальном обновлении</span>
+          <span lang="en">Fixed the scenario with a new tunnel URL (pinggy, localtunnel): previously the SW triggered an extra reload on first install. Now — only on a real update</span>
+        </li>
+        <li>
+          <span lang="ru">Остальные ресурсы: stale-while-revalidate — моментальная загрузка из кеша + фоновое обновление</span>
+          <span lang="en">Other assets: stale-while-revalidate — instant load from cache + background refresh</span>
+        </li>
       </ul>
 
-      <h4>Безопасность</h4>
+      <h4><span lang="ru">Безопасность</span><span lang="en">Security</span></h4>
       <ul>
-        <li>Сервер выводит предупреждение при старте, если <code>ADMIN_KEY</code> не задан через env — напоминание для публичных деплоев</li>
-        <li><a href="https://github.com/www7man/Nee2P/blob/main/SECURITY.md">SECURITY.md</a> дополнен: таблица обязательных переменных окружения для production</li>
+        <li>
+          <span lang="ru">Сервер выводит предупреждение при старте, если <code>ADMIN_KEY</code> не задан через env — напоминание для публичных деплоев</span>
+          <span lang="en">The server prints a warning on startup if <code>ADMIN_KEY</code> is not set via env — a reminder for public deploys</span>
+        </li>
+        <li>
+          <span lang="ru"><a href="https://github.com/www7man/Nee2P/blob/main/SECURITY.md">SECURITY.md</a> дополнен: таблица обязательных переменных окружения для production</span>
+          <span lang="en"><a href="https://github.com/www7man/Nee2P/blob/main/SECURITY.md">SECURITY.md</a> updated: table of required environment variables for production</span>
+        </li>
       </ul>
     </div>
   </section>
 
   <hr />
 
-  <!-- 03 — История версий (v0.8.4 и старше) -->
+  <!-- 03 — Version history -->
   <section>
-    <div class="section-num">03 — История версий</div>
-    <h2 class="section-heading">v0.8.4 — Двуязычный интерфейс + прозрачность</h2>
+    <div class="section-num"><span lang="ru">03 — История версий</span><span lang="en">03 — Version history</span></div>
+    <h2 class="section-heading"><span lang="ru">v0.8.4 — Двуязычный интерфейс + прозрачность</span><span lang="en">v0.8.4 — Bilingual UI + transparency</span></h2>
 
     <div class="release">
       <div class="release-meta">
         <span class="release-version">v0.8.4</span>
-        <span class="release-date">май 2026</span>
-        <span class="release-tag">локализация</span>
+        <span class="release-date"><span lang="ru">май 2026</span><span lang="en">May 2026</span></span>
+        <span class="release-tag"><span lang="ru">локализация</span><span lang="en">localization</span></span>
         <span class="release-tag">UX</span>
         <span class="release-tag">admin</span>
-        <span class="release-tag">прозрачность</span>
+        <span class="release-tag"><span lang="ru">прозрачность</span><span lang="en">transparency</span></span>
       </div>
-      <h3 class="release-title">Русский / English без перезагрузки, Cloudflare-туннель из браузера, ссылки на источники для всего криптостека</h3>
+      <h3 class="release-title">
+        <span lang="ru">Русский / English без перезагрузки, Cloudflare-туннель из браузера, ссылки на источники для всего криптостека</span>
+        <span lang="en">Russian / English without reload, Cloudflare tunnel from the browser, Wikipedia links for the entire crypto stack</span>
+      </h3>
 
-      <h4>Локализация</h4>
+      <h4><span lang="ru">Локализация</span><span lang="en">Localization</span></h4>
       <ul>
-        <li>Новый файл <code>i18n.js</code>: слой перевода с <code>t()</code>, <code>useLang()</code> и полными таблицами RU/EN для всех экранов (198 ключей в каждом языке)</li>
-        <li>Переключатель языка — пилюля в шапке. Выпадающий список с галочкой у активного. Язык хранится на устройстве, по умолчанию — английский</li>
-        <li>Все экраны переключаются мгновенно — WelcomeScreen, 3-шаговый визард, JoinScreen, PasswordScreen, ChatScreen, оверлеи звонков и диагностики сети</li>
-        <li>Добавить новый язык = одна запись в <code>LANGS</code> + одна в <code>LANG_NAMES</code> + блок переводов. PR'ы приветствуются.</li>
+        <li>
+          <span lang="ru">Новый файл <code>i18n.js</code>: слой перевода с <code>t()</code>, <code>useLang()</code> и полными таблицами RU/EN для всех экранов (198 ключей в каждом языке)</span>
+          <span lang="en">New file <code>i18n.js</code>: translation layer with <code>t()</code>, <code>useLang()</code> and complete RU/EN tables for all screens (198 keys per language)</span>
+        </li>
+        <li>
+          <span lang="ru">Переключатель языка — пилюля в шапке. Выпадающий список с галочкой у активного. Язык хранится на устройстве, по умолчанию — английский</span>
+          <span lang="en">Language switcher — a pill in the header. Dropdown with a checkmark for the active language. Language is saved on device; default is English</span>
+        </li>
+        <li>
+          <span lang="ru">Все экраны переключаются мгновенно — WelcomeScreen, 3-шаговый визард, JoinScreen, PasswordScreen, ChatScreen, оверлеи звонков и диагностики сети</span>
+          <span lang="en">All screens switch instantly — WelcomeScreen, 3-step wizard, JoinScreen, PasswordScreen, ChatScreen, call and network-diagnostics overlays</span>
+        </li>
+        <li>
+          <span lang="ru">Добавить новый язык = одна запись в <code>LANGS</code> + одна в <code>LANG_NAMES</code> + блок переводов. PR'ы приветствуются.</span>
+          <span lang="en">Adding a new language = one entry in <code>LANGS</code> + one in <code>LANG_NAMES</code> + a translation block. PRs welcome.</span>
+        </li>
       </ul>
 
-      <h4>Keyboard UX (мобильные)</h4>
+      <h4><span lang="ru">Keyboard UX (мобильные)</span><span lang="en">Keyboard UX (mobile)</span></h4>
       <ul>
-        <li>Исправлена чёрная полоса под клавиатурой на iOS: <code>#stage</code> теперь привязан к <em>видимому</em> вьюпорту (<code>--vvtop</code> / <code>--vvh</code>), а не к layout-вьюпорту</li>
-        <li>Исправлен ремоунт инпутов при открытии клавиатуры: <code>Shell</code>-компонент вынесен из тела функции, <code>input</code> больше не теряет фокус при каждом тике <code>visualViewport</code></li>
+        <li>
+          <span lang="ru">Исправлена чёрная полоса под клавиатурой на iOS: <code>#stage</code> теперь привязан к <em>видимому</em> вьюпорту (<code>--vvtop</code> / <code>--vvh</code>), а не к layout-вьюпорту</span>
+          <span lang="en">Fixed black bar below keyboard on iOS: <code>#stage</code> is now bound to the <em>visible</em> viewport (<code>--vvtop</code> / <code>--vvh</code>), not the layout viewport</span>
+        </li>
+        <li>
+          <span lang="ru">Исправлен ремоунт инпутов при открытии клавиатуры: <code>Shell</code>-компонент вынесен из тела функции, <code>input</code> больше не теряет фокус при каждом тике <code>visualViewport</code></span>
+          <span lang="en">Fixed input re-mount on keyboard open: <code>Shell</code> component moved out of the function body, <code>input</code> no longer loses focus on every <code>visualViewport</code> tick</span>
+        </li>
       </ul>
 
-      <h4>Панель администратора</h4>
+      <h4><span lang="ru">Панель администратора</span><span lang="en">Admin panel</span></h4>
       <ul>
-        <li>Новая вкладка «Туннель»: запуск Cloudflare Quick Tunnel прямо из браузера</li>
-        <li>В рабочем состоянии — живой URL, счётчик аптайма, QR-код, кнопки «скопировать» / «открыть»</li>
-        <li>Автоопрос статуса каждые 3 секунды пока туннель стартует или работает</li>
-        <li>Все admin-эндпоинты переведены на GET (CDN-провайдеры блокировали POST/DELETE); авторизация через <code>X-Admin-Key</code> сохранена</li>
+        <li>
+          <span lang="ru">Новая вкладка «Туннель»: запуск Cloudflare Quick Tunnel прямо из браузера</span>
+          <span lang="en">New "Tunnel" tab: launch a Cloudflare Quick Tunnel directly from the browser</span>
+        </li>
+        <li>
+          <span lang="ru">В рабочем состоянии — живой URL, счётчик аптайма, QR-код, кнопки «скопировать» / «открыть»</span>
+          <span lang="en">When active — live URL, uptime counter, QR code, "copy" / "open" buttons</span>
+        </li>
+        <li>
+          <span lang="ru">Автоопрос статуса каждые 3 секунды пока туннель стартует или работает</span>
+          <span lang="en">Auto-polls status every 3 seconds while the tunnel is starting or running</span>
+        </li>
+        <li>
+          <span lang="ru">Все admin-эндпоинты переведены на GET (CDN-провайдеры блокировали POST/DELETE); авторизация через <code>X-Admin-Key</code> сохранена</span>
+          <span lang="en">All admin endpoints switched to GET (CDN providers were blocking POST/DELETE); authorization via <code>X-Admin-Key</code> preserved</span>
+        </li>
       </ul>
 
-      <h4>Прозрачность и доверие</h4>
+      <h4><span lang="ru">Прозрачность и доверие</span><span lang="en">Transparency and trust</span></h4>
       <ul>
-        <li>На странице <a href="trust.html">«Как убедиться, что мы не врём»</a> все 41+ терминов криптостека (Argon2id, X25519, ML-KEM-768, AES-256-GCM, HKDF, BIP-39, KEM, MITM…) теперь ведут на Википедию — проверяйте источники сами</li>
-        <li>Ссылка на политику ответственного раскрытия уязвимостей (<code>SECURITY.md</code>) — куда писать, если нашли 0-day</li>
-        <li>Автотест <code>smoke-trust-crypto-sync.js</code> в CI: проверяет, что таблица криптопараметров в trust.html не расходится с реальным <code>crypto.js</code>. Если кто-то поменяет, например, число итераций Argon2id, а на странице забудет — CI покраснеет.</li>
+        <li>
+          <span lang="ru">На странице <a href="trust.html">«Как убедиться, что мы не врём»</a> все 41+ терминов криптостека (Argon2id, X25519, ML-KEM-768, AES-256-GCM, HKDF, BIP-39, KEM, MITM…) теперь ведут на Википедию — проверяйте источники сами</span>
+          <span lang="en">On the <a href="trust.html">"How to verify we're not lying"</a> page, all 41+ crypto stack terms (Argon2id, X25519, ML-KEM-768, AES-256-GCM, HKDF, BIP-39, KEM, MITM…) now link to Wikipedia — check the sources yourself</span>
+        </li>
+        <li>
+          <span lang="ru">Ссылка на политику ответственного раскрытия уязвимостей (<a href="https://github.com/www7man/Nee2P/blob/main/SECURITY.md">SECURITY.md</a>) — куда писать, если нашли 0-day</span>
+          <span lang="en">Link to the responsible disclosure policy (<a href="https://github.com/www7man/Nee2P/blob/main/SECURITY.md">SECURITY.md</a>) — where to report if you find a 0-day</span>
+        </li>
+        <li>
+          <span lang="ru">Автотест <code>smoke-trust-crypto-sync.js</code> в CI: проверяет, что таблица криптопараметров в trust.html не расходится с реальным <code>crypto.js</code>. Если кто-то поменяет, например, число итераций Argon2id, а на странице забудет — CI покраснеет.</span>
+          <span lang="en">Autotest <code>smoke-trust-crypto-sync.js</code> in CI: verifies that the crypto-parameter table in trust.html doesn't diverge from the actual <code>crypto.js</code>. If someone changes, say, Argon2id iterations and forgets to update the page — CI goes red.</span>
+        </li>
       </ul>
 
-      <h4>Для разработчиков</h4>
+      <h4><span lang="ru">Для разработчиков</span><span lang="en">For developers</span></h4>
       <ul>
-        <li>WebRTC: JSDoc-документация публичного API <code>window.NeeCall</code>, дебаг-логи за флагом <code>NeeCall.debug = true</code> — production console остаётся чистой</li>
-        <li>Новые CI-тесты: <code>smoke-i18n</code> (полнота переводов), <code>smoke-signal-wire</code> (формат сигнальных сообщений звонка), <code>smoke-trust-crypto-sync</code> (см. выше). Прогон на Node 18/20/22</li>
+        <li>
+          <span lang="ru">WebRTC: JSDoc-документация публичного API <code>window.NeeCall</code>, дебаг-логи за флагом <code>NeeCall.debug = true</code> — production console остаётся чистой</span>
+          <span lang="en">WebRTC: JSDoc documentation for the public <code>window.NeeCall</code> API, debug logs behind the <code>NeeCall.debug = true</code> flag — production console stays clean</span>
+        </li>
+        <li>
+          <span lang="ru">Новые CI-тесты: <code>smoke-i18n</code> (полнота переводов), <code>smoke-signal-wire</code> (формат сигнальных сообщений звонка), <code>smoke-trust-crypto-sync</code> (см. выше). Прогон на Node 18/20/22</span>
+          <span lang="en">New CI tests: <code>smoke-i18n</code> (translation completeness), <code>smoke-signal-wire</code> (call signal message format), <code>smoke-trust-crypto-sync</code> (see above). Runs on Node 18/20/22</span>
+        </li>
       </ul>
     </div>
   </section>
@@ -452,19 +620,40 @@
     <div class="release">
       <div class="release-meta">
         <span class="release-version">v0.8.3</span>
-        <span class="release-date">май 2026</span>
+        <span class="release-date"><span lang="ru">май 2026</span><span lang="en">May 2026</span></span>
         <span class="release-tag">opensource</span>
-        <span class="release-tag">звонки</span>
+        <span class="release-tag"><span lang="ru">звонки</span><span lang="en">calls</span></span>
         <span class="release-tag">UX</span>
       </div>
-      <h3 class="release-title">Docker, CI, и шлифовка вокруг клавиатуры и звонков</h3>
+      <h3 class="release-title">
+        <span lang="ru">Docker, CI, и шлифовка вокруг клавиатуры и звонков</span>
+        <span lang="en">Docker, CI, and keyboard + calls polish</span>
+      </h3>
       <ul>
-        <li><strong>Docker compose</strong>: <code>docker compose up --build</code> — относительно <code>npm install</code> это шаг вперёд для self-hosters. Образ на <code>node:20-alpine</code>, non-root, healthcheck</li>
-        <li><strong>GitHub Actions CI</strong>: smoke wire-format на Node 18/20/22, Docker-build, <code>npm audit</code> — больше не нужно гадать «а собирается ли это вообще». Зелёный значок на репо.</li>
-        <li><strong>SECURITY.md / CONTRIBUTING.md / issue + PR templates</strong>: репозиторий впервые выглядит как настоящий open-source проект, а не дамп файлов</li>
-        <li><strong>README пересобран</strong>: tagline, бэйджи, сравнительная таблица с Session / SimpleX / Briar, секция Docker, ссылки на политику безопасности</li>
-        <li><strong>Pre-flight network check</strong>: перед каждым звонком запускается <code>NeeCall.diagnose()</code> — если что-то сломано, видишь «отказано в микрофоне / NAT блокирует / нет интернета» сразу, вместо 45-секундной тишины</li>
-        <li><strong>Keyboard UX</strong>: убран <code>translateY</code>-хак, который сжирал первый тап по input на iOS Safari; CreatedScreen больше не autoFocus-ит input — клавиатура не выскакивает сразу после создания сессии</li>
+        <li>
+          <span lang="ru"><strong>Docker compose</strong>: <code>docker compose up --build</code> — относительно <code>npm install</code> это шаг вперёд для self-hosters. Образ на <code>node:20-alpine</code>, non-root, healthcheck</span>
+          <span lang="en"><strong>Docker compose</strong>: <code>docker compose up --build</code> — a step forward from <code>npm install</code> for self-hosters. Image on <code>node:20-alpine</code>, non-root, healthcheck</span>
+        </li>
+        <li>
+          <span lang="ru"><strong>GitHub Actions CI</strong>: smoke wire-format на Node 18/20/22, Docker-build, <code>npm audit</code> — больше не нужно гадать «а собирается ли это вообще». Зелёный значок на репо.</span>
+          <span lang="en"><strong>GitHub Actions CI</strong>: smoke wire-format on Node 18/20/22, Docker-build, <code>npm audit</code> — no more guessing "does this even build". Green badge on the repo.</span>
+        </li>
+        <li>
+          <span lang="ru"><strong>SECURITY.md / CONTRIBUTING.md / issue + PR templates</strong>: репозиторий впервые выглядит как настоящий open-source проект, а не дамп файлов</span>
+          <span lang="en"><strong>SECURITY.md / CONTRIBUTING.md / issue + PR templates</strong>: the repo finally looks like a real open-source project, not a file dump</span>
+        </li>
+        <li>
+          <span lang="ru"><strong>README пересобран</strong>: tagline, бэйджи, сравнительная таблица с Session / SimpleX / Briar, секция Docker, ссылки на политику безопасности</span>
+          <span lang="en"><strong>README rebuilt</strong>: tagline, badges, comparison table with Session / SimpleX / Briar, Docker section, security policy links</span>
+        </li>
+        <li>
+          <span lang="ru"><strong>Pre-flight network check</strong>: перед каждым звонком запускается <code>NeeCall.diagnose()</code> — если что-то сломано, видишь «отказано в микрофоне / NAT блокирует / нет интернета» сразу, вместо 45-секундной тишины</span>
+          <span lang="en"><strong>Pre-flight network check</strong>: <code>NeeCall.diagnose()</code> runs before each call — if something is broken you see "microphone denied / NAT blocking / no internet" immediately, instead of 45 seconds of silence</span>
+        </li>
+        <li>
+          <span lang="ru"><strong>Keyboard UX</strong>: убран <code>translateY</code>-хак, который сжирал первый тап по input на iOS Safari; CreatedScreen больше не autoFocus-ит input — клавиатура не выскакивает сразу после создания сессии</span>
+          <span lang="en"><strong>Keyboard UX</strong>: removed the <code>translateY</code> hack that ate the first tap on input in iOS Safari; CreatedScreen no longer autoFocuses the input — keyboard doesn't pop up immediately after session creation</span>
+        </li>
       </ul>
     </div>
 
@@ -474,17 +663,35 @@
     <div class="release">
       <div class="release-meta">
         <span class="release-version">v0.8.2</span>
-        <span class="release-date">май 2026</span>
-        <span class="release-tag">звонки</span>
+        <span class="release-date"><span lang="ru">май 2026</span><span lang="en">May 2026</span></span>
+        <span class="release-tag"><span lang="ru">звонки</span><span lang="en">calls</span></span>
         <span class="release-tag">UX</span>
       </div>
-      <h3 class="release-title">Network diagnostics + мягкое offline-гейтирование</h3>
+      <h3 class="release-title">
+        <span lang="ru">Network diagnostics + мягкое offline-гейтирование</span>
+        <span lang="en">Network diagnostics + soft offline gating</span>
+      </h3>
       <ul>
-        <li><strong>NeeCall.diagnose()</strong>: проверяет WebRTC, HTTPS, микрофон, STUN-доступность через 2 независимых провайдера, определяет тип NAT (cone vs symmetric)</li>
-        <li>Кнопка «Проверить сеть» в overlay при неудачном звонке — модал с чеклистом и конкретными рекомендациями («попробуйте мобильные данные», «разрешите доступ в настройках»)</li>
-        <li>STUN-пул расширен до 6 серверов: Google, Cloudflare, Twilio, Nextcloud + endpoint на <code>:443</code> для сетей, пропускающих только HTTPS-порт</li>
-        <li>Кнопка звонка больше не блокируется жёстко при офлайн-пире — SSE-статус устаревает за ~30s; кнопка диммируется с подсказкой «попробовать»</li>
-        <li>Overlay при ошибке авто-скрывается через 10s (было 5s) — пользователь успевает прочитать ошибку</li>
+        <li>
+          <span lang="ru"><strong>NeeCall.diagnose()</strong>: проверяет WebRTC, HTTPS, микрофон, STUN-доступность через 2 независимых провайдера, определяет тип NAT (cone vs symmetric)</span>
+          <span lang="en"><strong>NeeCall.diagnose()</strong>: checks WebRTC, HTTPS, microphone, STUN reachability via 2 independent providers, identifies NAT type (cone vs symmetric)</span>
+        </li>
+        <li>
+          <span lang="ru">Кнопка «Проверить сеть» в overlay при неудачном звонке — модал с чеклистом и конкретными рекомендациями («попробуйте мобильные данные», «разрешите доступ в настройках»)</span>
+          <span lang="en">"Check network" button in the overlay on a failed call — modal with a checklist and specific recommendations ("try mobile data", "allow access in settings")</span>
+        </li>
+        <li>
+          <span lang="ru">STUN-пул расширен до 6 серверов: Google, Cloudflare, Twilio, Nextcloud + endpoint на <code>:443</code> для сетей, пропускающих только HTTPS-порт</span>
+          <span lang="en">STUN pool expanded to 6 servers: Google, Cloudflare, Twilio, Nextcloud + endpoint on <code>:443</code> for networks that only pass the HTTPS port</span>
+        </li>
+        <li>
+          <span lang="ru">Кнопка звонка больше не блокируется жёстко при офлайн-пире — SSE-статус устаревает за ~30s; кнопка диммируется с подсказкой «попробовать»</span>
+          <span lang="en">Call button is no longer hard-blocked when the peer is offline — SSE status goes stale after ~30s; button dims with a "try anyway" hint</span>
+        </li>
+        <li>
+          <span lang="ru">Overlay при ошибке авто-скрывается через 10s (было 5s) — пользователь успевает прочитать ошибку</span>
+          <span lang="en">Error overlay auto-hides after 10s (was 5s) — user has time to read the error</span>
+        </li>
       </ul>
     </div>
 
@@ -494,19 +701,43 @@
     <div class="release">
       <div class="release-meta">
         <span class="release-version">v0.8.1</span>
-        <span class="release-date">май 2026</span>
-        <span class="release-tag">звонки</span>
+        <span class="release-date"><span lang="ru">май 2026</span><span lang="en">May 2026</span></span>
+        <span class="release-tag"><span lang="ru">звонки</span><span lang="en">calls</span></span>
         <span class="release-tag">UX</span>
       </div>
-      <h3 class="release-title">Типизированные ошибки звонков + UX polish</h3>
+      <h3 class="release-title">
+        <span lang="ru">Типизированные ошибки звонков + UX polish</span>
+        <span lang="en">Typed call errors + UX polish</span>
+      </h3>
       <ul>
-        <li><strong>Typed error codes</strong>: <code>mic-denied</code>, <code>mic-error</code>, <code>ice-failed</code>, <code>peer-busy</code>, <code>peer-rejected</code>, <code>peer-missed</code>, <code>timeout</code> — вместо единого «connection-failed»</li>
-        <li>Кнопка звонка серая и заблокирована когда пир офлайн — исключает 45s-ожидание в никуда</li>
-        <li>Тост в чате при peer-исходах: «Собеседник отклонил звонок», «Линия занята», «Не ответил» — виден ~3.5s</li>
-        <li>Overlay показывает конкретную причину: «Микрофон недоступен», «Сеть блокирует звонки» и др.</li>
-        <li>Overlay авто-скрывается через 5s с обратным отсчётом — не нужно нажимать «Завершить» вручную</li>
-        <li>Исходящий звонок авто-отменяется через 45s с «Не ответил»</li>
-        <li>Fix: сигналы звонка буферизуются если sender-key ещё не готов — устранён race condition</li>
+        <li>
+          <span lang="ru"><strong>Typed error codes</strong>: <code>mic-denied</code>, <code>mic-error</code>, <code>ice-failed</code>, <code>peer-busy</code>, <code>peer-rejected</code>, <code>peer-missed</code>, <code>timeout</code> — вместо единого «connection-failed»</span>
+          <span lang="en"><strong>Typed error codes</strong>: <code>mic-denied</code>, <code>mic-error</code>, <code>ice-failed</code>, <code>peer-busy</code>, <code>peer-rejected</code>, <code>peer-missed</code>, <code>timeout</code> — instead of a single "connection-failed"</span>
+        </li>
+        <li>
+          <span lang="ru">Кнопка звонка серая и заблокирована когда пир офлайн — исключает 45s-ожидание в никуда</span>
+          <span lang="en">Call button is grey and blocked when peer is offline — eliminates 45s wait into nowhere</span>
+        </li>
+        <li>
+          <span lang="ru">Тост в чате при peer-исходах: «Собеседник отклонил звонок», «Линия занята», «Не ответил» — виден ~3.5s</span>
+          <span lang="en">Chat toast on peer outcomes: "Peer rejected the call", "Line busy", "No answer" — visible for ~3.5s</span>
+        </li>
+        <li>
+          <span lang="ru">Overlay показывает конкретную причину: «Микрофон недоступен», «Сеть блокирует звонки» и др.</span>
+          <span lang="en">Overlay shows the specific reason: "Microphone unavailable", "Network is blocking calls", etc.</span>
+        </li>
+        <li>
+          <span lang="ru">Overlay авто-скрывается через 5s с обратным отсчётом — не нужно нажимать «Завершить» вручную</span>
+          <span lang="en">Overlay auto-hides after 5s with a countdown — no need to press "End" manually</span>
+        </li>
+        <li>
+          <span lang="ru">Исходящий звонок авто-отменяется через 45s с «Не ответил»</span>
+          <span lang="en">Outgoing call auto-cancels after 45s with "No answer"</span>
+        </li>
+        <li>
+          <span lang="ru">Fix: сигналы звонка буферизуются если sender-key ещё не готов — устранён race condition</span>
+          <span lang="en">Fix: call signals are buffered if sender-key is not yet ready — race condition eliminated</span>
+        </li>
       </ul>
     </div>
 
@@ -516,18 +747,39 @@
     <div class="release">
       <div class="release-meta">
         <span class="release-version">v0.8.0</span>
-        <span class="release-date">май 2026</span>
-        <span class="release-tag">звонки</span>
+        <span class="release-date"><span lang="ru">май 2026</span><span lang="en">May 2026</span></span>
+        <span class="release-tag"><span lang="ru">звонки</span><span lang="en">calls</span></span>
         <span class="release-tag">WebRTC</span>
       </div>
-      <h3 class="release-title">WebRTC peer-to-peer аудиозвонки</h3>
+      <h3 class="release-title">
+        <span lang="ru">WebRTC peer-to-peer аудиозвонки</span>
+        <span lang="en">WebRTC peer-to-peer audio calls</span>
+      </h3>
       <ul>
-        <li>E2E-зашифрованные голосовые звонки для 2-party сессий</li>
-        <li>Медиа-канал защищён <strong>DTLS-SRTP</strong> нативно — ключи не покидают браузер</li>
-        <li>Сигналинг (SDP + ICE) передаётся через существующий чат-канал как новый wire type <code>signal</code> — в историю не пишется</li>
-        <li>MVP: STUN-only без TURN; при неудачном NAT traversal — «Нет соединения» с подсказкой</li>
-        <li>UI: кнопка звонка в заголовке чата (появляется когда пир подключён), bottom-sheet для входящего, overlay с таймером + mute / speaker / hangup</li>
-        <li>+812 строк кода: <code>webrtc.js</code> (360), <code>nee2p-screens.jsx</code> (220), <code>nee2p-app.jsx</code> (201), <code>server.js</code> (26)</li>
+        <li>
+          <span lang="ru">E2E-зашифрованные голосовые звонки для 2-party сессий</span>
+          <span lang="en">E2E-encrypted voice calls for 2-party sessions</span>
+        </li>
+        <li>
+          <span lang="ru">Медиа-канал защищён <strong>DTLS-SRTP</strong> нативно — ключи не покидают браузер</span>
+          <span lang="en">Media channel protected by <strong>DTLS-SRTP</strong> natively — keys never leave the browser</span>
+        </li>
+        <li>
+          <span lang="ru">Сигналинг (SDP + ICE) передаётся через существующий чат-канал как новый wire type <code>signal</code> — в историю не пишется</span>
+          <span lang="en">Signaling (SDP + ICE) is transmitted via the existing chat channel as a new wire type <code>signal</code> — not written to history</span>
+        </li>
+        <li>
+          <span lang="ru">MVP: STUN-only без TURN; при неудачном NAT traversal — «Нет соединения» с подсказкой</span>
+          <span lang="en">MVP: STUN-only, no TURN; on NAT traversal failure — "No connection" with a hint</span>
+        </li>
+        <li>
+          <span lang="ru">UI: кнопка звонка в заголовке чата (появляется когда пир подключён), bottom-sheet для входящего, overlay с таймером + mute / speaker / hangup</span>
+          <span lang="en">UI: call button in the chat header (appears when peer is connected), bottom-sheet for incoming, overlay with timer + mute / speaker / hangup</span>
+        </li>
+        <li>
+          <span lang="ru">+812 строк кода: <code>webrtc.js</code> (360), <code>nee2p-screens.jsx</code> (220), <code>nee2p-app.jsx</code> (201), <code>server.js</code> (26)</span>
+          <span lang="en">+812 lines of code: <code>webrtc.js</code> (360), <code>nee2p-screens.jsx</code> (220), <code>nee2p-app.jsx</code> (201), <code>server.js</code> (26)</span>
+        </li>
       </ul>
     </div>
 
@@ -537,17 +789,29 @@
     <div class="release">
       <div class="release-meta">
         <span class="release-version">v0.7.5</span>
-        <span class="release-date">май 2026</span>
+        <span class="release-date"><span lang="ru">май 2026</span><span lang="en">May 2026</span></span>
         <span class="release-tag">UX</span>
-        <span class="release-tag">мобайл</span>
+        <span class="release-tag"><span lang="ru">мобайл</span><span lang="en">mobile</span></span>
       </div>
       <h3 class="release-title">Keyboard-aware layout</h3>
       <ul>
-        <li><strong><code>--vvh</code> CSS-переменная</strong>: <code>visualViewport.resize</code> обновляет высоту фрейма — приложение сжимается при появлении мягкой клавиатуры</li>
-        <li><strong><code>useViewportHeight()</code> хук</strong>: настоящие React-рендеры при смене viewport (iOS Safari)</li>
-        <li>Применено к CreatedScreen, JoinStep1, JoinStep2, PasswordScreen</li>
-        <li>Кнопки «Далее / Найти / Подключиться» теперь всегда видны над клавиатурой</li>
-        <li>SW cache обновлён до <code>nee2p-v9-keyboard</code></li>
+        <li>
+          <span lang="ru"><strong><code>--vvh</code> CSS-переменная</strong>: <code>visualViewport.resize</code> обновляет высоту фрейма — приложение сжимается при появлении мягкой клавиатуры</span>
+          <span lang="en"><strong><code>--vvh</code> CSS variable</strong>: <code>visualViewport.resize</code> updates the frame height — the app shrinks when the soft keyboard appears</span>
+        </li>
+        <li>
+          <span lang="ru"><strong><code>useViewportHeight()</code> хук</strong>: настоящие React-рендеры при смене viewport (iOS Safari)</span>
+          <span lang="en"><strong><code>useViewportHeight()</code> hook</strong>: real React re-renders on viewport change (iOS Safari)</span>
+        </li>
+        <li>
+          <span lang="ru">Применено к CreatedScreen, JoinStep1, JoinStep2, PasswordScreen</span>
+          <span lang="en">Applied to CreatedScreen, JoinStep1, JoinStep2, PasswordScreen</span>
+        </li>
+        <li>
+          <span lang="ru">Кнопки «Далее / Найти / Подключиться» теперь всегда видны над клавиатурой</span>
+          <span lang="en">"Next / Find / Connect" buttons are now always visible above the keyboard</span>
+        </li>
+        <li><span lang="ru">SW cache обновлён до <code>nee2p-v9-keyboard</code></span><span lang="en">SW cache updated to <code>nee2p-v9-keyboard</code></span></li>
       </ul>
     </div>
 
@@ -557,16 +821,34 @@
     <div class="release">
       <div class="release-meta">
         <span class="release-version">v0.7.4</span>
-        <span class="release-date">май 2026</span>
+        <span class="release-date"><span lang="ru">май 2026</span><span lang="en">May 2026</span></span>
         <span class="release-tag">UX</span>
       </div>
-      <h3 class="release-title">JoinScreen: 2-шаговый вход</h3>
+      <h3 class="release-title">
+        <span lang="ru">JoinScreen: 2-шаговый вход</span>
+        <span lang="en">JoinScreen: 2-step join</span>
+      </h3>
       <ul>
-        <li><strong>Шаг 1</strong>: только ввод фразы — чисто, без лишнего; мини-хинт хеша появляется по мере набора</li>
-        <li><strong>Шаг 2</strong>: карточка с результатами <code>/r/peek</code> — визуал слотов, онлайн, создано, истекает (красный если &lt;1ч), статус спаривания</li>
-        <li>Нет сессии: иконка 🔍 + CTA «Создать с этой фразой»</li>
-        <li>Полная комната: баннер предупреждения + «Изменить фразу»</li>
-        <li>Deep-link (<code>#join=</code>) автоматически пропускает на шаг 2 с pre-fill фразой</li>
+        <li>
+          <span lang="ru"><strong>Шаг 1</strong>: только ввод фразы — чисто, без лишнего; мини-хинт хеша появляется по мере набора</span>
+          <span lang="en"><strong>Step 1</strong>: phrase input only — clean, no clutter; mini hash hint appears as you type</span>
+        </li>
+        <li>
+          <span lang="ru"><strong>Шаг 2</strong>: карточка с результатами <code>/r/peek</code> — визуал слотов, онлайн, создано, истекает (красный если &lt;1ч), статус спаривания</span>
+          <span lang="en"><strong>Step 2</strong>: card with <code>/r/peek</code> results — slot visuals, online, created, expires (red if &lt;1h), pairing status</span>
+        </li>
+        <li>
+          <span lang="ru">Нет сессии: иконка 🔍 + CTA «Создать с этой фразой»</span>
+          <span lang="en">No session: 🔍 icon + CTA "Create with this phrase"</span>
+        </li>
+        <li>
+          <span lang="ru">Полная комната: баннер предупреждения + «Изменить фразу»</span>
+          <span lang="en">Full room: warning banner + "Change phrase"</span>
+        </li>
+        <li>
+          <span lang="ru">Deep-link (<code>#join=</code>) автоматически пропускает на шаг 2 с pre-fill фразой</span>
+          <span lang="en">Deep-link (<code>#join=</code>) automatically skips to step 2 with the phrase pre-filled</span>
+        </li>
       </ul>
     </div>
 
@@ -576,30 +858,66 @@
     <div class="release">
       <div class="release-meta">
         <span class="release-version">v0.7.3</span>
-        <span class="release-date">май 2026</span>
-        <span class="release-tag">админка</span>
-        <span class="release-tag">инфраструктура</span>
+        <span class="release-date"><span lang="ru">май 2026</span><span lang="en">May 2026</span></span>
+        <span class="release-tag"><span lang="ru">админка</span><span lang="en">admin</span></span>
+        <span class="release-tag"><span lang="ru">инфраструктура</span><span lang="en">infrastructure</span></span>
       </div>
-      <h3 class="release-title">Admin Dashboard + мелкие улучшения</h3>
+      <h3 class="release-title">
+        <span lang="ru">Admin Dashboard + мелкие улучшения</span>
+        <span lang="en">Admin Dashboard + minor improvements</span>
+      </h3>
       <div class="release-subhead">Admin Dashboard v1</div>
       <ul>
-        <li>Новый эндпоинт <code>GET /r/admin/stats</code> с key-аутентификацией — uptime, метрики комнат/сессий/блобов, детали по каждой комнате</li>
-        <li><code>admin.html</code>: тёмный дашборд с авто-обновлением, стат-карточки, сортируемая таблица комнат</li>
+        <li>
+          <span lang="ru">Новый эндпоинт <code>GET /r/admin/stats</code> с key-аутентификацией — uptime, метрики комнат/сессий/блобов, детали по каждой комнате</span>
+          <span lang="en">New endpoint <code>GET /r/admin/stats</code> with key auth — uptime, room/session/blob metrics, per-room details</span>
+        </li>
+        <li>
+          <span lang="ru"><code>admin.html</code>: тёмный дашборд с авто-обновлением, стат-карточки, сортируемая таблица комнат</span>
+          <span lang="en"><code>admin.html</code>: dark dashboard with auto-refresh, stat cards, sortable rooms table</span>
+        </li>
       </ul>
       <div class="release-subhead">Admin Dashboard v2</div>
       <ul>
-        <li>Sparklines на 40 точек на карточках Rooms / Sessions / Paired</li>
-        <li>Сортировка колонок таблицы (asc/desc toggle)</li>
-        <li>Фильтры: Все / Спарено / Онлайн / Истекает &lt;1ч</li>
-        <li>Копирование полного ID комнаты по клику с flash-feedback</li>
-        <li>Подсветка истекающих строк (красный тинт &lt;1ч)</li>
-        <li>Селектор интервала обновления: 5s / 15s / 30s / 1m + пауза</li>
-        <li><code>DELETE /r/admin/room/:id</code> — принудительное закрытие любой комнаты</li>
+        <li>
+          <span lang="ru">Sparklines на 40 точек на карточках Rooms / Sessions / Paired</span>
+          <span lang="en">Sparklines with 40 data points on Rooms / Sessions / Paired cards</span>
+        </li>
+        <li>
+          <span lang="ru">Сортировка колонок таблицы (asc/desc toggle)</span>
+          <span lang="en">Table column sorting (asc/desc toggle)</span>
+        </li>
+        <li>
+          <span lang="ru">Фильтры: Все / Спарено / Онлайн / Истекает &lt;1ч</span>
+          <span lang="en">Filters: All / Paired / Online / Expiring &lt;1h</span>
+        </li>
+        <li>
+          <span lang="ru">Копирование полного ID комнаты по клику с flash-feedback</span>
+          <span lang="en">Copy full room ID on click with flash feedback</span>
+        </li>
+        <li>
+          <span lang="ru">Подсветка истекающих строк (красный тинт &lt;1ч)</span>
+          <span lang="en">Expiring row highlight (red tint &lt;1h)</span>
+        </li>
+        <li>
+          <span lang="ru">Селектор интервала обновления: 5s / 15s / 30s / 1m + пауза</span>
+          <span lang="en">Refresh interval selector: 5s / 15s / 30s / 1m + pause</span>
+        </li>
+        <li>
+          <span lang="ru"><code>DELETE /r/admin/room/:id</code> — принудительное закрытие любой комнаты</span>
+          <span lang="en"><code>DELETE /r/admin/room/:id</code> — force-close any room</span>
+        </li>
       </ul>
-      <div class="release-subhead">Попутно</div>
+      <div class="release-subhead"><span lang="ru">Попутно</span><span lang="en">Also</span></div>
       <ul>
-        <li><code>trust.html</code>: карточка с GitHub-ссылкой под hero</li>
-        <li>Auto cache-bust: JSX-файлы получают hourly version query param — нет нужды вручную сбрасывать кэш</li>
+        <li>
+          <span lang="ru"><code>trust.html</code>: карточка с GitHub-ссылкой под hero</span>
+          <span lang="en"><code>trust.html</code>: card with GitHub link below the hero</span>
+        </li>
+        <li>
+          <span lang="ru">Auto cache-bust: JSX-файлы получают hourly version query param — нет нужды вручную сбрасывать кэш</span>
+          <span lang="en">Auto cache-bust: JSX files get an hourly version query param — no need to manually clear cache</span>
+        </li>
       </ul>
     </div>
 
@@ -609,26 +927,29 @@
     <div class="release">
       <div class="release-meta">
         <span class="release-version">v0.7.2</span>
-        <span class="release-date">май 2026</span>
-        <span class="release-tag">исправления</span>
-        <span class="release-tag">мобайл</span>
+        <span class="release-date"><span lang="ru">май 2026</span><span lang="en">May 2026</span></span>
+        <span class="release-tag"><span lang="ru">исправления</span><span lang="en">fixes</span></span>
+        <span class="release-tag"><span lang="ru">мобайл</span><span lang="en">mobile</span></span>
       </div>
-      <h3 class="release-title">14 фиксов мобильного чата</h3>
+      <h3 class="release-title">
+        <span lang="ru">14 фиксов мобильного чата</span>
+        <span lang="en">14 mobile chat fixes</span>
+      </h3>
       <ul>
-        <li><strong>Safe-area header</strong>: <code>paddingTop</code> теперь <code>env(safe-area-inset-top)</code> — корректно на iPhone с Dynamic Island</li>
-        <li><strong>fpNudge-кнопка</strong>: только иконка (без текста) — заголовок больше не переполняется на 320 px</li>
-        <li><strong>Input bar</strong>: <code>paddingBottom</code> через <code>env(safe-area-inset-bottom)</code> — кнопки не уходят под home indicator</li>
-        <li><strong>Invite overlay</strong>: та же safe-area-правка + <code>maxHeight: min(80vh, 80dvh)</code> для ландшафтного режима</li>
-        <li><strong>micToast</strong>: <code>position: fixed</code> вместо <code>absolute</code> — тост больше не прячется в список сообщений</li>
-        <li><strong>🔥-бейдж кнопки отправки</strong>: <code>overflow: visible</code> — значок не обрезается</li>
-        <li><strong>Баннер соединения</strong>: <code>flex:1 + ellipsis</code> — не вылезает за экран на 320 px</li>
-        <li><strong>Search bar</strong>: убраны отрицательные горизонтальные отступы, вызывавшие x-scroll</li>
-        <li><strong>Пузыри сообщений</strong>: <code>overflowWrap: anywhere</code> рядом с <code>wordBreak: break-word</code> (фикс iOS Safari)</li>
-        <li><strong>Burn-бейдж</strong>: <code>paddingRight: 18</code> — значок не перекрывает короткие сообщения</li>
-        <li><strong>Кнопка отмены ответа</strong>: padding 4 → 12 px (tap target 24 → 40 px)</li>
-        <li><strong>Scroll container</strong>: нижний отступ 8 → 16 px</li>
+        <li><span lang="ru"><strong>Safe-area header</strong>: <code>paddingTop</code> теперь <code>env(safe-area-inset-top)</code> — корректно на iPhone с Dynamic Island</span><span lang="en"><strong>Safe-area header</strong>: <code>paddingTop</code> is now <code>env(safe-area-inset-top)</code> — correct on iPhone with Dynamic Island</span></li>
+        <li><span lang="ru"><strong>fpNudge-кнопка</strong>: только иконка (без текста) — заголовок больше не переполняется на 320 px</span><span lang="en"><strong>fpNudge button</strong>: icon only (no text) — header no longer overflows on 320 px</span></li>
+        <li><span lang="ru"><strong>Input bar</strong>: <code>paddingBottom</code> через <code>env(safe-area-inset-bottom)</code> — кнопки не уходят под home indicator</span><span lang="en"><strong>Input bar</strong>: <code>paddingBottom</code> via <code>env(safe-area-inset-bottom)</code> — buttons don't slip under the home indicator</span></li>
+        <li><span lang="ru"><strong>Invite overlay</strong>: та же safe-area-правка + <code>maxHeight: min(80vh, 80dvh)</code> для ландшафтного режима</span><span lang="en"><strong>Invite overlay</strong>: same safe-area fix + <code>maxHeight: min(80vh, 80dvh)</code> for landscape mode</span></li>
+        <li><span lang="ru"><strong>micToast</strong>: <code>position: fixed</code> вместо <code>absolute</code> — тост больше не прячется в список сообщений</span><span lang="en"><strong>micToast</strong>: <code>position: fixed</code> instead of <code>absolute</code> — toast no longer hides inside the message list</span></li>
+        <li><span lang="ru"><strong>🔥-бейдж кнопки отправки</strong>: <code>overflow: visible</code> — значок не обрезается</span><span lang="en"><strong>🔥 send button badge</strong>: <code>overflow: visible</code> — icon is no longer clipped</span></li>
+        <li><span lang="ru"><strong>Баннер соединения</strong>: <code>flex:1 + ellipsis</code> — не вылезает за экран на 320 px</span><span lang="en"><strong>Connection banner</strong>: <code>flex:1 + ellipsis</code> — doesn't overflow on 320 px</span></li>
+        <li><span lang="ru"><strong>Search bar</strong>: убраны отрицательные горизонтальные отступы, вызывавшие x-scroll</span><span lang="en"><strong>Search bar</strong>: removed negative horizontal margins that caused x-scroll</span></li>
+        <li><span lang="ru"><strong>Пузыри сообщений</strong>: <code>overflowWrap: anywhere</code> рядом с <code>wordBreak: break-word</code> (фикс iOS Safari)</span><span lang="en"><strong>Message bubbles</strong>: <code>overflowWrap: anywhere</code> alongside <code>wordBreak: break-word</code> (iOS Safari fix)</span></li>
+        <li><span lang="ru"><strong>Burn-бейдж</strong>: <code>paddingRight: 18</code> — значок не перекрывает короткие сообщения</span><span lang="en"><strong>Burn badge</strong>: <code>paddingRight: 18</code> — icon doesn't overlap short messages</span></li>
+        <li><span lang="ru"><strong>Кнопка отмены ответа</strong>: padding 4 → 12 px (tap target 24 → 40 px)</span><span lang="en"><strong>Reply cancel button</strong>: padding 4 → 12 px (tap target 24 → 40 px)</span></li>
+        <li><span lang="ru"><strong>Scroll container</strong>: нижний отступ 8 → 16 px</span><span lang="en"><strong>Scroll container</strong>: bottom padding 8 → 16 px</span></li>
         <li><strong>Reactions row</strong>: <code>minWidth: 0 + overflow: hidden</code></li>
-        <li><strong>sw.js</strong>: <code>CACHE_VERSION</code> → <code>nee2p-v8-deeplink</code> — исправлен устаревший кэш QR-ссылок</li>
+        <li><span lang="ru"><strong>sw.js</strong>: <code>CACHE_VERSION</code> → <code>nee2p-v8-deeplink</code> — исправлен устаревший кэш QR-ссылок</span><span lang="en"><strong>sw.js</strong>: <code>CACHE_VERSION</code> → <code>nee2p-v8-deeplink</code> — fixed stale cache for QR links</span></li>
       </ul>
     </div>
 
@@ -638,14 +959,26 @@
     <div class="release">
       <div class="release-meta">
         <span class="release-version">v0.7.1</span>
-        <span class="release-date">май 2026</span>
-        <span class="release-tag">исправления</span>
+        <span class="release-date"><span lang="ru">май 2026</span><span lang="en">May 2026</span></span>
+        <span class="release-tag"><span lang="ru">исправления</span><span lang="en">fixes</span></span>
       </div>
-      <h3 class="release-title">Фиксы после ребрендинга</h3>
+      <h3 class="release-title">
+        <span lang="ru">Фиксы после ребрендинга</span>
+        <span lang="en">Post-rebrand fixes</span>
+      </h3>
       <ul>
-        <li><strong>QR-модал</strong>: переведён на <code>position: fixed</code> + <code>z-index: 9999</code> — уведомления больше не перекрывают QR-код на мобильных</li>
-        <li><strong>Имена глобальных переменных</strong>: <code>HushCrypto</code> → <code>Nee2PCrypto</code>, <code>HushPersist</code> → <code>Nee2PPersist</code>, <code>HushPush</code> → <code>Nee2PPush</code> — устранено зависание «создаём…» после ребрендинга</li>
-        <li>Все продакшн-файлы синхронизированы с dev</li>
+        <li>
+          <span lang="ru"><strong>QR-модал</strong>: переведён на <code>position: fixed</code> + <code>z-index: 9999</code> — уведомления больше не перекрывают QR-код на мобильных</span>
+          <span lang="en"><strong>QR modal</strong>: switched to <code>position: fixed</code> + <code>z-index: 9999</code> — notifications no longer cover the QR code on mobile</span>
+        </li>
+        <li>
+          <span lang="ru"><strong>Имена глобальных переменных</strong>: <code>HushCrypto</code> → <code>Nee2PCrypto</code>, <code>HushPersist</code> → <code>Nee2PPersist</code>, <code>HushPush</code> → <code>Nee2PPush</code> — устранено зависание «создаём…» после ребрендинга</span>
+          <span lang="en"><strong>Global variable names</strong>: <code>HushCrypto</code> → <code>Nee2PCrypto</code>, <code>HushPersist</code> → <code>Nee2PPersist</code>, <code>HushPush</code> → <code>Nee2PPush</code> — fixed "creating…" hang after rebrand</span>
+        </li>
+        <li>
+          <span lang="ru">Все продакшн-файлы синхронизированы с dev</span>
+          <span lang="en">All production files synchronized with dev</span>
+        </li>
       </ul>
     </div>
 
@@ -655,36 +988,43 @@
     <div class="release">
       <div class="release-meta">
         <span class="release-version">v0.7.0</span>
-        <span class="release-date">май 2026</span>
+        <span class="release-date"><span lang="ru">май 2026</span><span lang="en">May 2026</span></span>
         <span class="release-tag">UX</span>
       </div>
-      <h3 class="release-title">3-шаговый визард создания сессии</h3>
+      <h3 class="release-title">
+        <span lang="ru">3-шаговый визард создания сессии</span>
+        <span lang="en">3-step session creation wizard</span>
+      </h3>
       <table>
         <thead>
-          <tr><th>Шаг</th><th>Экран</th><th>Что объясняется</th></tr>
+          <tr>
+            <th><span lang="ru">Шаг</span><span lang="en">Step</span></th>
+            <th><span lang="ru">Экран</span><span lang="en">Screen</span></th>
+            <th><span lang="ru">Что объясняется</span><span lang="en">What's explained</span></th>
+          </tr>
         </thead>
         <tbody>
           <tr>
             <td>1</td>
-            <td>Секретная фраза</td>
-            <td>Обрабатывается в браузере через Argon2id; на сервер уходит только MD5-хеш — восстановить фразу невозможно</td>
+            <td><span lang="ru">Секретная фраза</span><span lang="en">Secret phrase</span></td>
+            <td><span lang="ru">Обрабатывается в браузере через Argon2id; на сервер уходит только MD5-хеш — восстановить фразу невозможно</span><span lang="en">Processed in the browser via Argon2id; only the MD5 hash reaches the server — the phrase cannot be recovered</span></td>
           </tr>
           <tr>
             <td>2</td>
-            <td>Параметры сессии</td>
-            <td>Срок жизни (1 ч — 7 дней) и число участников (2–8) задаются один раз</td>
+            <td><span lang="ru">Параметры сессии</span><span lang="en">Session parameters</span></td>
+            <td><span lang="ru">Срок жизни (1 ч — 7 дней) и число участников (2–8) задаются один раз</span><span lang="en">Lifetime (1h – 7 days) and participant count (2–8) are set once</span></td>
           </tr>
           <tr>
             <td>3</td>
-            <td>Пароль входа</td>
-            <td>Только на устройстве, не передаётся по сети, не участвует в шифровании сообщений</td>
+            <td><span lang="ru">Пароль входа</span><span lang="en">Entry password</span></td>
+            <td><span lang="ru">Только на устройстве, не передаётся по сети, не участвует в шифровании сообщений</span><span lang="en">On-device only, not transmitted over the network, not involved in message encryption</span></td>
           </tr>
         </tbody>
       </table>
       <ul>
-        <li>Индикатор прогресса — анимированные пилюли между экранами</li>
-        <li>Кнопка назад возвращает на предыдущий шаг</li>
-        <li>Кнопка «Далее» без фразы → автоматически генерирует безопасный код</li>
+        <li><span lang="ru">Индикатор прогресса — анимированные пилюли между экранами</span><span lang="en">Progress indicator — animated pills between screens</span></li>
+        <li><span lang="ru">Кнопка назад возвращает на предыдущий шаг</span><span lang="en">Back button returns to the previous step</span></li>
+        <li><span lang="ru">Кнопка «Далее» без фразы → автоматически генерирует безопасный код</span><span lang="en">"Next" button without a phrase → auto-generates a secure code</span></li>
       </ul>
     </div>
 
@@ -694,17 +1034,35 @@
     <div class="release">
       <div class="release-meta">
         <span class="release-version">v0.6.0</span>
-        <span class="release-date">май 2026</span>
-        <span class="release-tag">доверие</span>
-        <span class="release-tag">прозрачность</span>
+        <span class="release-date"><span lang="ru">май 2026</span><span lang="en">May 2026</span></span>
+        <span class="release-tag"><span lang="ru">доверие</span><span lang="en">trust</span></span>
+        <span class="release-tag"><span lang="ru">прозрачность</span><span lang="en">transparency</span></span>
       </div>
-      <h3 class="release-title">Страница проверки честности</h3>
+      <h3 class="release-title">
+        <span lang="ru">Страница проверки честности</span>
+        <span lang="en">Integrity check page</span>
+      </h3>
       <ul>
-        <li>Добавлена страница <code>trust.html</code> — пошаговые инструкции, как убедиться, что у нас нет бэкдоров</li>
-        <li>Объяснение архитектуры: сервер физически не может прочитать сообщения</li>
-        <li>Описание криптостека: Argon2id, X25519, ML-KEM-768, AES-256-GCM</li>
-        <li>Инструкции для самостоятельной проверки через DevTools, SRI, исходный код</li>
-        <li>CTA-кнопка «Безопасность сделки» с анимированной стрелкой</li>
+        <li>
+          <span lang="ru">Добавлена страница <code>trust.html</code> — пошаговые инструкции, как убедиться, что у нас нет бэкдоров</span>
+          <span lang="en">Added <code>trust.html</code> page — step-by-step instructions on how to verify we have no backdoors</span>
+        </li>
+        <li>
+          <span lang="ru">Объяснение архитектуры: сервер физически не может прочитать сообщения</span>
+          <span lang="en">Architecture explanation: the server physically cannot read messages</span>
+        </li>
+        <li>
+          <span lang="ru">Описание криптостека: Argon2id, X25519, ML-KEM-768, AES-256-GCM</span>
+          <span lang="en">Crypto stack description: Argon2id, X25519, ML-KEM-768, AES-256-GCM</span>
+        </li>
+        <li>
+          <span lang="ru">Инструкции для самостоятельной проверки через DevTools, SRI, исходный код</span>
+          <span lang="en">Instructions for self-verification via DevTools, SRI, source code</span>
+        </li>
+        <li>
+          <span lang="ru">CTA-кнопка «Безопасность сделки» с анимированной стрелкой</span>
+          <span lang="en">CTA button "Secure deals" with animated arrow</span>
+        </li>
       </ul>
     </div>
 
@@ -714,17 +1072,35 @@
     <div class="release">
       <div class="release-meta">
         <span class="release-version">v0.5.0</span>
-        <span class="release-date">май 2026</span>
+        <span class="release-date"><span lang="ru">май 2026</span><span lang="en">May 2026</span></span>
         <span class="release-tag">PWA</span>
-        <span class="release-tag">офлайн</span>
+        <span class="release-tag"><span lang="ru">офлайн</span><span lang="en">offline</span></span>
       </div>
-      <h3 class="release-title">PWA: установка и офлайн-режим</h3>
+      <h3 class="release-title">
+        <span lang="ru">PWA: установка и офлайн-режим</span>
+        <span lang="en">PWA: install and offline mode</span>
+      </h3>
       <ul>
-        <li>Service Worker (<code>sw.js</code>): network-first для навигации, cache-first для ассетов</li>
-        <li><code>manifest.json</code>: приложение устанавливается на домашний экран</li>
-        <li>Web Push уведомления (<code>push.js</code>) — опционально, с явным разрешением</li>
-        <li>IndexedDB persistence (<code>persistence.js</code>): сессия переживает перезагрузку страницы с опцией «Запомнить на этом устройстве»</li>
-        <li>Иконки 192×192 и 512×512</li>
+        <li>
+          <span lang="ru">Service Worker (<code>sw.js</code>): network-first для навигации, cache-first для ассетов</span>
+          <span lang="en">Service Worker (<code>sw.js</code>): network-first for navigation, cache-first for assets</span>
+        </li>
+        <li>
+          <span lang="ru"><code>manifest.json</code>: приложение устанавливается на домашний экран</span>
+          <span lang="en"><code>manifest.json</code>: app installs to the home screen</span>
+        </li>
+        <li>
+          <span lang="ru">Web Push уведомления (<code>push.js</code>) — опционально, с явным разрешением</span>
+          <span lang="en">Web Push notifications (<code>push.js</code>) — optional, with explicit permission</span>
+        </li>
+        <li>
+          <span lang="ru">IndexedDB persistence (<code>persistence.js</code>): сессия переживает перезагрузку страницы с опцией «Запомнить на этом устройстве»</span>
+          <span lang="en">IndexedDB persistence (<code>persistence.js</code>): session survives page reload with a "Remember on this device" option</span>
+        </li>
+        <li>
+          <span lang="ru">Иконки 192×192 и 512×512</span>
+          <span lang="en">Icons 192×192 and 512×512</span>
+        </li>
       </ul>
     </div>
 
@@ -734,20 +1110,35 @@
     <div class="release">
       <div class="release-meta">
         <span class="release-version">v0.4.0</span>
-        <span class="release-date">май 2026</span>
+        <span class="release-date"><span lang="ru">май 2026</span><span lang="en">May 2026</span></span>
         <span class="release-tag">UX</span>
-        <span class="release-tag">безопасность</span>
+        <span class="release-tag"><span lang="ru">безопасность</span><span lang="en">security</span></span>
       </div>
-      <h3 class="release-title">UX: создание и вход</h3>
-      <div class="release-subhead">Создание сессии</div>
+      <h3 class="release-title">
+        <span lang="ru">UX: создание и вход</span>
+        <span lang="en">UX: create and join</span>
+      </h3>
+      <div class="release-subhead"><span lang="ru">Создание сессии</span><span lang="en">Session creation</span></div>
       <ul>
-        <li>Упрощён экран создания: фраза на первом месте, кнопка «случайный код»</li>
-        <li>Ввод фразы всегда переводится в нижний регистр — исключены ошибки при подключении из-за регистра</li>
+        <li>
+          <span lang="ru">Упрощён экран создания: фраза на первом месте, кнопка «случайный код»</span>
+          <span lang="en">Simplified creation screen: phrase first, "random code" button</span>
+        </li>
+        <li>
+          <span lang="ru">Ввод фразы всегда переводится в нижний регистр — исключены ошибки при подключении из-за регистра</span>
+          <span lang="en">Phrase input always lowercased — eliminates join errors due to case</span>
+        </li>
       </ul>
-      <div class="release-subhead">Экран входа (JoinScreen)</div>
+      <div class="release-subhead"><span lang="ru">Экран входа (JoinScreen)</span><span lang="en">Join screen (JoinScreen)</span></div>
       <ul>
-        <li>Живой бейдж <code>/r/peek</code>: пока пользователь вводит фразу, показывается сколько участников онлайн и сколько мест осталось</li>
-        <li>Если сессии с такой фразой нет — предлагается её создать без повторного ввода</li>
+        <li>
+          <span lang="ru">Живой бейдж <code>/r/peek</code>: пока пользователь вводит фразу, показывается сколько участников онлайн и сколько мест осталось</span>
+          <span lang="en">Live <code>/r/peek</code> badge: while the user types the phrase, shows how many participants are online and how many slots remain</span>
+        </li>
+        <li>
+          <span lang="ru">Если сессии с такой фразой нет — предлагается её создать без повторного ввода</span>
+          <span lang="en">If no session with that phrase exists — offers to create one without re-entering it</span>
+        </li>
       </ul>
     </div>
 
@@ -757,15 +1148,27 @@
     <div class="release">
       <div class="release-meta">
         <span class="release-version">v0.3.0</span>
-        <span class="release-date">май 2026</span>
+        <span class="release-date"><span lang="ru">май 2026</span><span lang="en">May 2026</span></span>
         <span class="release-tag">API</span>
       </div>
       <h3 class="release-title">/r/peek probe</h3>
       <ul>
-        <li>Новый endpoint <code>/r/peek</code> — read-only проверка существования сессии</li>
-        <li>Возвращает <code>{exists, groupMax, claimed, online, expiresAt}</code> без занятия слота</li>
-        <li>Безопасен для неаутентифицированных запросов (не создаёт и не меняет данные)</li>
-        <li>Фронтенд: хелпер <code>window.Nee2PPeek.peekRoom(hash)</code> в <code>http-client.js</code></li>
+        <li>
+          <span lang="ru">Новый endpoint <code>/r/peek</code> — read-only проверка существования сессии</span>
+          <span lang="en">New endpoint <code>/r/peek</code> — read-only check for session existence</span>
+        </li>
+        <li>
+          <span lang="ru">Возвращает <code>{exists, groupMax, claimed, online, expiresAt}</code> без занятия слота</span>
+          <span lang="en">Returns <code>{exists, groupMax, claimed, online, expiresAt}</code> without claiming a slot</span>
+        </li>
+        <li>
+          <span lang="ru">Безопасен для неаутентифицированных запросов (не создаёт и не меняет данные)</span>
+          <span lang="en">Safe for unauthenticated requests (does not create or modify data)</span>
+        </li>
+        <li>
+          <span lang="ru">Фронтенд: хелпер <code>window.Nee2PPeek.peekRoom(hash)</code> в <code>http-client.js</code></span>
+          <span lang="en">Frontend: helper <code>window.Nee2PPeek.peekRoom(hash)</code> in <code>http-client.js</code></span>
+        </li>
       </ul>
     </div>
 
@@ -775,14 +1178,23 @@
     <div class="release">
       <div class="release-meta">
         <span class="release-version">v0.2.0</span>
-        <span class="release-date">май 2026</span>
-        <span class="release-tag">ребрендинг</span>
+        <span class="release-date"><span lang="ru">май 2026</span><span lang="en">May 2026</span></span>
+        <span class="release-tag"><span lang="ru">ребрендинг</span><span lang="en">rebrand</span></span>
       </div>
       <h3 class="release-title">Nee2P. rebrand</h3>
       <ul>
-        <li>Проект переименован из <strong>hush.</strong> в <strong>Nee2P.</strong></li>
-        <li>Все файлы <code>hush-*.jsx</code> переименованы в <code>nee2p-*.jsx</code></li>
-        <li>Обновлены ссылки, мета-теги, launchd plist</li>
+        <li>
+          <span lang="ru">Проект переименован из <strong>hush.</strong> в <strong>Nee2P.</strong></span>
+          <span lang="en">Project renamed from <strong>hush.</strong> to <strong>Nee2P.</strong></span>
+        </li>
+        <li>
+          <span lang="ru">Все файлы <code>hush-*.jsx</code> переименованы в <code>nee2p-*.jsx</code></span>
+          <span lang="en">All <code>hush-*.jsx</code> files renamed to <code>nee2p-*.jsx</code></span>
+        </li>
+        <li>
+          <span lang="ru">Обновлены ссылки, мета-теги, launchd plist</span>
+          <span lang="en">Updated links, meta tags, launchd plist</span>
+        </li>
       </ul>
     </div>
 
@@ -792,35 +1204,196 @@
     <div class="release">
       <div class="release-meta">
         <span class="release-version">v0.1.0</span>
-        <span class="release-date">начало 2025</span>
-        <span class="release-tag">первый запуск</span>
+        <span class="release-date"><span lang="ru">начало 2025</span><span lang="en">early 2025</span></span>
+        <span class="release-tag"><span lang="ru">первый запуск</span><span lang="en">first launch</span></span>
       </div>
       <h3 class="release-title">hush. initial snapshot</h3>
       <ul>
-        <li>Запуск проекта под именем <strong>hush.</strong></li>
-        <li>Анонимный зашифрованный чат для двух участников</li>
-        <li>Ключ сессии выводится через PBKDF2-SHA256 из секретной фразы</li>
-        <li>Транспорт: WebSocket, два слота на комнату (A/B)</li>
-        <li>Серверная часть: ~100 строк Node.js, без базы данных, комнаты только в RAM</li>
-        <li>Фронтенд: React 18 + Babel in-browser, без сборщика</li>
+        <li>
+          <span lang="ru">Запуск проекта под именем <strong>hush.</strong></span>
+          <span lang="en">Project launched as <strong>hush.</strong></span>
+        </li>
+        <li>
+          <span lang="ru">Анонимный зашифрованный чат для двух участников</span>
+          <span lang="en">Anonymous encrypted chat for two participants</span>
+        </li>
+        <li>
+          <span lang="ru">Ключ сессии выводится через PBKDF2-SHA256 из секретной фразы</span>
+          <span lang="en">Session key derived via PBKDF2-SHA256 from the secret phrase</span>
+        </li>
+        <li>
+          <span lang="ru">Транспорт: WebSocket, два слота на комнату (A/B)</span>
+          <span lang="en">Transport: WebSocket, two slots per room (A/B)</span>
+        </li>
+        <li>
+          <span lang="ru">Серверная часть: ~100 строк Node.js, без базы данных, комнаты только в RAM</span>
+          <span lang="en">Server-side: ~100 lines of Node.js, no database, rooms in RAM only</span>
+        </li>
+        <li>
+          <span lang="ru">Фронтенд: React 18 + Babel in-browser, без сборщика</span>
+          <span lang="en">Frontend: React 18 + Babel in-browser, no bundler</span>
+        </li>
       </ul>
     </div>
 
   </section>
 
   <div class="cta-wrap">
-    <a href="./" class="btn-deal">Открыть мессенджер <span class="arr">→</span></a>
-    <p class="mute">Nee2P. — анонимный зашифрованный чат без следов.</p>
+    <a href="./" class="btn-deal">
+      <span lang="ru">Открыть мессенджер <span class="arr">→</span></span>
+      <span lang="en">Open messenger <span class="arr">→</span></span>
+    </a>
+    <p class="mute">
+      <span lang="ru">Nee2P. — анонимный зашифрованный чат без следов.</span>
+      <span lang="en">Nee2P. — anonymous encrypted chat without a trace.</span>
+    </p>
   </div>
 
   <footer>
     <div class="links">
-      <a href="./">← назад</a>
+      <a href="./"><span lang="ru">← назад</span><span lang="en">← back</span></a>
       <a href="https://github.com/www7man/Nee2P" target="_blank" rel="noopener">GitHub →</a>
     </div>
     <div class="sig">Nee2P. — anonymous paired messenger</div>
   </footer>
 
 </div>
+
+<!-- ─── i18n binder + lang picker (owner: i18n) ───────────────────────────
+     • Initial lang comes from window.Nee2Pi18n.getLang() if i18n.js loaded,
+       otherwise from localStorage.nee2p_lang, otherwise 'en'.
+     • CSS rules above (html[lang="…"] [lang="…"]) swap the visible content.
+-->
+<script>
+(function () {
+  'use strict';
+
+  function currentLang() {
+    var i18n = window.Nee2Pi18n;
+    if (i18n && typeof i18n.getLang === 'function') return i18n.getLang();
+    try { return localStorage.getItem('nee2p_lang') || 'en'; }
+    catch (_) { return 'en'; }
+  }
+
+  function applyLang(lang) {
+    document.documentElement.setAttribute('lang', lang);
+  }
+
+  // Bind initial lang ASAP.
+  applyLang(currentLang());
+
+  // Subscribe to cross-tab/cross-component lang changes once i18n.js is up.
+  if (window.Nee2Pi18n && typeof window.Nee2Pi18n.onLangChange === 'function') {
+    window.Nee2Pi18n.onLangChange(applyLang);
+  }
+
+  // ── Lang picker pill ────────────────────────────────────────────────
+  function buildPicker() {
+    var i18n = window.Nee2Pi18n;
+    var LANGS = (i18n && i18n.LANGS) || ['en', 'ru'];
+    var NAMES = (i18n && i18n.LANG_NAMES) || { en: 'English', ru: 'Русский' };
+
+    var host = document.getElementById('lang-toggle');
+    if (!host) return;
+
+    var btn = document.createElement('button');
+    btn.className = 'pill';
+    btn.type = 'button';
+    btn.setAttribute('aria-haspopup', 'listbox');
+    btn.setAttribute('aria-expanded', 'false');
+    var globe = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    globe.setAttribute('width', '12'); globe.setAttribute('height', '12');
+    globe.setAttribute('viewBox', '0 0 24 24'); globe.setAttribute('fill', 'none');
+    globe.innerHTML = '<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/>'
+                    + '<path d="M12 3c-2.5 3-4 5.5-4 9s1.5 6 4 9M12 3c2.5 3 4 5.5 4 9s-1.5 6-4 9" stroke="currentColor" stroke-width="1.4"/>'
+                    + '<path d="M3.5 9h17M3.5 15h17" stroke="currentColor" stroke-width="1.4"/>';
+    btn.appendChild(globe);
+    var codeSpan = document.createElement('span');
+    codeSpan.textContent = currentLang();
+    btn.appendChild(codeSpan);
+    host.appendChild(btn);
+
+    var menu = null;
+
+    function closeMenu() {
+      if (!menu) return;
+      menu.remove(); menu = null;
+      btn.setAttribute('aria-expanded', 'false');
+      document.removeEventListener('pointerdown', onDoc, true);
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', positionMenu);
+      window.removeEventListener('scroll', positionMenu, true);
+    }
+
+    function positionMenu() {
+      if (!menu) return;
+      var r = btn.getBoundingClientRect();
+      menu.style.top = Math.round(r.bottom + 6) + 'px';
+      menu.style.right = Math.round(window.innerWidth - r.right) + 'px';
+    }
+    function onDoc(e) {
+      if (!menu) return;
+      if (menu.contains(e.target) || btn.contains(e.target)) return;
+      closeMenu();
+    }
+    function onKey(e) { if (e.key === 'Escape') closeMenu(); }
+
+    function openMenu() {
+      menu = document.createElement('div');
+      menu.className = 'lang-menu';
+      menu.setAttribute('role', 'listbox');
+      menu.setAttribute('data-lang-menu', '');
+      LANGS.forEach(function (code) {
+        var item = document.createElement('button');
+        item.type = 'button';
+        item.setAttribute('role', 'option');
+        var active = (code === currentLang());
+        item.setAttribute('aria-selected', String(active));
+        var label = document.createElement('span');
+        label.textContent = NAMES[code] || code.toUpperCase();
+        var tag = document.createElement('span');
+        tag.className = 'code';
+        tag.textContent = active ? '✓' : code;
+        item.appendChild(label);
+        item.appendChild(tag);
+        item.addEventListener('click', function () {
+          if (window.Nee2Pi18n && typeof window.Nee2Pi18n.setLang === 'function') {
+            window.Nee2Pi18n.setLang(code);
+          } else {
+            try { localStorage.setItem('nee2p_lang', code); } catch (_) {}
+            applyLang(code);
+          }
+          codeSpan.textContent = code;
+          closeMenu();
+        });
+        menu.appendChild(item);
+      });
+      document.body.appendChild(menu);
+      positionMenu();
+      btn.setAttribute('aria-expanded', 'true');
+      document.addEventListener('pointerdown', onDoc, true);
+      document.addEventListener('keydown', onKey);
+      window.addEventListener('resize', positionMenu);
+      window.addEventListener('scroll', positionMenu, true);
+    }
+
+    btn.addEventListener('click', function () {
+      if (menu) closeMenu(); else openMenu();
+    });
+
+    // Keep the pill label in sync with external lang changes.
+    if (window.Nee2Pi18n && typeof window.Nee2Pi18n.onLangChange === 'function') {
+      window.Nee2Pi18n.onLangChange(function (l) { codeSpan.textContent = l; });
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', buildPicker);
+  } else {
+    buildPicker();
+  }
+})();
+</script>
+
 </body>
 </html>
