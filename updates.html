@@ -367,6 +367,90 @@
   <!-- 01 — Latest update -->
   <section>
     <div class="section-num"><span lang="ru">01 — Последнее обновление</span><span lang="en">01 — Latest update</span></div>
+    <h2 class="section-heading"><span lang="ru">v0.9.13 — Критические фиксы + Nee2P Lite + полная локализация</span><span lang="en">v0.9.13 — Critical fixes + Nee2P Lite + complete localization</span></h2>
+
+    <div class="release">
+      <div class="release-meta">
+        <span class="release-version">v0.9.13</span>
+        <span class="release-date"><span lang="ru">май 2026</span><span lang="en">May 2026</span></span>
+        <span class="release-tag"><span lang="ru">фикс</span><span lang="en">fixes</span></span>
+        <span class="release-tag"><span lang="ru">стабильность</span><span lang="en">stability</span></span>
+        <span class="release-tag">i18n</span>
+        <span class="release-tag">lite</span>
+        <span class="release-tag">QA</span>
+      </div>
+      <h3 class="release-title">
+        <span lang="ru">Исправлены два критических бага соединения, добавлен альтернативный P2P-мессенджер без серверов, интерфейс полностью переведён на оба языка</span>
+        <span lang="en">Two critical connection bugs fixed, serverless P2P alternative added, UI fully localized in both languages</span>
+      </h3>
+
+      <h4><span lang="ru">Критические фиксы соединения</span><span lang="en">Critical connection fixes</span></h4>
+      <ul>
+        <li>
+          <span lang="ru">Исправлен баг: второй участник видел первого как «Offline» навсегда — relay теперь отправляет <code>peer-online</code> обоим при подключении</span>
+          <span lang="en">Fixed: the second participant always saw the first as "Offline" — relay now sends <code>peer-online</code> to both on join</span>
+        </li>
+        <li>
+          <span lang="ru"><code>ws-client.js</code> теперь переподключается автоматически с нарастающей задержкой (1→30 сек) и сохраняет очередь неотправленных сообщений до восстановления связи</span>
+          <span lang="en"><code>ws-client.js</code> now auto-reconnects with exponential backoff (1→30 s) and buffers unsent messages until the connection is restored</span>
+        </li>
+        <li>
+          <span lang="ru">Relay возвращает явный код ошибки вместо тихого дропа сообщения</span>
+          <span lang="en">Relay now returns an explicit error code instead of silently dropping messages</span>
+        </li>
+      </ul>
+
+      <h4>Nee2P Lite</h4>
+      <ul>
+        <li>
+          <span lang="ru">Добавлен <a href="lite/nee2p-lite.html"><code>lite/nee2p-lite.html</code></a> — один HTML-файл, никаких серверов Nee2P, P2P через federated WebTorrent trackers</span>
+          <span lang="en">Added <a href="lite/nee2p-lite.html"><code>lite/nee2p-lite.html</code></a> — a single HTML file, zero Nee2P servers, P2P via federated WebTorrent trackers</span>
+        </li>
+        <li>
+          <span lang="ru">Тот же крипто-стек: Argon2id + X25519 + ML-KEM-768 + AES-256-GCM, доменно изолирован</span>
+          <span lang="en">Same crypto stack: Argon2id + X25519 + ML-KEM-768 + AES-256-GCM, domain-separated</span>
+        </li>
+        <li>
+          <span lang="ru">Когда выбирать Lite: цензуроустойчивость, off-grid, максимальный аудит, нет доверия серверам</span>
+          <span lang="en">When to choose Lite: censorship resistance, off-grid use, maximum auditability, zero server trust</span>
+        </li>
+      </ul>
+
+      <h4><span lang="ru">Локализация</span><span lang="en">Localization</span></h4>
+      <ul>
+        <li>
+          <span lang="ru">Интерфейс полностью двуязычен: 322 ключа × RU/EN, ни одной захардкоженной строки</span>
+          <span lang="en">UI fully bilingual: 322 keys × RU/EN, zero hardcoded strings remaining</span>
+        </li>
+        <li>
+          <span lang="ru">Страницы <a href="updates.html">updates.html</a> и <a href="trust.html">trust.html</a> переключаются вместе с языком приложения</span>
+          <span lang="en"><a href="updates.html">updates.html</a> and <a href="trust.html">trust.html</a> now switch with the app language</span>
+        </li>
+      </ul>
+
+      <h4><span lang="ru">Надёжность и безопасность</span><span lang="en">Reliability &amp; security</span></h4>
+      <ul>
+        <li>
+          <span lang="ru">Лимит SSE-соединений с одного IP — защита от перегрузки сервера</span>
+          <span lang="en">Per-IP SSE stream limit — protection against server overload</span>
+        </li>
+        <li>
+          <span lang="ru">PWA теперь кеширует все страницы для работы офлайн (включая <code>/updates</code>, <code>/trust</code>, <code>/admin</code>)</span>
+          <span lang="en">PWA now caches all pages for offline use (including <code>/updates</code>, <code>/trust</code>, <code>/admin</code>)</span>
+        </li>
+        <li>
+          <span lang="ru"><code>manifest.json</code> исправлен для корректной установки на подпути <code>/2Pee/</code></span>
+          <span lang="en"><code>manifest.json</code> fixed for correct PWA install on the <code>/2Pee/</code> subpath</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <hr />
+
+  <!-- 02 — Previous release -->
+  <section>
+    <div class="section-num"><span lang="ru">02 — Предыдущий релиз</span><span lang="en">02 — Previous release</span></div>
     <h2 class="section-heading"><span lang="ru">v0.8.7 — Критический фикс парного соединения + Nee2P Lite</span><span lang="en">v0.8.7 — Critical pairing fix + Nee2P Lite</span></h2>
 
     <div class="release">
@@ -435,9 +519,9 @@
 
   <hr />
 
-  <!-- 02 — Previous release -->
+  <!-- 03 — Version history -->
   <section>
-    <div class="section-num"><span lang="ru">02 — Предыдущий релиз</span><span lang="en">02 — Previous release</span></div>
+    <div class="section-num"><span lang="ru">03 — История версий</span><span lang="en">03 — Version history</span></div>
     <h2 class="section-heading"><span lang="ru">v0.8.5 — Полная локализация + умный Service Worker</span><span lang="en">v0.8.5 — Full localization + smart Service Worker</span></h2>
 
     <div class="release">
@@ -510,15 +594,10 @@
         </li>
       </ul>
     </div>
-  </section>
 
-  <hr />
+    <hr />
 
-  <!-- 03 — Version history -->
-  <section>
-    <div class="section-num"><span lang="ru">03 — История версий</span><span lang="en">03 — Version history</span></div>
-    <h2 class="section-heading"><span lang="ru">v0.8.4 — Двуязычный интерфейс + прозрачность</span><span lang="en">v0.8.4 — Bilingual UI + transparency</span></h2>
-
+    <!-- v0.8.4 -->
     <div class="release">
       <div class="release-meta">
         <span class="release-version">v0.8.4</span>
