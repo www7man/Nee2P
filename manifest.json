@@ -7,8 +7,8 @@
   "orientation": "portrait",
   "background_color": "#06060a",
   "theme_color": "#06060a",
-  "start_url": ".",
-  "scope": ".",
+  "start_url": "/2Pee/",
+  "scope": "/2Pee/",
   "icons": [
     {
       "src": "icons/icon-192.png",
