@@ -623,6 +623,15 @@ window.__nee2pNoble = {
 'use strict';
 
 // ═══════════════════════════════════════════════════════════════
+// Version
+// ═══════════════════════════════════════════════════════════════
+// Bumped by the `lite` agent when a lite-internal release is cut.
+// Independent of monorepo patch counter in version.js / package.json —
+// users care about THIS file's version, not the monorepo's.
+// Format: lite-vMAJOR.MINOR.PATCH (semver inside the lite-prefix).
+const LITE_VERSION = 'lite-0.1.0';
+
+// ═══════════════════════════════════════════════════════════════
 // Tiny helpers
 // ═══════════════════════════════════════════════════════════════
 const enc = new TextEncoder();
@@ -889,11 +898,21 @@ const Crypto = (function() {
 //     { action: 'announce', info_hash, peer_id, to_peer_id, offer_id, answer }
 //
 // info_hash, peer_id, offer_id are 20-byte binary strings (each char = 1 byte).
+// Pool of public WebTorrent WSS trackers — discovery layer.
+// Multi-tracker is intentional: if one drops, others carry. Replace any
+// dead tracker by probing candidates first (see lite/build/probe-trackers.js
+// or run inline in browser console — see lite/README.md "tracker pool").
+//
+// Verified 2026-05-28: each accepts WebSocket announce + returns JSON
+// with action:"announce", info_hash, complete/incomplete counts.
+//
+// Replaced wss://tracker.files.fm:7073/announce (offline since 2026-05-28)
+// with wss://tracker.novage.com.ua (probed: open 737ms, announce 805ms).
 const TRACKERS = [
   'wss://tracker.openwebtorrent.com',
   'wss://tracker.btorrent.xyz',
   'wss://tracker.webtorrent.dev',
-  'wss://tracker.files.fm:7073/announce',
+  'wss://tracker.novage.com.ua',
 ];
 
 class TrackerSwarm {
@@ -1600,7 +1619,8 @@ function renderWelcome() {
 
   col.appendChild(el('div', null,
     el('div', { class: 'logo' }, 'Nee2P.', el('span', { class: 'lite' }, 'lite')),
-    el('div', { class: 'tagline' }, 'один файл · zero server · post-quantum')
+    el('div', { class: 'tagline' }, 'один файл · zero server · post-quantum'),
+    el('div', { class: 'tagline', style: { fontSize: '11px', opacity: '0.5', fontFamily: 'var(--ff-mono)', marginTop: '2px' } }, LITE_VERSION)
   ));
 
   const inputWrap = el('div', null);
@@ -1727,7 +1747,7 @@ function renderChat() {
   header.appendChild(el('div', { class: 'dot online' }));
   header.appendChild(el('div', { style: { flex: '1' } },
     el('div', { class: 'title' }, 'Nee2P Lite'),
-    el('div', { class: 'sub' }, 'PQ-зашифровано · peer-to-peer')
+    el('div', { class: 'sub' }, 'PQ-зашифровано · peer-to-peer · ' + LITE_VERSION)
   ));
   header.appendChild(el('button', {
     class: 'icon-btn',

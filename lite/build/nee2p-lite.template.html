@@ -1,0 +1,1589 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<title>Nee2P Lite</title>
+<style>
+  :root {
+    --bg: #0a0b0f;
+    --bg-elev: #14161d;
+    --bg-elev-2: #1c1f29;
+    --border: #2a2e3a;
+    --text: #e8eaf0;
+    --text-dim: #9aa0b0;
+    --text-faint: #5a6070;
+    --accent: #7c5cff;
+    --accent-dim: #5a3eaa;
+    --ok: #4ade80;
+    --warn: #fbbf24;
+    --err: #f87171;
+    --ff-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --ff-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; width: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--ff-ui);
+    font-size: 15px;
+    line-height: 1.45;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #app { height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
+
+  /* ── Screen layouts ─────────────────────────────────────── */
+  .screen { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .screen-pad {
+    padding: max(env(safe-area-inset-top), 24px) 24px max(env(safe-area-inset-bottom), 24px);
+  }
+  .center-col {
+    max-width: 480px;
+    margin: 0 auto;
+    width: 100%;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 20px;
+  }
+
+  /* ── Logo ───────────────────────────────────────────────── */
+  .logo {
+    font-size: 36px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  .logo .lite {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--accent);
+    margin-left: 6px;
+    vertical-align: super;
+    letter-spacing: 0;
+  }
+  .tagline {
+    color: var(--text-dim);
+    font-size: 14px;
+    margin-top: 4px;
+  }
+
+  /* ── Buttons ────────────────────────────────────────────── */
+  .btn {
+    appearance: none;
+    border: 1px solid var(--border);
+    background: var(--bg-elev);
+    color: var(--text);
+    font: inherit;
+    padding: 14px 18px;
+    border-radius: 12px;
+    cursor: pointer;
+    min-height: 48px;
+    transition: background 0.15s, border-color 0.15s;
+    font-weight: 500;
+  }
+  .btn:hover:not(:disabled) { background: var(--bg-elev-2); }
+  .btn:active:not(:disabled) { transform: scale(0.985); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-dim); }
+  .btn-row { display: flex; gap: 10px; }
+  .btn-row .btn { flex: 1; }
+
+  /* ── Inputs ─────────────────────────────────────────────── */
+  .input, .textarea {
+    appearance: none;
+    width: 100%;
+    border: 1px solid var(--border);
+    background: var(--bg-elev);
+    color: var(--text);
+    font: inherit;
+    padding: 14px 16px;
+    border-radius: 12px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .input:focus, .textarea:focus { border-color: var(--accent); }
+  .textarea { resize: none; font-family: var(--ff-mono); font-size: 14px; line-height: 1.5; min-height: 84px; }
+  .label { font-size: 13px; color: var(--text-dim); margin-bottom: 6px; display: block; }
+
+  /* ── Status panel ───────────────────────────────────────── */
+  .status-panel {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-family: var(--ff-mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    max-height: 220px;
+    overflow-y: auto;
+  }
+  .status-line { display: flex; gap: 8px; align-items: baseline; }
+  .status-line .tag { color: var(--text-faint); width: 6em; flex-shrink: 0; }
+  .status-line .val { color: var(--text); }
+  .status-line.ok .val { color: var(--ok); }
+  .status-line.warn .val { color: var(--warn); }
+  .status-line.err .val { color: var(--err); }
+
+  /* ── Chat ───────────────────────────────────────────────── */
+  .chat-screen { display: flex; flex-direction: column; height: 100%; }
+  .chat-header {
+    padding: max(env(safe-area-inset-top), 12px) 16px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg-elev);
+  }
+  .chat-header .title { font-weight: 600; flex: 1; }
+  .chat-header .sub { font-size: 12px; color: var(--text-dim); }
+  .chat-header .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); }
+  .chat-header .dot.online { background: var(--ok); box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.15); }
+  .icon-btn {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .icon-btn:hover { background: var(--bg-elev-2); color: var(--text); }
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .msg {
+    max-width: 75%;
+    padding: 10px 14px;
+    border-radius: 16px;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    line-height: 1.4;
+    font-size: 15px;
+  }
+  .msg.them {
+    align-self: flex-start;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+  }
+  .msg.me {
+    align-self: flex-end;
+    background: var(--accent);
+    color: white;
+    border-bottom-right-radius: 4px;
+  }
+  .msg.sys {
+    align-self: center;
+    background: transparent;
+    color: var(--text-faint);
+    font-size: 12px;
+    padding: 4px 10px;
+    font-style: italic;
+  }
+  .input-bar {
+    display: flex;
+    gap: 8px;
+    padding: 10px 12px max(env(safe-area-inset-bottom), 12px);
+    border-top: 1px solid var(--border);
+    background: var(--bg-elev);
+  }
+  .input-bar .input {
+    border-radius: 22px;
+    padding: 10px 16px;
+  }
+  .send-btn {
+    appearance: none;
+    border: none;
+    background: var(--accent);
+    color: white;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Modal ──────────────────────────────────────────────── */
+  .modal-bg {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex; align-items: flex-end; justify-content: center;
+    z-index: 100;
+    animation: fade 0.15s ease-out;
+  }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  .modal {
+    background: var(--bg-elev);
+    border-radius: 20px 20px 0 0;
+    padding: 24px 20px max(env(safe-area-inset-bottom), 24px);
+    max-width: 480px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    animation: slideup 0.2s ease-out;
+  }
+  @keyframes slideup { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal h2 { font-size: 18px; margin-bottom: 12px; }
+  .modal p { color: var(--text-dim); font-size: 14px; margin-bottom: 16px; }
+  .fp-words {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 16px 0;
+  }
+  .fp-word {
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 8px;
+    text-align: center;
+    font-family: var(--ff-mono);
+    font-size: 13px;
+  }
+  .fp-word .num { color: var(--text-faint); margin-right: 4px; }
+
+  /* ── Phase banner ───────────────────────────────────────── */
+  .phase-banner {
+    padding: 16px 18px;
+    border-radius: 12px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+  }
+  .phase-banner.ok  { border-left-color: var(--ok);    background: rgba(74, 222, 128, 0.06); }
+  .phase-banner.warn { border-left-color: var(--warn); background: rgba(251, 191, 36, 0.06); }
+  .phase-banner.err  { border-left-color: var(--err);  background: rgba(248, 113, 113, 0.06); }
+  .phase-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .phase-hint  { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+  .phase-hint code { background: var(--bg-elev-2); padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+  .phase-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .phase-actions .btn { padding: 8px 14px; min-height: 36px; font-size: 13px; }
+
+  /* ── Spinner ────────────────────────────────────────────── */
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .small-link {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+    text-decoration-color: var(--text-faint);
+  }
+  .small-link:hover { color: var(--text); }
+
+  /* ── Mobile tweaks ──────────────────────────────────────── */
+  @media (max-width: 480px) {
+    .screen-pad { padding-left: 16px; padding-right: 16px; }
+    .logo { font-size: 30px; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗
+     ║  VENDOR LIBRARIES (inlined for single-file distribution)    ║
+     ║  These are copied verbatim from vendor/ in the main repo.   ║
+     ║  Hashes can be verified against the main project.           ║
+     ╚══════════════════════════════════════════════════════════════╝ -->
+
+<script>/* __VENDOR_INLINE__ argon2 */</script>
+<script>/* __VENDOR_INLINE__ bip39 */</script>
+<script type="module">
+/* __VENDOR_INLINE__ mlkem */
+// Bind ES module exports to globals so non-module scripts can use them.
+// The export line at end of bundle is replaced; here we manually expose.
+window.__nee2pMlKem = { MlKem768: (typeof J !== 'undefined' ? J : null) };
+</script>
+<script type="module">
+/* __VENDOR_INLINE__ noble */
+window.__nee2pNoble = {
+  x25519: (typeof Qn !== 'undefined' ? Qn : null),
+  ed25519: (typeof Pn !== 'undefined' ? Pn : null),
+};
+</script>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗
+     ║  Nee2P Lite — main application code                         ║
+     ╚══════════════════════════════════════════════════════════════╝ -->
+<script>
+(function() {
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════
+// Version
+// ═══════════════════════════════════════════════════════════════
+// Bumped by the `lite` agent when a lite-internal release is cut.
+// Independent of monorepo patch counter in version.js / package.json —
+// users care about THIS file's version, not the monorepo's.
+// Format: lite-vMAJOR.MINOR.PATCH (semver inside the lite-prefix).
+const LITE_VERSION = 'lite-0.1.0';
+
+// ═══════════════════════════════════════════════════════════════
+// Tiny helpers
+// ═══════════════════════════════════════════════════════════════
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+
+const $ = (sel) => document.querySelector(sel);
+const el = (tag, attrs, ...children) => {
+  const node = document.createElement(tag);
+  if (attrs) for (const k in attrs) {
+    if (k === 'class') node.className = attrs[k];
+    else if (k === 'style') Object.assign(node.style, attrs[k]);
+    else if (k.startsWith('on')) node.addEventListener(k.slice(2), attrs[k]);
+    else node.setAttribute(k, attrs[k]);
+  }
+  for (const c of children) {
+    if (c == null) continue;
+    node.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+  }
+  return node;
+};
+
+function bytesToHex(b) {
+  let s = '';
+  for (let i = 0; i < b.length; i++) s += b[i].toString(16).padStart(2, '0');
+  return s;
+}
+function bytesToBinStr(b) {
+  let s = '';
+  for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+  return s;
+}
+function binStrToBytes(s) {
+  const b = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) b[i] = s.charCodeAt(i) & 0xff;
+  return b;
+}
+function randBytes(n) { return crypto.getRandomValues(new Uint8Array(n)); }
+
+// ═══════════════════════════════════════════════════════════════
+// Crypto layer
+// ═══════════════════════════════════════════════════════════════
+const Crypto = (function() {
+  let kdfMode = 'unknown';
+  let kemAvailable = false;
+  let x25519Source = 'unknown';
+
+  // Argon2id from phrase. Returns 32-byte master key + AES-GCM key.
+  // Mirrors crypto.js deriveKey() — same params for compat with main project.
+  async function deriveMasterKey(phrase) {
+    const phraseStr = String(phrase || '');
+    const argon = window.argon2 || window.Argon2;
+    let raw = null;
+
+    if (argon && typeof argon.hash === 'function') {
+      try {
+        const ArgonType = (argon.ArgonType && argon.ArgonType.Argon2id != null) ? argon.ArgonType.Argon2id : 2;
+        const r = await argon.hash({
+          pass: phraseStr,
+          salt: 'nee2p-lite.v1.argon2id:' + phraseStr,
+          type: ArgonType,
+          time: 3,
+          mem: 65536,
+          parallelism: 1,
+          hashLen: 32,
+        });
+        if (r && r.hash && r.hash.length === 32) {
+          raw = new Uint8Array(r.hash);
+          kdfMode = 'argon2id';
+        }
+      } catch (e) {
+        console.warn('argon2 failed, falling back to PBKDF2:', e);
+      }
+    }
+
+    if (!raw) {
+      const baseKey = await crypto.subtle.importKey(
+        'raw', enc.encode(phraseStr), { name: 'PBKDF2' }, false, ['deriveBits']
+      );
+      const bits = await crypto.subtle.deriveBits(
+        { name: 'PBKDF2', salt: enc.encode('nee2p-lite.v1.pbkdf2:' + phraseStr),
+          iterations: 600000, hash: 'SHA-256' },
+        baseKey, 256
+      );
+      raw = new Uint8Array(bits);
+      kdfMode = 'pbkdf2';
+    }
+
+    return raw;
+  }
+
+  // HKDF-SHA256 for key separation
+  async function hkdf(ikm, salt, info, length) {
+    const baseKey = await crypto.subtle.importKey('raw', ikm, 'HKDF', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits(
+      { name: 'HKDF', hash: 'SHA-256',
+        salt: salt instanceof Uint8Array ? salt : enc.encode(salt),
+        info: info instanceof Uint8Array ? info : enc.encode(info) },
+      baseKey, length * 8
+    );
+    return new Uint8Array(bits);
+  }
+
+  async function hmacSha256(key, data) {
+    const k = await crypto.subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const sig = await crypto.subtle.sign('HMAC', k, data instanceof Uint8Array ? data : enc.encode(data));
+    return new Uint8Array(sig);
+  }
+
+  async function sha1(data) {
+    const buf = await crypto.subtle.digest('SHA-1', data instanceof Uint8Array ? data : enc.encode(data));
+    return new Uint8Array(buf);
+  }
+  async function sha256(data) {
+    const buf = await crypto.subtle.digest('SHA-256', data instanceof Uint8Array ? data : enc.encode(data));
+    return new Uint8Array(buf);
+  }
+
+  // ─── X25519 ─────────────────────────────────────────────
+  // Prefer WebCrypto Subtle (Chrome 133+, Safari 18.4+, Firefox 130+).
+  // Fall back to noble bundle exposed as window.__nee2pNoble.x25519.
+  let _subtleX25519 = null;
+  async function probeSubtleX25519() {
+    if (_subtleX25519 !== null) return _subtleX25519;
+    try {
+      const kp = await crypto.subtle.generateKey({ name: 'X25519' }, true, ['deriveBits']);
+      _subtleX25519 = !!(kp && kp.publicKey);
+    } catch { _subtleX25519 = false; }
+    return _subtleX25519;
+  }
+
+  async function generateX25519() {
+    if (await probeSubtleX25519()) {
+      const kp = await crypto.subtle.generateKey({ name: 'X25519' }, true, ['deriveBits']);
+      const pubRaw = new Uint8Array(await crypto.subtle.exportKey('raw', kp.publicKey));
+      x25519Source = 'subtle';
+      return { pub: pubRaw, priv: { kind: 'subtle', priv: kp.privateKey } };
+    }
+    const noble = window.__nee2pNoble && window.__nee2pNoble.x25519;
+    if (noble && typeof noble.getPublicKey === 'function') {
+      const priv = (noble.utils && typeof noble.utils.randomSecretKey === 'function')
+        ? noble.utils.randomSecretKey()
+        : (noble.utils && typeof noble.utils.randomPrivateKey === 'function')
+          ? noble.utils.randomPrivateKey()
+          : randBytes(32);
+      const pub = noble.getPublicKey(priv);
+      x25519Source = 'noble';
+      return { pub: new Uint8Array(pub), priv: { kind: 'noble', priv: new Uint8Array(priv) } };
+    }
+    x25519Source = 'unavailable';
+    throw new Error('No X25519 implementation available');
+  }
+
+  async function x25519Ecdh(privObj, peerPubBytes) {
+    if (privObj.kind === 'subtle') {
+      const peerKey = await crypto.subtle.importKey('raw', peerPubBytes, { name: 'X25519' }, true, []);
+      const bits = await crypto.subtle.deriveBits({ name: 'X25519', public: peerKey }, privObj.priv, 256);
+      return new Uint8Array(bits);
+    }
+    if (privObj.kind === 'noble') {
+      const noble = window.__nee2pNoble && window.__nee2pNoble.x25519;
+      return new Uint8Array(noble.getSharedSecret(privObj.priv, peerPubBytes));
+    }
+    throw new Error('Unknown X25519 privkey kind');
+  }
+
+  // ─── ML-KEM-768 ──────────────────────────────────────────
+  async function generateMlKem() {
+    const mod = window.__nee2pMlKem;
+    if (!mod || !mod.MlKem768) {
+      kemAvailable = false;
+      throw new Error('ML-KEM-768 not available');
+    }
+    const kem = new mod.MlKem768();
+    const [pk, sk] = await kem.generateKeyPair();
+    kemAvailable = true;
+    return { pub: new Uint8Array(pk), priv: { kind: 'mlkem768', kem, sk: new Uint8Array(sk) } };
+  }
+
+  async function mlKemEncap(peerPub) {
+    const mod = window.__nee2pMlKem;
+    const sender = new mod.MlKem768();
+    const [ct, ss] = await sender.encap(peerPub instanceof Uint8Array ? peerPub : new Uint8Array(peerPub));
+    return { sharedSecret: new Uint8Array(ss), ct: new Uint8Array(ct) };
+  }
+
+  async function mlKemDecap(privObj, ctBytes) {
+    if (privObj.kind !== 'mlkem768') throw new Error('Bad ML-KEM privkey');
+    const ct = ctBytes instanceof Uint8Array ? ctBytes : new Uint8Array(ctBytes);
+    const ss = await privObj.kem.decap(ct, privObj.sk);
+    return new Uint8Array(ss);
+  }
+
+  // ─── AES-GCM ─────────────────────────────────────────────
+  async function importAesKey(rawKey) {
+    return crypto.subtle.importKey('raw', rawKey, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  }
+  async function aesEncrypt(key, plaintext) {
+    const iv = randBytes(12);
+    const ctBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(String(plaintext)));
+    return { iv, ct: new Uint8Array(ctBuf) };
+  }
+  async function aesDecrypt(key, iv, ct) {
+    const ptBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+    return dec.decode(ptBuf);
+  }
+
+  // ─── Safety fingerprint (BIP-39 12 words) ────────────────
+  async function safetyFingerprint(myPub, theirPub) {
+    // sort so both sides compute the same fingerprint
+    const a = bytesToHex(myPub);
+    const b = bytesToHex(theirPub);
+    const concat = a < b ? (myPub + theirPub) : (theirPub + myPub);
+    const combined = new Uint8Array(myPub.length + theirPub.length);
+    if (a < b) { combined.set(myPub, 0); combined.set(theirPub, myPub.length); }
+    else      { combined.set(theirPub, 0); combined.set(myPub, theirPub.length); }
+    const hash = await sha256(combined);
+    const words = window.Nee2PBip39English || [];
+    if (!words.length) return ['(bip39 unavailable)'];
+    const out = [];
+    // 12 words: each word = 11 bits, but we just use first 22 bytes → 12 words via byte pairs
+    // Simple scheme: take 12 bytes, map each byte to word via byte % 2048 (loses some entropy but OK for fingerprint)
+    // Better: 12 words × 11 bits = 132 bits = 16.5 bytes. Use first 17 bytes packed.
+    for (let i = 0; i < 12; i++) {
+      const bitOffset = i * 11;
+      const byteOffset = Math.floor(bitOffset / 8);
+      const shift = bitOffset % 8;
+      const v = ((hash[byteOffset] << 16) | (hash[byteOffset+1] << 8) | hash[byteOffset+2]);
+      const w = (v >> (24 - shift - 11)) & 0x7ff;
+      out.push(words[w]);
+    }
+    return out;
+  }
+
+  return {
+    deriveMasterKey, hkdf, hmacSha256, sha1, sha256,
+    generateX25519, x25519Ecdh,
+    generateMlKem, mlKemEncap, mlKemDecap,
+    importAesKey, aesEncrypt, aesDecrypt,
+    safetyFingerprint,
+    get kdfMode() { return kdfMode; },
+    get kemAvailable() { return kemAvailable; },
+    get x25519Source() { return x25519Source; },
+  };
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// WebTorrent tracker client
+// ═══════════════════════════════════════════════════════════════
+//
+// Protocol: WebTorrent uses WebSocket trackers (BEP doesn't cover it, but it's
+// a de-facto standard). Wire format:
+//
+//   Send announce with offers:
+//     { action: 'announce', info_hash, peer_id, uploaded:0, downloaded:0,
+//       left:0, numwant:5, offers: [{offer_id, offer:{type,sdp}}] }
+//
+//   Receive someone's offer:
+//     { action: 'announce', info_hash, peer_id, offer_id, offer:{type,sdp} }
+//   → respond with answer:
+//     { action: 'announce', info_hash, peer_id, to_peer_id, offer_id,
+//       answer: {type,sdp} }
+//
+//   Receive answer to our offer:
+//     { action: 'announce', info_hash, peer_id, to_peer_id, offer_id, answer }
+//
+// info_hash, peer_id, offer_id are 20-byte binary strings (each char = 1 byte).
+// Pool of public WebTorrent WSS trackers — discovery layer.
+// Multi-tracker is intentional: if one drops, others carry. Replace any
+// dead tracker by probing candidates first (see lite/build/probe-trackers.js
+// or run inline in browser console — see lite/README.md "tracker pool").
+//
+// Verified 2026-05-28: each accepts WebSocket announce + returns JSON
+// with action:"announce", info_hash, complete/incomplete counts.
+//
+// Replaced wss://tracker.files.fm:7073/announce (offline since 2026-05-28)
+// with wss://tracker.novage.com.ua (probed: open 737ms, announce 805ms).
+const TRACKERS = [
+  'wss://tracker.openwebtorrent.com',
+  'wss://tracker.btorrent.xyz',
+  'wss://tracker.webtorrent.dev',
+  'wss://tracker.novage.com.ua',
+];
+
+class TrackerSwarm {
+  constructor(infoHash20, peerId20, onOffer, onAnswer, log) {
+    this.infoHash = bytesToBinStr(infoHash20);
+    this.peerId = bytesToBinStr(peerId20);
+    this.onOffer = onOffer;     // ({fromPeerId, offerId, sdp})
+    this.onAnswer = onAnswer;   // ({fromPeerId, offerId, sdp})
+    this.log = log || (() => {});
+    this.conns = [];
+    this.connected = 0;
+  }
+
+  start() {
+    for (const url of TRACKERS) this._connectOne(url);
+  }
+
+  _connectOne(url) {
+    let ws;
+    try { ws = new WebSocket(url); }
+    catch (e) { this.log('tracker', `${url}: ${e.message}`, 'err'); return; }
+
+    const entry = { url, ws, alive: false, reconnectTimer: null };
+    this.conns.push(entry);
+
+    ws.onopen = () => {
+      entry.alive = true;
+      this.connected++;
+      this.log('tracker', `${shortHost(url)} ✓`, 'ok');
+    };
+    ws.onerror = () => { this.log('tracker', `${shortHost(url)} ✗`, 'warn'); };
+    ws.onclose = () => {
+      if (entry.alive) this.connected--;
+      entry.alive = false;
+      this.log('tracker', `${shortHost(url)} closed`, 'warn');
+    };
+    ws.onmessage = (evt) => this._onMessage(entry, evt);
+  }
+
+  _onMessage(entry, evt) {
+    let msg;
+    try { msg = JSON.parse(evt.data); } catch { return; }
+    if (!msg || msg.action !== 'announce') return;
+    // ignore messages for other info-hashes (shouldn't happen, but tracker may forward)
+    if (msg.info_hash && msg.info_hash !== this.infoHash) return;
+    // Ignore our own peer_id echoes
+    if (msg.peer_id === this.peerId) return;
+
+    if (msg.offer && msg.offer.sdp) {
+      this.onOffer({
+        fromPeerId: msg.peer_id,
+        offerId: msg.offer_id,
+        sdp: msg.offer.sdp,
+        viaTracker: entry,
+      });
+    } else if (msg.answer && msg.answer.sdp) {
+      this.onAnswer({
+        fromPeerId: msg.peer_id,
+        offerId: msg.offer_id,
+        sdp: msg.answer.sdp,
+        viaTracker: entry,
+      });
+    }
+  }
+
+  // Broadcast our offer to ALL connected trackers — the first peer to answer wins,
+  // others get dropped silently.
+  announceOffer(offerId20, sdp) {
+    const offerIdStr = bytesToBinStr(offerId20);
+    const payload = JSON.stringify({
+      action: 'announce',
+      info_hash: this.infoHash,
+      peer_id: this.peerId,
+      uploaded: 0,
+      downloaded: 0,
+      left: 0,
+      numwant: 5,
+      offers: [{ offer_id: offerIdStr, offer: { type: 'offer', sdp } }],
+    });
+    let sent = 0;
+    for (const c of this.conns) {
+      if (c.alive && c.ws.readyState === WebSocket.OPEN) {
+        try { c.ws.send(payload); sent++; } catch {}
+      }
+    }
+    return sent;
+  }
+
+  // Reply to someone's offer with our answer, sent ONLY to the tracker that
+  // forwarded it (otherwise other trackers reject "to_peer_id" they don't know).
+  sendAnswer(viaTrackerEntry, toPeerId, offerId, sdp) {
+    const payload = JSON.stringify({
+      action: 'announce',
+      info_hash: this.infoHash,
+      peer_id: this.peerId,
+      to_peer_id: toPeerId,
+      offer_id: offerId,
+      answer: { type: 'answer', sdp },
+    });
+    try { viaTrackerEntry.ws.send(payload); return true; } catch { return false; }
+  }
+
+  close() {
+    for (const c of this.conns) {
+      try { c.ws.close(); } catch {}
+    }
+    this.conns = [];
+  }
+}
+
+function shortHost(url) {
+  try { return new URL(url).host.replace(/^tracker\./, ''); }
+  catch { return url; }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// WebRTC peer with PQ-handshake + PSK auth
+// ═══════════════════════════════════════════════════════════════
+const STUN = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun.cloudflare.com:3478' },
+];
+
+class P2PSession {
+  constructor({ psk, role, log }) {
+    this.psk = psk;             // 32-byte PSK derived from phrase
+    this.role = role;           // 'initiator' or 'responder' (informational)
+    this.log = log || (() => {});
+    this.pc = null;
+    this.dc = null;
+    this.onMessage = null;      // (text) => {}
+    this.onOpen = null;         // () => {}
+    this.onClose = null;        // () => {}
+    this.onKeys = null;         // ({ myKemPub, theirKemPub, myX25519Pub, theirX25519Pub, sessionKey }) => {}
+    this.sessionKey = null;     // CryptoKey for AES-GCM after handshake
+    this.handshakeState = 'pending';
+    this._x25519 = null;
+    this._mlkem = null;
+    this._theirX25519Pub = null;
+    this._theirKemPub = null;
+    this._myKemPub = null;
+    this._myX25519Pub = null;
+  }
+
+  // ─── PSK MAC: protects SDP from tracker MITM ─────────────
+  // The signed payload is the SDP text + a 16-byte nonce supplied alongside.
+  // Tracker passes our extra fields through transparently.
+  async signSdp(sdpText) {
+    const nonce = randBytes(16);
+    const data = new Uint8Array(sdpText.length + nonce.length);
+    data.set(enc.encode(sdpText), 0);
+    data.set(nonce, sdpText.length);
+    const mac = await Crypto.hmacSha256(this.psk, data);
+    return {
+      nonce: bytesToBinStr(nonce),
+      mac: bytesToBinStr(mac),
+    };
+  }
+  async verifySdp(sdpText, nonceBinStr, macBinStr) {
+    if (!nonceBinStr || !macBinStr) return false;
+    const nonce = binStrToBytes(nonceBinStr);
+    if (nonce.length !== 16) return false;
+    const expectedMac = binStrToBytes(macBinStr);
+    const data = new Uint8Array(sdpText.length + nonce.length);
+    data.set(enc.encode(sdpText), 0);
+    data.set(nonce, sdpText.length);
+    const actual = await Crypto.hmacSha256(this.psk, data);
+    if (actual.length !== expectedMac.length) return false;
+    let diff = 0;
+    for (let i = 0; i < actual.length; i++) diff |= actual[i] ^ expectedMac[i];
+    return diff === 0;
+  }
+
+  // ─── WebRTC setup ────────────────────────────────────────
+  _setupPc() {
+    this.pc = new RTCPeerConnection({ iceServers: STUN });
+    this.pc.oniceconnectionstatechange = () => {
+      const s = this.pc.iceConnectionState;
+      const level = (s === 'connected' || s === 'completed') ? 'ok'
+                  : (s === 'failed' || s === 'disconnected') ? 'err' : '';
+      this.log('webrtc', 'ice: ' + s, level);
+      if (this.onIceState) this.onIceState(s);
+      if (['failed', 'disconnected', 'closed'].includes(s)) {
+        if (this.onClose) this.onClose(s);
+      }
+    };
+    this.pc.onconnectionstatechange = () => {
+      const s = this.pc.connectionState;
+      const level = s === 'connected' ? 'ok' : (s === 'failed' ? 'err' : '');
+      this.log('webrtc', 'pc: ' + s, level);
+    };
+    this.pc.onsignalingstatechange = () => {
+      this.log('webrtc', 'sig: ' + this.pc.signalingState);
+    };
+    this._candCount = 0;
+    this.pc.onicecandidate = (evt) => {
+      if (evt.candidate) {
+        this._candCount++;
+        const c = evt.candidate.candidate || '';
+        const typ = (c.match(/typ (\w+)/) || [, '?'])[1];
+        if (this._candCount <= 6) this.log('webrtc', `cand ${this._candCount}: ${typ}`);
+      } else {
+        this.log('webrtc', `gathered ${this._candCount} candidates`, this._candCount > 0 ? 'ok' : 'warn');
+      }
+    };
+  }
+
+  // Initiator creates DataChannel; responder waits for ondatachannel.
+  async createOffer() {
+    this._setupPc();
+    this.dc = this.pc.createDataChannel('nee2p', { ordered: true });
+    this._wireDc();
+    const offer = await this.pc.createOffer();
+    await this.pc.setLocalDescription(offer);
+    // Wait for ICE gathering (no trickle for simplicity in MVP)
+    await this._awaitIceComplete();
+    return this.pc.localDescription.sdp;
+  }
+
+  async createAnswer(remoteSdp) {
+    this._setupPc();
+    this.pc.ondatachannel = (evt) => {
+      this.dc = evt.channel;
+      this._wireDc();
+    };
+    await this.pc.setRemoteDescription({ type: 'offer', sdp: remoteSdp });
+    const answer = await this.pc.createAnswer();
+    await this.pc.setLocalDescription(answer);
+    await this._awaitIceComplete();
+    return this.pc.localDescription.sdp;
+  }
+
+  async acceptAnswer(remoteSdp) {
+    await this.pc.setRemoteDescription({ type: 'answer', sdp: remoteSdp });
+  }
+
+  _awaitIceComplete() {
+    return new Promise((resolve) => {
+      if (this.pc.iceGatheringState === 'complete') return resolve();
+      const check = () => {
+        if (this.pc.iceGatheringState === 'complete') {
+          this.pc.removeEventListener('icegatheringstatechange', check);
+          resolve();
+        }
+      };
+      this.pc.addEventListener('icegatheringstatechange', check);
+      // safety timeout — 8s gives STUN time even on slow networks
+      setTimeout(resolve, 8000);
+    });
+  }
+
+  _wireDc() {
+    this.dc.binaryType = 'arraybuffer';
+    this.dc.onopen = () => {
+      this.log('webrtc', 'DataChannel open ✓', 'ok');
+      this._startPqHandshake();
+    };
+    this.dc.onclose = () => {
+      this.log('webrtc', 'DataChannel closed');
+      if (this.onClose) this.onClose();
+    };
+    this.dc.onmessage = (evt) => this._onDcMessage(evt.data);
+  }
+
+  // ─── PQ handshake over the DataChannel ────────────────────
+  // 1) Both sides generate X25519 + ML-KEM ephemeral keypairs.
+  // 2) Both send: { t:'hello', x25519Pub, kemPub }
+  // 3) On receiving peer hello:
+  //    - encapsulate against peer's kemPub → ct + ssSender
+  //    - send: { t:'kem', ct }
+  //    - ECDH against peer's x25519Pub → ssECDH
+  // 4) On receiving peer's kem ct: decap → ssReceiver
+  // 5) Both sides: session_key = HKDF(ssECDH || ssSender || ssReceiver || psk,
+  //                                    salt=info_hash, info='nee2p-lite.v1.session')
+  // 6) Send 'ready' (encrypted with session_key). Both must receive 'ready' to flip to chat state.
+  async _startPqHandshake() {
+    try {
+      this._x25519 = await Crypto.generateX25519();
+      this._mlkem = await Crypto.generateMlKem();
+      this._myX25519Pub = this._x25519.pub;
+      this._myKemPub = this._mlkem.pub;
+      this._send({
+        t: 'hello',
+        x25519: bytesToBinStr(this._x25519.pub),
+        kem: bytesToBinStr(this._mlkem.pub),
+      });
+      this.handshakeState = 'sent-hello';
+      this.log('handshake', 'hello sent (X25519+MLKEM)', 'ok');
+    } catch (e) {
+      this.log('handshake', 'init failed: ' + e.message, 'err');
+    }
+  }
+
+  _send(obj) {
+    if (this.dc && this.dc.readyState === 'open') {
+      this.dc.send(JSON.stringify(obj));
+    }
+  }
+
+  async _onDcMessage(data) {
+    let raw = data;
+    if (data instanceof ArrayBuffer) raw = dec.decode(new Uint8Array(data));
+    // pre-handshake: plain JSON. post-handshake: encrypted envelopes.
+    let msg;
+    try { msg = JSON.parse(raw); } catch { return; }
+
+    if (msg.t === 'hello' && this.handshakeState === 'sent-hello') {
+      try {
+        this._theirX25519Pub = binStrToBytes(msg.x25519);
+        this._theirKemPub = binStrToBytes(msg.kem);
+        this.log('handshake', 'peer hello received', 'ok');
+        // Compute ECDH
+        const ssEcdh = await Crypto.x25519Ecdh(this._x25519.priv, this._theirX25519Pub);
+        // Encap against peer's KEM pubkey
+        const { sharedSecret: ssSender, ct } = await Crypto.mlKemEncap(this._theirKemPub);
+        this._ssSender = ssSender;
+        this._ssEcdh = ssEcdh;
+        this._send({ t: 'kem', ct: bytesToBinStr(ct) });
+        this.handshakeState = 'sent-kem';
+        this.log('handshake', 'KEM ciphertext sent', 'ok');
+        await this._maybeDeriveKey();
+      } catch (e) {
+        this.log('handshake', 'hello-handler failed: ' + e.message, 'err');
+      }
+      return;
+    }
+    if (msg.t === 'kem') {
+      try {
+        const ct = binStrToBytes(msg.ct);
+        this._ssReceiver = await Crypto.mlKemDecap(this._mlkem.priv, ct);
+        this.log('handshake', 'KEM ciphertext received, decap ✓', 'ok');
+        await this._maybeDeriveKey();
+      } catch (e) {
+        this.log('handshake', 'kem-handler failed: ' + e.message, 'err');
+      }
+      return;
+    }
+    if (msg.t === 'ready') {
+      this.handshakeState = 'ready';
+      this.log('handshake', 'peer ready, chat unlocked ✓', 'ok');
+      if (this.onOpen) this.onOpen();
+      return;
+    }
+    if (msg.t === 'msg' && this.sessionKey) {
+      try {
+        const iv = binStrToBytes(msg.iv);
+        const ct = binStrToBytes(msg.ct);
+        const text = await Crypto.aesDecrypt(this.sessionKey, iv, ct);
+        if (this.onMessage) this.onMessage(text);
+      } catch (e) {
+        this.log('chat', 'decrypt failed: ' + e.message, 'err');
+      }
+    }
+  }
+
+  async _maybeDeriveKey() {
+    if (!this._ssEcdh || !this._ssSender || !this._ssReceiver) return;
+    if (this.sessionKey) return; // already derived
+
+    // IKM = ECDH || ssSender || ssReceiver || PSK
+    // (PSK already authenticated SDP, but mixing here defends against
+    //  classical attacker who somehow ran successful handshake without phrase)
+    const ikm = new Uint8Array(
+      this._ssEcdh.length + this._ssSender.length + this._ssReceiver.length + this.psk.length
+    );
+    let off = 0;
+    ikm.set(this._ssEcdh, off); off += this._ssEcdh.length;
+    ikm.set(this._ssSender, off); off += this._ssSender.length;
+    ikm.set(this._ssReceiver, off); off += this._ssReceiver.length;
+    ikm.set(this.psk, off);
+
+    const rawKey = await Crypto.hkdf(ikm, this.psk /* salt */, 'nee2p-lite.v1.session', 32);
+    this.sessionKey = await Crypto.importAesKey(rawKey);
+    this.log('handshake', 'session key derived (HKDF over X25519+MLKEM+PSK) ✓', 'ok');
+    this._send({ t: 'ready' });
+    if (this.onKeys) {
+      this.onKeys({
+        myKemPub: this._myKemPub,
+        theirKemPub: this._theirKemPub,
+        myX25519Pub: this._myX25519Pub,
+        theirX25519Pub: this._theirX25519Pub,
+      });
+    }
+    // local-side ready
+    if (this.handshakeState !== 'ready') {
+      this.handshakeState = 'sent-ready';
+    }
+  }
+
+  async sendText(text) {
+    if (!this.sessionKey) throw new Error('session not established');
+    const { iv, ct } = await Crypto.aesEncrypt(this.sessionKey, text);
+    this._send({ t: 'msg', iv: bytesToBinStr(iv), ct: bytesToBinStr(ct) });
+  }
+
+  close() {
+    try { if (this.dc) this.dc.close(); } catch {}
+    try { if (this.pc) this.pc.close(); } catch {}
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Application orchestrator
+// ═══════════════════════════════════════════════════════════════
+const App = {
+  state: 'welcome', // welcome | connecting | chat
+  // High-level phase — drives the big status banner in renderConnecting.
+  // Used to give the user a clear "are we seeing the peer or not" signal
+  // separate from the low-level technical log.
+  phase: 'init', // init | discovering | waitingPeer | peerFound | iceCheck | connected | failed | error
+  phaseSince: 0,
+  phaseHint: '',
+  phrase: '',
+  masterKey: null,
+  psk: null,
+  infoHash: null,        // 20 bytes
+  peerId: null,          // 20 bytes
+  tracker: null,         // TrackerSwarm
+  session: null,         // P2PSession
+  messages: [],
+  status: [],
+  fingerprint: null,
+  showFp: false,
+  _waitingHintTimer: null,
+  _iceTimeoutTimer: null,
+
+  log(tag, msg, level) {
+    this.status.unshift({ tag, msg, level: level || '', ts: Date.now() });
+    if (this.status.length > 100) this.status.length = 100;
+    this.render();
+  },
+
+  setPhase(phase, hint) {
+    this.phase = phase;
+    this.phaseSince = Date.now();
+    this.phaseHint = hint || '';
+    if (this._waitingHintTimer) { clearTimeout(this._waitingHintTimer); this._waitingHintTimer = null; }
+    if (this._iceTimeoutTimer) { clearTimeout(this._iceTimeoutTimer); this._iceTimeoutTimer = null; }
+    // After 10s of waiting for a peer, add a helpful hint
+    if (phase === 'waitingPeer') {
+      this._waitingHintTimer = setTimeout(() => {
+        if (this.phase === 'waitingPeer') {
+          this.phaseHint = 'Если вы ещё не поделились фразой с собеседником — самое время. Без второй стороны, вводящей ту же фразу, соединение не установится.';
+          this.render();
+        }
+      }, 10000);
+    }
+    // After 25s of ICE checking with no progress, fail with NAT explanation
+    if (phase === 'iceCheck') {
+      this._iceTimeoutTimer = setTimeout(() => {
+        if (this.phase === 'iceCheck') {
+          this.setPhase('failed', 'Соединение не установилось за 25 секунд. Скорее всего блокирует NAT (строгий/симметричный) с одной из сторон. См. ниже.');
+        }
+      }, 25000);
+    }
+    this.render();
+  },
+
+  pushMsg(from, text) {
+    this.messages.push({ from, text, ts: Date.now() });
+    this.render();
+  },
+
+  async start(phrase) {
+    this.phrase = phrase;
+    this.state = 'connecting';
+    this.status = [];
+    this.messages = [];
+    this.setPhase('init', 'Готовим ключи. Это занимает ~1-2 секунды.');
+
+    try {
+      this.log('crypto', 'deriving master key (Argon2id, ~1.5s)…');
+      this.masterKey = await Crypto.deriveMasterKey(phrase);
+      this.log('crypto', `KDF: ${Crypto.kdfMode} ✓`, 'ok');
+
+      this.infoHash = await Crypto.sha1(this.masterKey);
+      this.psk = await Crypto.hkdf(this.masterKey, enc.encode('nee2p-lite.v1.psk'), 'psk', 32);
+      this.peerId = randBytes(20);
+
+      this.log('discovery', `room: ${bytesToHex(this.infoHash).slice(0, 16)}…`, 'ok');
+      this.setPhase('discovering', 'Подключаемся к публичным WebTorrent-трекерам — через них мы найдём собеседника.');
+
+      // Set up session as initiator (we'll create offers; if someone offered us first, we'll switch to responder)
+      this.session = new P2PSession({
+        psk: this.psk,
+        role: 'initiator',
+        log: (t, m, l) => this.log(t, m, l),
+      });
+      this.session.onMessage = (text) => this.pushMsg('them', text);
+      this.session.onOpen = async () => {
+        const fp = await Crypto.safetyFingerprint(
+          new Uint8Array([...this.session._myKemPub.slice(0, 32), ...this.session._myX25519Pub]),
+          new Uint8Array([...this.session._theirKemPub.slice(0, 32), ...this.session._theirX25519Pub])
+        );
+        this.fingerprint = fp;
+        this.setPhase('connected');
+        this.state = 'chat';
+        this.pushMsg('sys', 'соединение установлено');
+        this.log('chat', 'ready to send messages ✓', 'ok');
+        this.render();
+      };
+      // ICE state callback — drives phase transitions for connection progress
+      this.session.onIceState = (s) => {
+        if (s === 'checking' && this.phase !== 'connected') {
+          this.setPhase('iceCheck', 'Браузеры подбирают сетевой путь друг к другу. Обычно ~2-10 секунд.');
+        } else if ((s === 'connected' || s === 'completed') && this.phase !== 'connected') {
+          // Don't set 'connected' yet — wait for DataChannel + PQ handshake (onOpen).
+          // But this tells us network path exists.
+        }
+      };
+      this.session.onClose = (reason) => {
+        // Suppress noise from role-transition PC swap (we detached handlers before close,
+        // so this only fires for true peer-side disconnects).
+        if (this.state === 'chat') {
+          this.log('webrtc', 'peer disconnected', 'warn');
+          this.pushMsg('sys', 'связь потеряна');
+        } else if (this.phase === 'iceCheck' || this.phase === 'peerFound') {
+          // ICE failed during establishment — likely NAT
+          this.setPhase('failed',
+            'Сетевой путь между вами и собеседником не нашёлся. Самая частая причина — у одного из вас «строгий» NAT (часто на мобильных операторах, корпоративных сетях, hotel WiFi). Попробуйте: попасть в одну Wi-Fi-сеть, либо одной из сторон включить VPN.');
+        }
+      };
+
+      // Connect to trackers and start announcing
+      this.tracker = new TrackerSwarm(
+        this.infoHash,
+        this.peerId,
+        async (offer) => this._handleIncomingOffer(offer),
+        async (answer) => this._handleIncomingAnswer(answer),
+        (t, m, l) => this.log(t, m, l),
+      );
+      this.tracker.start();
+
+      // Wait a bit for trackers to connect, then announce our offer
+      await new Promise(r => setTimeout(r, 1500));
+
+      const sdp = await this.session.createOffer();
+      const signed = await this.session.signSdp(sdp);
+      // Embed PSK-MAC in the SDP as comment lines (trackers pass SDP through opaquely)
+      const sdpWithAuth = sdp +
+        `a=x-nee2p-nonce:${btoa(signed.nonce)}\r\n` +
+        `a=x-nee2p-mac:${btoa(signed.mac)}\r\n`;
+      const offerId = randBytes(20);
+      this._myOfferId = bytesToBinStr(offerId);
+      const sent = this.tracker.announceOffer(offerId, sdpWithAuth);
+      this.log('discovery', `announce → ${sent} trackers`, sent ? 'ok' : 'warn');
+      if (sent > 0) {
+        this.setPhase('waitingPeer', 'Объявили о себе на ' + sent + ' трекерах. Ждём, когда собеседник введёт ту же фразу.');
+      } else {
+        this.setPhase('failed', 'Ни один трекер не доступен. Проверьте интернет или сеть может блокировать WebSocket-соединения.');
+      }
+    } catch (e) {
+      this.log('error', e.message, 'err');
+      this.setPhase('error', e.message);
+    }
+  },
+
+  async _handleIncomingOffer(o) {
+    if (this._gotPeer) return; // already paired
+    // ─── Deterministic role tie-breaker ───────────────────────
+    // Both peers announce offers simultaneously. Without this rule, BOTH
+    // sides would receive each other's offer and BOTH would close their
+    // initiator PC and create orphan responder PCs — nobody answers
+    // those orphans, ICE never establishes, stuck at "connecting…".
+    //
+    // Rule: peer with LOWER peer_id is initiator (keeps offer-PC, waits
+    // for answer). Peer with HIGHER peer_id is responder (answers the
+    // lower side's offer; their own offer is orphaned and ignored).
+    const myPidStr = bytesToBinStr(this.peerId);
+    if (o.fromPeerId >= myPidStr) {
+      this.log('discovery', 'ignoring offer from higher peer_id (we → initiator)');
+      return;
+    }
+    this.log('discovery', `peer offer received via ${shortHost(o.viaTracker.url)} (we → responder)`);
+
+    // Parse PSK-MAC from SDP custom attributes
+    const sdpText = o.sdp;
+    const nonceMatch = sdpText.match(/a=x-nee2p-nonce:([^\r\n]+)/);
+    const macMatch = sdpText.match(/a=x-nee2p-mac:([^\r\n]+)/);
+    if (!nonceMatch || !macMatch) {
+      this.log('handshake', 'rejected: missing PSK-MAC', 'warn');
+      return;
+    }
+    const nonce = atob(nonceMatch[1]);
+    const mac = atob(macMatch[1]);
+    // Compute MAC over SDP WITHOUT our custom attributes
+    const cleanSdp = sdpText.replace(/a=x-nee2p-(?:nonce|mac):[^\r\n]+\r?\n/g, '');
+    // Need a session to verify. Reuse psk from our session.
+    const ok = await this.session.verifySdp(cleanSdp, nonce, mac);
+    if (!ok) {
+      this.log('handshake', 'rejected: bad PSK-MAC (fake peer or wrong phrase)', 'err');
+      return;
+    }
+    this.log('handshake', 'peer SDP authenticated by PSK ✓', 'ok');
+    this.setPhase('peerFound', 'Собеседник найден через ' + shortHost(o.viaTracker.url) + '. Обмениваемся ключами…');
+
+    // We are now the "responder" — drop our outgoing offer/initiator role,
+    // create answer to this peer.
+    this._gotPeer = true;
+    try {
+      // Detach handlers BEFORE closing old PC/DC — otherwise old PC's
+      // close event fires session.onClose with "peer disconnected" which
+      // is misleading: we're just swapping our own PC for the responder
+      // PC, not losing the peer.
+      if (this.session.dc) {
+        this.session.dc.onopen = null;
+        this.session.dc.onclose = null;
+        this.session.dc.onmessage = null;
+      }
+      if (this.session.pc) {
+        this.session.pc.oniceconnectionstatechange = null;
+        this.session.pc.onconnectionstatechange = null;
+        this.session.pc.onsignalingstatechange = null;
+        this.session.pc.onicecandidate = null;
+        try { this.session.pc.close(); } catch {}
+      }
+      this.session.pc = null;
+      this.session.dc = null;
+      const answerSdp = await this.session.createAnswer(cleanSdp);
+      const signed = await this.session.signSdp(answerSdp);
+      const answerWithAuth = answerSdp +
+        `a=x-nee2p-nonce:${btoa(signed.nonce)}\r\n` +
+        `a=x-nee2p-mac:${btoa(signed.mac)}\r\n`;
+      this.tracker.sendAnswer(o.viaTracker, o.fromPeerId, o.offerId, answerWithAuth);
+      this.log('discovery', 'answer sent', 'ok');
+    } catch (e) {
+      this.log('handshake', 'answer failed: ' + e.message, 'err');
+      this._gotPeer = false;
+    }
+  },
+
+  async _handleIncomingAnswer(a) {
+    if (this._gotPeer) return;
+    if (a.offerId !== this._myOfferId) return; // not for our offer
+    this.log('discovery', `answer received via ${shortHost(a.viaTracker.url)}`);
+
+    const sdpText = a.sdp;
+    const nonceMatch = sdpText.match(/a=x-nee2p-nonce:([^\r\n]+)/);
+    const macMatch = sdpText.match(/a=x-nee2p-mac:([^\r\n]+)/);
+    if (!nonceMatch || !macMatch) {
+      this.log('handshake', 'rejected: missing PSK-MAC', 'warn');
+      return;
+    }
+    const nonce = atob(nonceMatch[1]);
+    const mac = atob(macMatch[1]);
+    const cleanSdp = sdpText.replace(/a=x-nee2p-(?:nonce|mac):[^\r\n]+\r?\n/g, '');
+    const ok = await this.session.verifySdp(cleanSdp, nonce, mac);
+    if (!ok) {
+      this.log('handshake', 'rejected: bad PSK-MAC', 'err');
+      return;
+    }
+    this.log('handshake', 'peer answer authenticated by PSK ✓', 'ok');
+    this.setPhase('peerFound', 'Собеседник ответил через ' + shortHost(a.viaTracker.url) + '. Обмениваемся ключами…');
+    this._gotPeer = true;
+    try {
+      await this.session.acceptAnswer(cleanSdp);
+      this.log('webrtc', 'connecting…', 'ok');
+    } catch (e) {
+      this.log('handshake', 'acceptAnswer failed: ' + e.message, 'err');
+      this.setPhase('failed', 'Не удалось применить ответ собеседника: ' + e.message);
+    }
+  },
+
+  reset() {
+    if (this._waitingHintTimer) { clearTimeout(this._waitingHintTimer); this._waitingHintTimer = null; }
+    if (this._iceTimeoutTimer) { clearTimeout(this._iceTimeoutTimer); this._iceTimeoutTimer = null; }
+    if (this.tracker) { this.tracker.close(); this.tracker = null; }
+    if (this.session) { this.session.close(); this.session = null; }
+    this._gotPeer = false;
+    this._myOfferId = null;
+    this.state = 'welcome';
+    this.phase = 'init';
+    this.phaseHint = '';
+    this.phrase = '';
+    this.masterKey = null;
+    this.psk = null;
+    this.infoHash = null;
+    this.peerId = null;
+    this.messages = [];
+    this.status = [];
+    this.fingerprint = null;
+    this.render();
+  },
+
+  render() { renderApp(); }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// UI rendering (vanilla JS)
+// ═══════════════════════════════════════════════════════════════
+function renderApp() {
+  const root = $('#app');
+  root.innerHTML = '';
+  if (App.state === 'welcome') root.appendChild(renderWelcome());
+  else if (App.state === 'connecting') root.appendChild(renderConnecting());
+  else if (App.state === 'chat') root.appendChild(renderChat());
+  if (App.showFp) root.appendChild(renderFpModal());
+}
+
+function renderWelcome() {
+  const screen = el('div', { class: 'screen screen-pad' });
+  const col = el('div', { class: 'center-col' });
+
+  col.appendChild(el('div', null,
+    el('div', { class: 'logo' }, 'Nee2P.', el('span', { class: 'lite' }, 'lite')),
+    el('div', { class: 'tagline' }, 'один файл · zero server · post-quantum'),
+    el('div', { class: 'tagline', style: { fontSize: '11px', opacity: '0.5', fontFamily: 'var(--ff-mono)', marginTop: '2px' } }, LITE_VERSION)
+  ));
+
+  const inputWrap = el('div', null);
+  inputWrap.appendChild(el('label', { class: 'label' }, 'Общая фраза'));
+  const input = el('textarea', {
+    class: 'textarea',
+    placeholder: 'например: горный олень шепчет ночью\n\nдоговоритесь с собеседником о фразе через любой отдельный канал',
+    rows: '4',
+  });
+  input.value = App.phrase || '';
+  inputWrap.appendChild(input);
+  col.appendChild(inputWrap);
+
+  const start = el('button', {
+    class: 'btn btn-primary',
+    onclick: () => {
+      const phrase = input.value.trim();
+      if (phrase.length < 4) { input.focus(); return; }
+      App.start(phrase);
+    }
+  }, 'Подключиться');
+  col.appendChild(start);
+
+  const tips = el('div', { class: 'status-panel', style: { marginTop: '4px' } },
+    'Как это работает:\n' +
+    '1. Введите одну и ту же фразу что и собеседник\n' +
+    '2. Браузеры находят друг друга через публичные WebTorrent trackers\n' +
+    '3. Соединение идёт peer-to-peer, минуя любые серверы Nee2P\n' +
+    '4. Сообщения зашифрованы X25519+ML-KEM+AES-256-GCM\n\n' +
+    'Что увидит tracker:\n' +
+    '• Хеш фразы (необратимый, защищён Argon2id)\n' +
+    '• IP-адреса пиров\n' +
+    '• Зашифрованные SDP-пакеты до handshake\n\n' +
+    'Что НЕ увидит:\n' +
+    '• Фразу · содержимое сообщений · ключи · трафик после handshake'
+  );
+  col.appendChild(tips);
+
+  screen.appendChild(col);
+  return screen;
+}
+
+// Maps App.phase → user-facing copy + colour level.
+// "Seeing the peer or not" is the key question — answered explicitly here.
+const PHASE_COPY = {
+  init:          { title: 'Подготовка…',                 level: '',     spinner: true,  seePeer: 'не ищем ещё' },
+  discovering:   { title: 'Подключаемся к трекерам',     level: '',     spinner: true,  seePeer: 'не ищем ещё' },
+  waitingPeer:   { title: 'Ждём собеседника',            level: 'warn', spinner: true,  seePeer: '⊘ собеседник не появился' },
+  peerFound:     { title: 'Собеседник найден',           level: 'ok',   spinner: true,  seePeer: '✓ видим собеседника' },
+  iceCheck:      { title: 'Подбираем сетевой путь',      level: 'ok',   spinner: true,  seePeer: '✓ видим собеседника' },
+  connected:     { title: 'Готово!',                     level: 'ok',   spinner: false, seePeer: '✓ соединены' },
+  failed:        { title: 'Не удалось соединиться',      level: 'err',  spinner: false, seePeer: '✗ соединение не установилось' },
+  error:         { title: 'Ошибка',                      level: 'err',  spinner: false, seePeer: '' },
+};
+
+function renderConnecting() {
+  const screen = el('div', { class: 'screen screen-pad' });
+  const col = el('div', { class: 'center-col' });
+
+  col.appendChild(el('div', null,
+    el('div', { class: 'logo' }, 'Nee2P.', el('span', { class: 'lite' }, 'lite'))
+  ));
+
+  // ── Big phase banner — the "do I see the peer?" answer ──
+  const copy = PHASE_COPY[App.phase] || PHASE_COPY.init;
+  const banner = el('div', { class: 'phase-banner ' + copy.level });
+  const titleNode = el('div', { class: 'phase-title' });
+  if (copy.spinner) titleNode.appendChild(el('span', { class: 'spinner' }));
+  titleNode.appendChild(document.createTextNode(copy.title));
+  banner.appendChild(titleNode);
+  if (App.phaseHint) {
+    banner.appendChild(el('div', { class: 'phase-hint' }, App.phaseHint));
+  }
+  // Peer-visibility indicator
+  if (copy.seePeer) {
+    const see = el('div', { class: 'phase-hint', style: { marginTop: '8px', fontFamily: 'var(--ff-mono)', fontSize: '12px' } }, copy.seePeer);
+    banner.appendChild(see);
+  }
+  // Failure → recovery actions
+  if (App.phase === 'failed' || App.phase === 'error') {
+    const actions = el('div', { class: 'phase-actions' });
+    actions.appendChild(el('button', {
+      class: 'btn btn-primary',
+      onclick: () => { const p = App.phrase; App.reset(); App.start(p); }
+    }, 'Попробовать снова'));
+    actions.appendChild(el('button', {
+      class: 'btn',
+      onclick: () => App.reset()
+    }, 'Сменить фразу'));
+    banner.appendChild(actions);
+  }
+  col.appendChild(banner);
+
+  // ── Status log (low-level, collapsed-feeling but always visible) ──
+  const aliveTr = App.tracker ? App.tracker.conns.filter(c => c.alive).length : 0;
+  const totalTr = App.tracker ? App.tracker.conns.length : 0;
+  const meta = el('div', { class: 'phase-hint', style: { fontFamily: 'var(--ff-mono)', fontSize: '11px', textAlign: 'center' } },
+    `трекеров: ${aliveTr}/${totalTr} живы` + (App.peerId ? ` · peer_id ${bytesToHex(App.peerId).slice(0, 6)}…` : '')
+  );
+  col.appendChild(meta);
+
+  const panel = el('div', { class: 'status-panel' });
+  for (const s of App.status) {
+    const line = el('div', { class: 'status-line ' + (s.level || '') });
+    line.appendChild(el('span', { class: 'tag' }, s.tag));
+    line.appendChild(el('span', { class: 'val' }, s.msg));
+    panel.appendChild(line);
+  }
+  col.appendChild(panel);
+
+  if (App.phase !== 'failed' && App.phase !== 'error') {
+    const cancel = el('button', { class: 'btn', onclick: () => App.reset() }, 'Отменить');
+    col.appendChild(cancel);
+  }
+
+  screen.appendChild(col);
+  return screen;
+}
+
+function renderChat() {
+  const screen = el('div', { class: 'chat-screen' });
+
+  const header = el('div', { class: 'chat-header' });
+  header.appendChild(el('div', { class: 'dot online' }));
+  header.appendChild(el('div', { style: { flex: '1' } },
+    el('div', { class: 'title' }, 'Nee2P Lite'),
+    el('div', { class: 'sub' }, 'PQ-зашифровано · peer-to-peer · ' + LITE_VERSION)
+  ));
+  header.appendChild(el('button', {
+    class: 'icon-btn',
+    title: 'Safety fingerprint',
+    onclick: () => { App.showFp = true; App.render(); }
+  }, '🛡'));
+  header.appendChild(el('button', {
+    class: 'icon-btn',
+    title: 'Закрыть сессию',
+    onclick: () => { if (confirm('Закрыть сессию? История будет потеряна.')) App.reset(); }
+  }, '✕'));
+  screen.appendChild(header);
+
+  const msgs = el('div', { class: 'messages' });
+  if (App.messages.length === 0) {
+    msgs.appendChild(el('div', { class: 'msg sys' }, 'напишите первое сообщение'));
+  }
+  for (const m of App.messages) {
+    msgs.appendChild(el('div', { class: 'msg ' + m.from }, m.text));
+  }
+  screen.appendChild(msgs);
+
+  const bar = el('div', { class: 'input-bar' });
+  const input = el('input', {
+    class: 'input',
+    type: 'text',
+    placeholder: 'сообщение…',
+    autocomplete: 'off',
+  });
+  const sendBtn = el('button', { class: 'send-btn', disabled: 'disabled' }, '→');
+
+  const updateBtn = () => { sendBtn.disabled = !input.value.trim(); };
+  input.addEventListener('input', updateBtn);
+
+  const doSend = async () => {
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    updateBtn();
+    App.pushMsg('me', text);
+    try { await App.session.sendText(text); }
+    catch (e) { App.pushMsg('sys', 'ошибка отправки: ' + e.message); }
+  };
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(); }
+  });
+  sendBtn.addEventListener('click', doSend);
+
+  bar.appendChild(input);
+  bar.appendChild(sendBtn);
+  screen.appendChild(bar);
+
+  // auto-scroll to bottom
+  setTimeout(() => { msgs.scrollTop = msgs.scrollHeight; input.focus(); }, 0);
+
+  return screen;
+}
+
+function renderFpModal() {
+  const bg = el('div', {
+    class: 'modal-bg',
+    onclick: (e) => { if (e.target === bg) { App.showFp = false; App.render(); } }
+  });
+  const modal = el('div', { class: 'modal' });
+  modal.appendChild(el('h2', null, 'Safety fingerprint'));
+  modal.appendChild(el('p', null,
+    'Сравните эти 12 слов с собеседником через отдельный канал (голосом, в другом мессенджере). ' +
+    'Если совпадают — между вами нет MITM. Если нет — закройте сессию.'
+  ));
+  const grid = el('div', { class: 'fp-words' });
+  const fp = App.fingerprint || [];
+  for (let i = 0; i < fp.length; i++) {
+    grid.appendChild(el('div', { class: 'fp-word' },
+      el('span', { class: 'num' }, (i + 1).toString().padStart(2, '0') + '.'),
+      fp[i]
+    ));
+  }
+  modal.appendChild(grid);
+  modal.appendChild(el('button', {
+    class: 'btn',
+    onclick: () => { App.showFp = false; App.render(); }
+  }, 'Закрыть'));
+  bg.appendChild(modal);
+  return bg;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Boot
+// ═══════════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  // Sanity checks
+  if (!window.crypto || !window.crypto.subtle) {
+    document.body.innerHTML = '<div style="padding:40px;color:#f87171;font-family:monospace">' +
+      'WebCrypto unavailable. Откройте через https:// или localhost (не file://) для работы криптографии.' +
+      '</div>';
+    return;
+  }
+  if (!window.RTCPeerConnection) {
+    document.body.innerHTML = '<div style="padding:40px;color:#f87171">WebRTC недоступен в этом браузере.</div>';
+    return;
+  }
+  App.render();
+});
+
+// Expose for debug
+window.__nee2pLite = { App, Crypto };
+
+})();
+</script>
+</body>
+</html>
