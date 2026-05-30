@@ -57,17 +57,19 @@ if (cTime && cMem && cPar) {
   const cMemMib = (+cMem) / 1024;
 
   // trust.html params cell for Argon2id row. The first <td> is the algo
-  // (now wrapped in <a>...Argon2id</a>), the second is the params text.
+  // (wrapped in <a>...Argon2id</a>), the second is the params text. After
+  // the EN/RU split the cell holds two <span lang="..."> children with
+  // the same numbers (mem suffix differs: МиБ vs MiB) — match either.
   const argonRow = trust.match(
-    /Argon2id<\/a><\/td>\s*<td>([^<]+)<\/td>/
+    /Argon2id<\/a><\/td>\s*<td>([\s\S]*?)<\/td>/
   );
   if (!argonRow) {
     check('trust.html has Argon2id params cell', false, 'row not found in section 02 table');
   } else {
     const p   = argonRow[1];
-    const tT  = (p.match(/t=(\d+)/)               || [])[1];
-    const tM  = (p.match(/mem=(\d+)\s*МиБ/)       || [])[1];
-    const tP  = (p.match(/p=(\d+)/)               || [])[1];
+    const tT  = (p.match(/t=(\d+)/)                       || [])[1];
+    const tM  = (p.match(/mem=(\d+)\s*(?:МиБ|MiB)/)       || [])[1];
+    const tP  = (p.match(/p=(\d+)/)                       || [])[1];
 
     check('argon2 time matches',
       +tT === +cTime,

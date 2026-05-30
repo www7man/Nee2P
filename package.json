@@ -1,7 +1,7 @@
 {
   "name": "nee2p",
   "private": true,
-  "version": "0.9.1",
+  "version": "0.9.2",
   "description": "Anonymous paired messenger. Pair by secret phrase, e2e-encrypted.",
   "main": "server.js",
   "scripts": {
