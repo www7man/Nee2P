@@ -119,6 +119,9 @@
       'pwd.warn_body':     'Оба секрета открывают сессию. Потеряете любой — переписка исчезнет навсегда.',
       'pwd.seal_continue': 'Запечатать и продолжить',
       'pwd.min_4':         'мин. 4 символа',
+      'pwd.waiting.sealed':'Ваш секрет запечатан.',
+      'pwd.waiting.desc':  'Сессия откроется, когда оба введут пароль. Мы не можем её открыть — только вы.',
+      'pwd.waiting.hint':  'Не закрывайте приложение. Как только второй запечатает — откроется чат.',
 
       // ── Chat ─────────────────────────────────────────────────────────────
       'chat.placeholder':  'Сообщение…',
@@ -161,6 +164,9 @@
       'chat.online':       'online',
       'chat.offline':      'offline',
       'chat.typing':       'печатает',
+      'chat.group_label':  'Группа',
+      'chat.msg_deleted':  '[сообщение удалено]',
+      'chat.invite_panel': 'Пригласить в сессию',
 
       // ── Call (WebRTC overlay + diagnostics) ──────────────────────────────
       // Used by ActiveCallOverlay, NetworkDiagnosticsModal, and the
@@ -242,6 +248,7 @@
       'time.left_m':       'м',
       'time.left_d':       'д ',
       'time.left_hh':      'ч',
+      'time.sec_abbr':     'с',
       'time.today_at':     'сегодня в ',
       'time.yesterday_at': 'вчера в ',
       'time.months_genitive': [
@@ -260,6 +267,7 @@
       'sharecard.copy_phrase_short':   'фразу',
       'sharecard.copy_hash_short':     'хеш',
       'sharecard.show_qr':             'показать QR',
+      'sharecard.qr_scan_hint':        'сканируй с телефона',
 
       // ── Chat bubble / burn / recording ───────────────────────────────────
       'chat.reply_mine_to_mine': 'мой ответ на моё',
@@ -274,6 +282,11 @@
       // ── Blob / attachment fallbacks ──────────────────────────────────────
       'blob.file_fallback':         'файл',
       'blob.undecryptable':         'вложение зашифровано прежним ключом',
+      'blob.uploading':             'загрузка',
+      'blob.img_loading':           'загрузка…',
+      'blob.byte_b':                'Б',
+      'blob.byte_kb':               'КБ',
+      'blob.byte_mb':               'МБ',
 
       // ── Message action menu ──────────────────────────────────────────────
       'menu.copy':                  'Скопировать',
@@ -300,6 +313,13 @@
       'safety.crypto.kem_desc':     'Защищает от будущих квантовых компьютеров',
       'safety.crypto.aes_desc':     'Шифрует каждое сообщение и проверяет целостность',
       'safety.link.trust':          'Страница безопасности',
+      'safety.of':                  'из',
+      'safety.fp.label':            'Отпечаток · 12 слов',
+      'safety.fp.pending':          'Отпечаток считается… Дождитесь рукопожатия с партнёром.',
+      'safety.fp.warn':             'Не сверяйте отпечаток через этот же чат — атакующий может подменить и слова.',
+      'safety.section.howto':       'Как проверить',
+      'safety.section.session':     'Сессия',
+      'safety.section.crypto':      'Стек шифрования',
 
       // ── Info screen — 7 tenets ───────────────────────────────────────────
       'info.tenet.e2e.title':       'End-to-end шифрование',
@@ -469,6 +489,9 @@
       'pwd.warn_body':     'Both secrets unlock the session. Lose either one and the chat is gone forever.',
       'pwd.seal_continue': 'Seal and continue',
       'pwd.min_4':         'min. 4 characters',
+      'pwd.waiting.sealed':'Your secret is sealed.',
+      'pwd.waiting.desc':  'The session opens once both enter their password. We cannot open it — only you can.',
+      'pwd.waiting.hint':  "Don't close the app. Once the other person seals — the chat will open.",
 
       // ── Chat ─────────────────────────────────────────────────────────────
       'chat.placeholder':  'whisper something…',
@@ -511,6 +534,9 @@
       'chat.online':       'online',
       'chat.offline':      'offline',
       'chat.typing':       'typing',
+      'chat.group_label':  'Group',
+      'chat.msg_deleted':  '[message deleted]',
+      'chat.invite_panel': 'Invite to session',
 
       // ── Call (WebRTC overlay + diagnostics) ──────────────────────────────
       'call.status.connecting':       'Connecting…',
@@ -586,6 +612,7 @@
       'time.left_m':       'm',
       'time.left_d':       'd ',
       'time.left_hh':      'h',
+      'time.sec_abbr':     's',
       'time.today_at':     'today at ',
       'time.yesterday_at': 'yesterday at ',
       'time.months_genitive': [
@@ -604,6 +631,7 @@
       'sharecard.copy_phrase_short':   'phrase',
       'sharecard.copy_hash_short':     'hash',
       'sharecard.show_qr':             'show QR',
+      'sharecard.qr_scan_hint':        'scan with your phone',
 
       // ── Chat bubble / burn / recording ───────────────────────────────────
       'chat.reply_mine_to_mine': 'my reply to my own',
@@ -618,6 +646,11 @@
       // ── Blob / attachment fallbacks ──────────────────────────────────────
       'blob.file_fallback':         'file',
       'blob.undecryptable':         'attachment encrypted with a previous key',
+      'blob.uploading':             'uploading',
+      'blob.img_loading':           'loading…',
+      'blob.byte_b':                'B',
+      'blob.byte_kb':               'KB',
+      'blob.byte_mb':               'MB',
 
       // ── Message action menu ──────────────────────────────────────────────
       'menu.copy':                  'Copy',
@@ -644,6 +677,14 @@
       'safety.crypto.kem_desc':     'Protects against future quantum computers',
       'safety.crypto.aes_desc':     'Encrypts every message and verifies integrity',
       'safety.link.trust':          'Security page',
+      'safety.of':                  'of',
+      'safety.fp.label':            'Fingerprint · 12 words',
+      'safety.fp.pending':          'Fingerprint is computing… Wait for the handshake with your partner.',
+      'safety.fp.warn':             "Don't verify the fingerprint through this same chat — an attacker can replace the words too.",
+      'safety.section.howto':       'How to verify',
+      'safety.section.session':     'Session',
+      'safety.section.crypto':      'Encryption stack',
+
 
       // ── Info screen — 7 tenets ───────────────────────────────────────────
       'info.tenet.e2e.title':       'End-to-end encryption',

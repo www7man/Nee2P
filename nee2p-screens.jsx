@@ -1514,7 +1514,7 @@ function WaitingScreen({ palette, perspective, peerSealed }) {
         <div style={{ fontFamily: "'Instrument Serif', serif", fontStyle: 'italic',
           fontSize: 28, lineHeight: 1.1, fontWeight: 400, letterSpacing: -0.4,
           textAlign: 'center' }}>
-          Ваш секрет запечатан.<br/>
+          {t('pwd.waiting.sealed')}<br/>
           <span style={{ color: 'rgba(255,255,255,0.55)' }}>
             {peerSealed ? t('created.opening_session') : t('created.waiting_peer')}
           </span>
@@ -1522,7 +1522,7 @@ function WaitingScreen({ palette, perspective, peerSealed }) {
 
         <div style={{ marginTop: 16, fontSize: 13, color: 'rgba(255,255,255,0.5)',
           textAlign: 'center', maxWidth: 280, lineHeight: 1.5 }}>
-          Сессия откроется, когда оба введут пароль. Мы не можем её открыть — только вы.
+          {t('pwd.waiting.desc')}
         </div>
       </div>
 
@@ -1536,7 +1536,7 @@ function WaitingScreen({ palette, perspective, peerSealed }) {
             <Icon.Ghost size={18} color="#fff" />
           </div>
           <div style={{ flex: 1, fontSize: 12, color: 'rgba(255,255,255,0.7)', lineHeight: 1.4 }}>
-            Не закрывайте приложение. Как только второй запечатает — откроется чат.
+            {t('pwd.waiting.hint')}
           </div>
         </div>
       </Glass>
@@ -1633,6 +1633,8 @@ function ShareCodeCard({ palette, hash, phrase, partnerClaimed }) {
 // screen with the phrase pre-filled — zero copy-paste handoff.
 function QrModal({ palette, value, label, onClose }) {
   const p = usePalette(palette);
+  const [lang] = window.Nee2Pi18n.useLang();
+  const t = window.Nee2Pi18n.t;
   const ref = React.useRef(null);
   React.useEffect(() => {
     if (!ref.current) return;
@@ -1671,7 +1673,7 @@ function QrModal({ palette, value, label, onClose }) {
         <div style={{ fontSize: 10, color: 'var(--tx-40)', letterSpacing: 1.4,
           textTransform: 'uppercase', textAlign: 'center', marginBottom: 10,
           fontFamily: "'Geist Mono', monospace" }}>
-          сканируй с телефона
+          {t('sharecard.qr_scan_hint')}
         </div>
         <div ref={ref} />
         <div style={{ marginTop: 12, fontSize: 12, color: 'var(--tx-60)',
@@ -1682,7 +1684,7 @@ function QrModal({ palette, value, label, onClose }) {
           width: '100%', marginTop: 14, padding: '10px 14px', border: 'none',
           cursor: 'pointer', borderRadius: 12, background: 'rgba(255,255,255,0.08)',
           color: '#fff', fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
-        }}>закрыть</button>
+        }}>{t('common.close')}</button>
       </div>
     </div>
   );
@@ -2285,13 +2287,13 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 600, color: '#fff', lineHeight: 1.1 }}>
-                        Группа · {groupMax}
+                        {t('chat.group_label')} · {groupMax}
                       </div>
                       <div style={{ fontSize: 11, color: onlineCount > 0 ? '#3dff9a' : 'rgba(255,255,255,0.5)',
                         lineHeight: 1.2, marginTop: 2, letterSpacing: 0.2,
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {typingPeer
-                          ? `${typingPeer.friendly || typingPeer.label} печатает…`
+                          ? `${typingPeer.friendly || typingPeer.label} ${t('chat.typing')}…`
                           : `online ${onlineCount} / ${ppl.length}`}
                       </div>
                     </div>
@@ -2728,7 +2730,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                         opacity: 0.85,
                       }}>
-                        {orig ? (orig.text || '').slice(0, 100) : '[сообщение удалено]'}
+                        {orig ? (orig.text || '').slice(0, 100) : t('chat.msg_deleted')}
                       </div>
                     </div>
                   );
@@ -3153,7 +3155,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                 boxShadow: `0 0 8px ${p.glow}`,
                 animation: 'pulse-dot 1.2s ease-in-out infinite',
               }} />
-              <span>загрузка {uploadProgress > 1 ? `· ${uploadProgress}` : ''}</span>
+              <span>{t('blob.uploading')} {uploadProgress > 1 ? `· ${uploadProgress}` : ''}</span>
             </div>
           )}
         </div>
@@ -3216,7 +3218,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               padding: '8px 16px 4px' }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>
-                Пригласить в сессию
+                {t('chat.invite_panel')}
               </span>
               <button onClick={() => setInviteOpen(false)} style={{
                 background: 'none', border: 'none', cursor: 'pointer',
@@ -3247,9 +3249,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
         }}>{callToast}</div>
       )}
 
-      {/* ─── WebRTC call UI: incoming bottom sheet (owner: webrtc-calls) ───
-          TODO i18n: call.incoming.title ('Входящий звонок'),
-          call.incoming.reject ('Отклонить'), call.incoming.answer ('Ответить'). */}
+      {/* ─── WebRTC call UI: incoming bottom sheet (owner: webrtc-calls) ─── */}
       {callState === 'incoming' && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 220,
@@ -3381,10 +3381,6 @@ function callErrorCopy(code, tr) {
 // Shown while a call is ringing (outgoing), active, or failed.
 // Sits on top of the chat. Closing routes through onHangup so the peer is
 // notified.
-// TODO i18n: hardcoded Russian strings inside need wrapping —
-//   call.status.connecting ('Соединяемся…'), call.status.no_connection ('Нет соединения'),
-//   call.action.check_network ('Проверить сеть'), call.action.hangup ('Завершить'),
-//   call.action.mute_on/off, call.action.speaker_on/off, call.auto_dismiss_hint
 function ActiveCallOverlay({ palette, callState, callMuted, callOnSpeaker, callError,
                              peerLabel, peerFriendly,
                              onHangup, onToggleMute, onToggleSpeaker, onCheckNetwork }) {
@@ -3539,17 +3535,6 @@ function ActiveCallOverlay({ palette, callState, callMuted, callOnSpeaker, callE
 //                          the call. Blocked → no confirm button.
 //   • mode='post-failure'— opens AFTER a failed call; informational only,
 //                          single Close button.
-//
-// TODO i18n: this component has many hardcoded RU strings —
-//   call.diag.title, call.diag.probing, call.diag.row_webrtc,
-//   call.diag.row_https, call.diag.row_mic, call.diag.mic_granted,
-//   call.diag.mic_denied, call.diag.mic_prompt, call.diag.mic_unknown,
-//   call.diag.row_stun, call.diag.stun_ok, call.diag.stun_blocked,
-//   call.diag.nat_label, call.diag.nat_cone, call.diag.nat_symmetric,
-//   call.diag.nat_open, call.diag.nat_unknown, call.diag.recommendations,
-//   call.diag.footer_explainer, call.diag.run_failed,
-//   call.diag.cancel, call.diag.confirm_ready, call.diag.confirm_degraded,
-//   call.diag.confirm_running, call.diag.confirm_disabled_hint, call.diag.close
 function NetworkDiagnosticsModal({ onClose, mode = 'post-failure', onConfirm }) {
   // i18n: `tr` (not `t`) because the local `natLabel(t)` below takes `t` as
   // the natType parameter — keep them distinct to avoid shadowing.
@@ -3871,7 +3856,7 @@ function ImageBubble({ msg, palette, mine, onBlobUrl, onOpenFullscreen }) {
       ) : (
         <div style={{ width: 220, height: 160, display: 'flex', alignItems: 'center',
           justifyContent: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>
-          загрузка…
+          {_i18nT('blob.img_loading', 'загрузка…')}
         </div>
       )}
       {loading && !fullUrl && (
@@ -4059,9 +4044,9 @@ function VoiceBubble({ msg, palette, mine, onBlobUrl }) {
 // ── small utilities + icons used by ChatScreen blob UI ──────
 function formatBytes(n) {
   if (!Number.isFinite(n) || n < 0) return '';
-  if (n < 1024) return n + ' Б';
-  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' КБ';
-  return (n / (1024 * 1024)).toFixed(2) + ' МБ';
+  if (n < 1024) return n + ' ' + _i18nT('blob.byte_b', 'Б');
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' ' + _i18nT('blob.byte_kb', 'КБ');
+  return (n / (1024 * 1024)).toFixed(2) + ' ' + _i18nT('blob.byte_mb', 'МБ');
 }
 
 function formatMmSs(sec) {
@@ -4203,7 +4188,7 @@ function MessageActionMenu({ palette, msg, isMine, onQuote, onDelete, onReact, o
           background: 'transparent', color: 'var(--tx-60)',
           fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
           borderTop: '0.5px solid rgba(255,255,255,0.06)',
-        }}>отмена</button>
+        }}>{t('common.cancel')}</button>
       </div>
     </div>
   );
@@ -4291,15 +4276,15 @@ function SafetyNumbersModal({ palette, fingerprint, onClose,
     if (!expiresAt) return '—';
     const h = Math.floor(expirySeconds / 3600);
     const m = Math.floor((expirySeconds % 3600) / 60);
-    if (h > 0) return `${h} ч ${m} мин`;
-    if (m > 0) return `${m} мин`;
-    return `${expirySeconds} с`;
+    if (h > 0) return `${h} ${t('time.left_hh')} ${m}${t('time.left_min')}`;
+    if (m > 0) return `${m}${t('time.left_min')}`;
+    return `${expirySeconds} ${t('time.sec_abbr')}`;
   })();
 
   // Participant count
   const ppl = Array.isArray(participants) ? participants : [];
   const onlineCount = ppl.filter(x => x.online).length || (groupMax === 2 ? 1 : 0);
-  const participantStr = groupMax ? `${onlineCount} из ${groupMax}` : '—';
+  const participantStr = groupMax ? `${onlineCount} ${t('safety.of')} ${groupMax}` : '—';
 
   // Section label style
   const sectionLabel = {
@@ -4380,7 +4365,7 @@ function SafetyNumbersModal({ palette, fingerprint, onClose,
           {/* ── 12 words ── */}
           {words ? (
             <>
-              <div style={sectionLabel}>Отпечаток · 12 слов</div>
+              <div style={sectionLabel}>{t('safety.fp.label')}</div>
               <div style={{
                 display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5,
                 fontFamily: 'var(--ff-mono)',
@@ -4415,14 +4400,14 @@ function SafetyNumbersModal({ palette, fingerprint, onClose,
             </>
           ) : (
             <div style={{ padding: '16px 0', fontSize: 12, color: 'var(--tx-60)', textAlign: 'center' }}>
-              Отпечаток считается… Дождитесь рукопожатия с партнёром.
+              {t('safety.fp.pending')}
             </div>
           )}
 
           <div style={divider} />
 
-          {/* ── Как проверить ── */}
-          <div style={sectionLabel}>Как проверить</div>
+          {/* ── How to verify ── */}
+          <div style={sectionLabel}>{t('safety.section.howto')}</div>
           {[
             t('safety.howto.step1'),
             t('safety.howto.step2'),
@@ -4445,13 +4430,13 @@ function SafetyNumbersModal({ palette, fingerprint, onClose,
             background: 'rgba(255,180,80,0.10)', border: '0.5px solid rgba(255,180,80,0.25)',
             fontSize: 11, color: '#ffd29a', lineHeight: 1.45,
           }}>
-            ⚠ Не сверяйте отпечаток через этот же чат — атакующий может подменить и слова.
+            ⚠ {t('safety.fp.warn')}
           </div>
 
           <div style={divider} />
 
-          {/* ── Сессия ── */}
-          <div style={sectionLabel}>Сессия</div>
+          {/* ── Session ── */}
+          <div style={sectionLabel}>{t('safety.section.session')}</div>
           <div style={{
             borderRadius: 10, overflow: 'hidden',
             border: '0.5px solid rgba(255,255,255,0.08)',
@@ -4477,7 +4462,7 @@ function SafetyNumbersModal({ palette, fingerprint, onClose,
                   <span style={{ fontSize: 11.5, color: '#fff', fontFamily: 'var(--ff-mono)', fontWeight: 500 }}>{value}</span>
                   {key === 'hash' && (
                     <span style={{ fontSize: 10, color: copiedKey === 'hash' ? '#7be0b1' : 'var(--tx-30)', fontWeight: 600 }}>
-                      {copiedKey === 'hash' ? '✓' : 'копировать'}
+                      {copiedKey === 'hash' ? '✓' : t('safety.copy_short')}
                     </span>
                   )}
                 </div>
@@ -4487,8 +4472,8 @@ function SafetyNumbersModal({ palette, fingerprint, onClose,
 
           <div style={divider} />
 
-          {/* ── Стек шифрования ── */}
-          <div style={sectionLabel}>Стек шифрования</div>
+          {/* ── Encryption stack ── */}
+          <div style={sectionLabel}>{t('safety.section.crypto')}</div>
           <div style={{
             borderRadius: 10, overflow: 'hidden',
             border: '0.5px solid rgba(255,255,255,0.08)',
@@ -4777,10 +4762,10 @@ function ShareScreen({ palette, hash, phrase, expiresAt,
   const hrs = Math.floor((left % 86400) / 3600);
   const mins = Math.floor((left % 3600) / 60);
   const ttlLabel = days >= 1
-    ? `${days}д ${hrs}ч`
+    ? `${days}${t('time.left_d')}${hrs}${t('time.left_hh')}`
     : hrs >= 1
-      ? `${hrs}ч ${mins}м`
-      : `${mins}м`;
+      ? `${hrs}${t('time.left_h')}${mins}${t('time.left_m')}`
+      : `${mins}${t('time.left_m')}`;
 
   return (
     <div className="no-scrollbar" style={{ height: '100%', display: 'flex', flexDirection: 'column',
