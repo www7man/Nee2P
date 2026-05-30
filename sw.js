@@ -10,12 +10,15 @@
 //
 // Bump CACHE_VERSION to invalidate the precache after deploys.
 
-const CACHE_VERSION = 'nee2p-v25-kem-fix';
+const CACHE_VERSION = 'nee2p-v26-full-precache';
 
 // All paths are relative to the SW scope (which is /2Pee/ in production).
 const PRECACHE_URLS = [
   './',
   './index.html',
+  './updates.html',
+  './trust.html',
+  './admin.html',
   './manifest.json',
   './md5.js',
   './crypto.js',
