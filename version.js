@@ -6,4 +6,4 @@
 //
 // Consumed by: nee2p-screens.jsx WelcomeScreen (Open Source badge) and
 // any other surface that wants to show the current build version.
-window.NEE2P_VERSION = '0.9.13';
+window.NEE2P_VERSION = '0.9.14';

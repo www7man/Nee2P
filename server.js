@@ -770,6 +770,10 @@ function broadcastPubKeyChange(room) {
 // ─── HTTP server: static files + /r/* endpoints ─────────────
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  // Strip /2Pee/ subpath prefix so the server works both when accessed
+  // directly (localhost:9787/) and behind a proxy that keeps the prefix
+  // (letsmaketelegramgreatagain.com/2Pee/).
+  if (url.pathname.startsWith('/2Pee/')) url.pathname = url.pathname.slice(5) || '/';
   const p = url.pathname;
 
   // Rate-limit API endpoints by client IP. CDN forwards X-Forwarded-For;
@@ -1865,6 +1869,7 @@ const wss = new WebSocketServer({ noServer: true });
 
 server.on('upgrade', (req, socket, head) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
+  if (url.pathname.startsWith('/2Pee/')) url.pathname = url.pathname.slice(5) || '/';
   if (url.pathname !== '/ws') { socket.destroy(); return; }
   const roomId = url.searchParams.get('room');
   if (!roomId || !/^[a-f0-9]{32}$/.test(roomId)) { socket.destroy(); return; }
