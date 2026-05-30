@@ -1203,6 +1203,9 @@ function handleOne(sess, room, item) {
 // ─── token-bucket rate limiter ───────────────────────────────
 // Crude per-IP guard against accidental floods (e.g. a runaway client) and
 // trivial DoS attempts. Numbers are generous — normal humans nowhere near.
+//
+// Note: token bucket resets on server restart (by design).
+// Admin stats for rate-limited IPs are unreliable after restart.
 const RL_BUCKET = new Map(); // ip → {tokens, lastRefill}
 const RL_CAPACITY = 200;
 const RL_REFILL_PER_SEC = 20;
@@ -1217,6 +1220,23 @@ function rateLimitOk(ip) {
   b.tokens -= 1;
   return true;
 }
+
+// ─── per-IP SSE stream cap ───────────────────────────────────
+// Bare connection-count guard separate from the token bucket. /r/stream
+// holds a long-lived TCP socket open and bypasses rateLimitOk (see the
+// guard in the http server dispatch block) — without a cap, a single
+// attacker could open thousands of SSE streams and hold the relay's
+// socket / RAM / file-descriptor budget hostage.
+//
+// MAX_STREAMS_PER_IP = 10 covers the worst-case legitimate use:
+// a group room with 8 participants from the same NAT (rare but possible)
+// plus a small headroom for reconnect races where the browser opens a
+// new EventSource before the old one's close event has propagated through
+// CDN + nginx + Caddy. Excess connections get HTTP 429 with reason
+// 'too-many-streams' so the client can surface a clear error instead of
+// silently failing.
+const activeStreamsByIp = new Map(); // ip → integer count
+const MAX_STREAMS_PER_IP = 10;
 setInterval(() => {
   const cutoff = Date.now() - 5 * 60 * 1000;
   for (const [ip, b] of RL_BUCKET) if (b.lastRefill < cutoff) RL_BUCKET.delete(ip);
@@ -1282,6 +1302,21 @@ function handleStream(req, res, url) {
   const { sess } = entry;
   sess.lastSeen = Date.now();
 
+  // Per-IP SSE stream cap (see MAX_STREAMS_PER_IP block). /r/stream bypasses
+  // the token-bucket rate limiter because legitimate streams are long-lived,
+  // so without this cap a single attacker could open thousands of EventSource
+  // connections and pin the relay's socket / RAM / FD budget. Reject with 429
+  // BEFORE writing the SSE response headers — the client surfaces
+  // 'too-many-streams' instead of seeing an empty/half-open stream.
+  const xff = req.headers['x-forwarded-for'];
+  const ip = (typeof xff === 'string' ? xff.split(',')[0].trim() : '')
+          || req.socket.remoteAddress || 'unknown';
+  const currentStreams = activeStreamsByIp.get(ip) || 0;
+  if (currentStreams >= MAX_STREAMS_PER_IP) {
+    return sendJSON(res, 429, { ok: false, reason: 'too-many-streams' });
+  }
+  activeStreamsByIp.set(ip, currentStreams + 1);
+
   res.writeHead(200, {
     'Content-Type': 'text/event-stream; charset=utf-8',
     'Cache-Control': 'no-store, no-transform',
@@ -1308,9 +1343,17 @@ function handleStream(req, res, url) {
     catch { clearInterval(heartbeat); }
   }, 20000);
 
+  // Both req.on('close') and res.on('close') can fire — guard so we only
+  // decrement the per-IP counter once per stream.
+  let closed = false;
   const onClose = () => {
+    if (closed) return;
+    closed = true;
     clearInterval(heartbeat);
     if (sess.streamRes === res) sess.streamRes = null;
+    const next = (activeStreamsByIp.get(ip) || 0) - 1;
+    if (next <= 0) activeStreamsByIp.delete(ip);
+    else activeStreamsByIp.set(ip, next);
   };
   req.on('close', onClose);
   res.on('close', onClose);
