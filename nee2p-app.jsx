@@ -2507,7 +2507,7 @@ function App() {
     if (groupMax === 2) {
       const occ = peerSlot === 0 ? slots.A : slots.B;
       if (!occ?.claimed) {
-        setChatBanner('Партнёр ещё не вошёл по своему паролю. Сообщения сохранятся и придут ему при входе.');
+        setChatBanner((window.Nee2Pi18n && window.Nee2Pi18n.t('chat.partner_not_logged_in')) || 'Партнёр ещё не вошёл по своему паролю. Сообщения сохранятся и придут ему при входе.');
       } else if (!partnerOnline) {
         setChatBanner('Партнёр сейчас оффлайн. Сообщения придут ему как только он вернётся.');
       } else {
@@ -2653,13 +2653,13 @@ function App() {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
         }}>
           <div style={{ flex: 1, textAlign: 'left' }}>
-            Nee2P. уже открыт в другой вкладке. Закройте одну для нормальной работы.
+            {(window.Nee2Pi18n && window.Nee2Pi18n.t('tabs.already_open')) || 'Nee2P. уже открыт в другой вкладке. Закройте одну для нормальной работы.'}
           </div>
           <button onClick={() => setTwoTabsWarning(false)}
             style={{
               border: 'none', background: 'rgba(0,0,0,0.25)', color: '#fff',
               borderRadius: 8, padding: '4px 10px', fontSize: 11, cursor: 'pointer',
-            }}>Скрыть</button>
+            }}>{(window.Nee2Pi18n && window.Nee2Pi18n.t('common.hide')) || 'Скрыть'}</button>
         </div>
       )}
     </div>

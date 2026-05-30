@@ -617,7 +617,7 @@ function CreatedScreen({ palette, phrase, setPhrase, onGenerateSeed,
                       ? `0 4px 12px ${p.glow}, inset 0 1px 0 rgba(255,255,255,0.4)`
                       : 'inset 0 1px 0 rgba(255,255,255,0.12)',
                     transition: 'background 0.25s ease, color 0.25s ease',
-                  }}>{o.label}</button>
+                  }}>{t(`settings.ttl.${o.id}`)}</button>
                 );
               })}
             </div>
@@ -1943,7 +1943,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
       return s;
     } catch (e) {
       setMicDenied(true);
-      setMicToast('Микрофон недоступен');
+      setMicToast(t('call.err.mic_denied'));
       setTimeout(() => setMicToast(null), 2500);
       throw e;
     }

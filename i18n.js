@@ -379,6 +379,20 @@
       'clone.copy':                 'Копировать',
       'clone.open_github':          'Открыть на GitHub',
 
+      // ── Session settings (TTL chooser buttons) ───────────────────────────
+      'settings.ttl.1h':   '1 час',
+      'settings.ttl.6h':   '6 часов',
+      'settings.ttl.24h':  '24 часа',
+      'settings.ttl.3d':   '3 дня',
+      'settings.ttl.7d':   '7 дней',
+
+      // ── Chat banners ─────────────────────────────────────────────────────
+      'chat.partner_not_logged_in':
+        'Партнёр ещё не вошёл по своему паролю. Сообщения сохранятся и придут ему при входе.',
+
+      // ── Cross-tab warning ────────────────────────────────────────────────
+      'tabs.already_open': 'Nee2P. уже открыт в другой вкладке. Закройте одну для нормальной работы.',
+
       // ── Common ────────────────────────────────────────────────────────────
       'common.cancel':     'Отмена',
       'common.close':      'Закрыть',
@@ -389,6 +403,7 @@
       'common.retry':      'Повторить',
       'common.no_conn':    'Нет соединения',
       'common.back':       'Назад',
+      'common.hide':       'Скрыть',
     },
 
     en: {
@@ -744,6 +759,20 @@
       'clone.copy':                 'Copy',
       'clone.open_github':          'Open on GitHub',
 
+      // ── Session settings (TTL chooser buttons) ───────────────────────────
+      'settings.ttl.1h':   '1 hour',
+      'settings.ttl.6h':   '6 hours',
+      'settings.ttl.24h':  '24 hours',
+      'settings.ttl.3d':   '3 days',
+      'settings.ttl.7d':   '7 days',
+
+      // ── Chat banners ─────────────────────────────────────────────────────
+      'chat.partner_not_logged_in':
+        "Partner hasn't entered their password yet. Messages will be saved and delivered when they sign in.",
+
+      // ── Cross-tab warning ────────────────────────────────────────────────
+      'tabs.already_open': 'Nee2P. is already open in another tab. Close one for normal operation.',
+
       // ── Common ────────────────────────────────────────────────────────────
       'common.cancel':     'Cancel',
       'common.close':      'Close',
@@ -754,6 +783,7 @@
       'common.retry':      'Retry',
       'common.no_conn':    'No connection',
       'common.back':       'Back',
+      'common.hide':       'Hide',
     },
   };
 
