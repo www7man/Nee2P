@@ -636,11 +636,16 @@ const Crypto = (function() {
 //
 // Replaced wss://tracker.files.fm:7073/announce (offline since 2026-05-28)
 // with wss://tracker.novage.com.ua (probed: open 737ms, announce 805ms).
+// 2026-05-30: live QA showed 3/4 trackers alive (webtorrent.dev intermittently
+// down). Kept webtorrent.dev in the pool (well-known, may recover) and added
+// tracker.files.fm back for redundancy — pool now has 5 entries so a single
+// outage degrades to 4/5 instead of 3/4.
 const TRACKERS = [
   'wss://tracker.openwebtorrent.com',
   'wss://tracker.btorrent.xyz',
   'wss://tracker.webtorrent.dev',
   'wss://tracker.novage.com.ua',
+  'wss://tracker.files.fm:7073/announce',
 ];
 
 class TrackerSwarm {
