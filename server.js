@@ -30,6 +30,38 @@
 // New clients accept both forms transparently (toSlotId()/parseSlotId() in
 // this file, coerceSlot() in nee2p-app.jsx).
 //
+// ─── Wire types (handleOne dispatch — inbound from client) ────
+//   msg          encrypted message + optional blob descriptor → history + fan-out
+//   typing       ephemeral typing indicator → fan-out, no history
+//   delete       owner-only history removal → fan-out msg-delete
+//   read         "read upto <msgId>" receipt → fan-out
+//   kem-ct       ML-KEM-768 ciphertext (targeted or 2-party fan-out)
+//   sender-key   AES-GCM sender-key envelope (targeted to one peer)
+//   signal       encrypted WebRTC SDP/ICE blob → fan-out
+//   react        emoji reaction toggle (mutates history, fan-out react)
+//   leave        socket close hint (WS path) / no-op success (HTTP path)
+//   ack          legacy no-op (history is in RAM until room expiry)
+//
+// ─── Wire types (pushEvent — outbound to client) ──────────────
+//   room-state   initial snapshot (createdAt, expiresAt, slots, paired, groupMax)
+//   room-expired room TTL hit, kicks everyone
+//   peer-state   slot occupancy/paired delta
+//   peer-online  per-slot online/offline transition
+//   paired       room just became paired (everyone connected)
+//   peer-pubkey  forward of a peer's X25519+KEM pubkeys
+//   msg          forwarded encrypted message (to peers other than sender)
+//   msg-batch    history backfill on (re)connect
+//   msg-stored   ack to sender that their msg landed in history
+//   msg-delete   peer deleted one of their own messages
+//   typing       forwarded typing indicator
+//   read         forwarded read receipt
+//   kem-ct       forwarded ML-KEM ciphertext
+//   sender-key   forwarded sender-key envelope
+//   signal       forwarded WebRTC signalling envelope
+//   react        forwarded reaction add/remove
+//   send-error   validation-failure reply on the WS path (HTTP path uses
+//                {ok:false,reason:...} as the /r/send body instead)
+//
 // Sender-keys protocol (post-FS, per-epoch):
 //   Each member ships a per-session X25519 pubKey + ML-KEM-768 pubKey at claim
 //   (as before). The relay forwards everyone's pubkeys to everyone else (peer-
@@ -160,6 +192,11 @@ const DEFAULT_TTL_MS = 24 * ONE_HOUR;
 // the history while the session is alive. Capped to protect memory.
 const MAX_HISTORY_ITEMS = 1000;
 const MAX_HISTORY_BYTES = 4 * 1024 * 1024;
+// Cap the long-poll backlog per session. A peer that's been offline for hours
+// while the room stays alive could otherwise accumulate the room's whole event
+// firehose. We drop the oldest event on overflow — the most recent N events
+// matter for resync, older signalling/typing/read events are stale anyway.
+const MAX_PENDING_PER_SESSION = 500;
 
 const SESSION_IDLE_MS = 60 * 1000;          // session goes "offline" after 60s of no activity
 const POLL_HOLD_MS = 25 * 1000;             // long-poll hangs this long if no events
@@ -401,6 +438,12 @@ function pushEvent(session, event) {
     }
   }
   // legacy long-poll path
+  // MED-1: bound the queue so an offline-but-not-yet-GC'd session can't grow
+  // unbounded RAM when peers keep chatting. Drop-oldest is the right policy:
+  // we'd rather lose an old `typing` than a recent `msg`.
+  if (session.pendingEvents.length >= MAX_PENDING_PER_SESSION) {
+    session.pendingEvents.shift();
+  }
   session.pendingEvents.push(event);
   if (session.pollWaiter) {
     clearTimeout(session.pollWaiter.timeout);
@@ -953,16 +996,28 @@ async function handleSend(req, res) {
     const ids = [];
     for (const it of body.items) {
       if (!it || typeof it.type !== 'string') continue;
-      ids.push(handleOne(sess, room, it));
+      const r = handleOne(sess, room, it);
+      // Batch path stays lenient: skip individual validation errors so one bad
+      // item doesn't poison a coalesced burst. Real per-item error reporting
+      // would need its own response shape; clients that need surfaced errors
+      // can send single-item requests.
+      if (r && typeof r === 'object' && r.error) continue;
+      if (r) ids.push(r);
     }
-    return sendJSON(res, 200, { ok: true, ids: ids.filter(Boolean) });
+    return sendJSON(res, 200, { ok: true, ids });
   }
 
   const t = body.type;
   if (t === 'msg' || t === 'typing' || t === 'delete' || t === 'read' ||
       t === 'kem-ct' || t === 'react' || t === 'sender-key' || t === 'signal') {
-    const id = handleOne(sess, room, body);
-    return sendJSON(res, 200, { ok: true, id });
+    const r = handleOne(sess, room, body);
+    // CRIT-2: surface validation failures to the client instead of returning
+    // {ok:true, id:null} (which the sender used to display as "delivered").
+    if (r && typeof r === 'object' && r.error) {
+      return sendJSON(res, 400, { ok: false, reason: r.error });
+    }
+    // Success: msg returns its id string, other types return null (no-op ack).
+    return sendJSON(res, 200, { ok: true, id: r || null });
   }
 
   if (t === 'ack') {
@@ -981,11 +1036,11 @@ function handleOne(sess, room, item) {
   const mySlotId = toSlotId(mySlotNum, room.groupMax);
 
   if (item.type === 'msg') {
-    if (typeof item.iv !== 'string' || typeof item.ct !== 'string') return null;
+    if (typeof item.iv !== 'string' || typeof item.ct !== 'string') return { error: 'invalid_payload' };
     // Per-message ciphertext cap. ~48000 base64 chars ≈ 36KB binary — fits
     // any normal text message; oversized payloads must go through /r/blob.
     // Blocks the "blast N×512KB ciphertexts to evict history" attack.
-    if (item.ct.length > 48000) return null;
+    if (item.ct.length > 48000) return { error: 'payload_too_large' };
     // FIX 7: validate client-supplied id format. We keep client-assigned ids
     // (the alternative — server-assigning + round-tripping the new id back —
     // would break local-echo, reply-to, delete and reactions because the
@@ -998,7 +1053,7 @@ function handleOne(sess, room, item) {
     // birthday ≈ 2^32 messages) is fine for a chat-scale relay.
     let id;
     if (typeof item.id === 'string') {
-      if (!/^[A-Za-z0-9_-]{1,64}$/.test(item.id)) return null;
+      if (!/^[A-Za-z0-9_-]{1,64}$/.test(item.id)) return { error: 'invalid_id' };
       id = item.id;
     } else {
       id = crypto.randomBytes(8).toString('hex');
@@ -1065,12 +1120,12 @@ function handleOne(sess, room, item) {
 
   if (item.type === 'delete') {
     const idx = room.history.findIndex(x => x.id === item.id);
-    if (idx < 0) return null;
+    if (idx < 0) return { error: 'not_found' };
     // Peer-authorization: only the original sender may delete their message.
     // history[].from is in wire format (letter for 2p rooms, number for group
     // rooms); coerce both sides to numeric slots before comparing.
     const ownerSlotNum = parseSlotId(room.history[idx].from);
-    if (ownerSlotNum === null || ownerSlotNum !== mySlotNum) return null;
+    if (ownerSlotNum === null || ownerSlotNum !== mySlotNum) return { error: 'not_owned' };
     const dropped = room.history.splice(idx, 1)[0];
     room.historyBytes -= dropped.bytes;
     broadcastToOthers(room, mySlotNum, { type: 'msg-delete', id: item.id });
@@ -1078,9 +1133,9 @@ function handleOne(sess, room, item) {
   }
 
   if (item.type === 'read') {
-    if (typeof item.upto !== 'string') return null;
+    if (typeof item.upto !== 'string') return { error: 'invalid_upto' };
     // msgIds are 12-16 hex chars in practice; 80 is a wide safety margin.
-    if (item.upto.length === 0 || item.upto.length > 80) return null;
+    if (item.upto.length === 0 || item.upto.length > 80) return { error: 'invalid_upto' };
     broadcastToOthers(room, mySlotNum, { type: 'read', peer: mySlotId, upto: item.upto });
     return null;
   }
@@ -1090,7 +1145,7 @@ function handleOne(sess, room, item) {
     // the peer's KEM pubkey and is shipping the ~1088-byte ciphertext so the
     // peer can decap and arrive at the same 32-byte shared secret. In group
     // mode the ciphertext is targeted at a specific peer (`toSlot`).
-    if (typeof item.ct !== 'string' || item.ct.length < 1200 || item.ct.length > 2000) return null;
+    if (typeof item.ct !== 'string' || item.ct.length < 1200 || item.ct.length > 2000) return { error: 'invalid_payload' };
     const epoch = (typeof item.epoch === 'number') ? item.epoch : room.epoch;
     const toSlotNum = parseSlotId(item.toSlot);
     if (toSlotNum !== null && toSlotNum >= 0 && toSlotNum < room.slots.length) {
@@ -1100,7 +1155,7 @@ function handleOne(sess, room, item) {
       sendToSlot(room, toSlotNum, ev);
     } else {
       // Legacy 2-party fan-out (server picks "the other" slot).
-      if (room.groupMax !== 2) return null;
+      if (room.groupMax !== 2) return { error: 'invalid_payload' };
       const otherNum = mySlotNum === 0 ? 1 : 0;
       const ev = { type: 'kem-ct', from: mySlotId, ct: item.ct, epoch };
       sendToSlot(room, otherNum, ev);
@@ -1119,9 +1174,9 @@ function handleOne(sess, room, item) {
     //
     // The server just routes — it has no plaintext access to the sender key.
     const toSlotNum = parseSlotId(item.toSlot);
-    if (toSlotNum === null || toSlotNum < 0 || toSlotNum >= room.slots.length) return null;
-    if (toSlotNum === mySlotNum) return null;
-    if (typeof item.iv !== 'string' || typeof item.ct !== 'string') return null;
+    if (toSlotNum === null || toSlotNum < 0 || toSlotNum >= room.slots.length) return { error: 'invalid_payload' };
+    if (toSlotNum === mySlotNum) return { error: 'invalid_payload' };
+    if (typeof item.iv !== 'string' || typeof item.ct !== 'string') return { error: 'invalid_payload' };
     const ev = {
       type: 'sender-key',
       from: mySlotId,
@@ -1141,8 +1196,8 @@ function handleOne(sess, room, item) {
     // The payload (iv, ct) is AES-GCM-encrypted by the sender under the
     // group sender-key — the relay sees opaque base64. Server enforces a
     // small ciphertext cap so a buggy peer can't ship multi-MB SDP blobs.
-    if (typeof item.iv !== 'string' || typeof item.ct !== 'string') return null;
-    if (item.iv.length > 64 || item.ct.length > 16000) return null;
+    if (typeof item.iv !== 'string' || typeof item.ct !== 'string') return { error: 'invalid_payload' };
+    if (item.iv.length > 64 || item.ct.length > 16000) return { error: 'payload_too_large' };
     const ev = {
       type: 'signal',
       from: mySlotId,
@@ -1158,10 +1213,10 @@ function handleOne(sess, room, item) {
 
   if (item.type === 'react') {
     // Emoji reaction toggle. PLAINTEXT metadata — see comment on `msg` above.
-    if (typeof item.msgId !== 'string' || item.msgId.length === 0 || item.msgId.length > 64) return null;
-    if (typeof item.emoji !== 'string' || item.emoji.length === 0 || item.emoji.length > 8) return null;
+    if (typeof item.msgId !== 'string' || item.msgId.length === 0 || item.msgId.length > 64) return { error: 'invalid_msgid' };
+    if (typeof item.emoji !== 'string' || item.emoji.length === 0 || item.emoji.length > 8) return { error: 'invalid_emoji' };
     const target = room.history.find(x => x.id === item.msgId);
-    if (!target) return null;
+    if (!target) return { error: 'not_found' };
     if (!target.reactions || typeof target.reactions !== 'object') target.reactions = {};
     // Cap distinct emoji per message at 16. Toggling an EXISTING emoji is
     // always allowed (so users can still un-react past the cap); only adding
@@ -1171,7 +1226,7 @@ function handleOne(sess, room, item) {
     const existingKeys = Object.keys(target.reactions);
     if (existingKeys.length >= REACT_DISTINCT_CAP &&
         !Object.prototype.hasOwnProperty.call(target.reactions, item.emoji)) {
-      return null;
+      return { error: 'invalid_emoji' };
     }
     const list = Array.isArray(target.reactions[item.emoji]) ? target.reactions[item.emoji] : [];
     // Reactions are tagged with the SENDER'S slot identifier (always in the
@@ -1881,8 +1936,17 @@ server.on('upgrade', (req, socket, head) => {
           m.type === 'sender-key' || m.type === 'signal') {
         // Build a fake "sess" shim so handleOne can reach our slot number.
         const sessShim = { slot: mySlot };
-        const id = handleOne(sessShim, myRoom, m);
-        if (m.type === 'msg' && id) safeSend({ type: 'msg-stored', id });
+        const r = handleOne(sessShim, myRoom, m);
+        // CRIT-2: surface validation failures over WS too. Use the client's
+        // correlation id when provided (`cid`) so a paired send/error is
+        // unambiguous; otherwise the type alone scopes the error.
+        if (r && typeof r === 'object' && r.error) {
+          const errEv = { type: 'send-error', reason: r.error, of: m.type };
+          if (typeof m.cid === 'string' || typeof m.cid === 'number') errEv.cid = m.cid;
+          safeSend(errEv);
+          return;
+        }
+        if (m.type === 'msg' && r) safeSend({ type: 'msg-stored', id: r });
         return;
       }
 
