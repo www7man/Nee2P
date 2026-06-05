@@ -253,17 +253,37 @@
     return row('Wi-Fi', onWifi ? 'green' : 'red', onWifi ? undefined : 'not on Wi-Fi');
   }
 
+  // Helper: native-bridge methods return an object envelope (e.g. {status:"granted"},
+  // {available:true}, {state:"poweredOn"}). Extract the meaningful field — falling
+  // back to primitive comparison for forward-compat with future bridges that
+  // might return a bare value.
+  function _unwrap(v, fields) {
+    if (v == null) return v;
+    if (typeof v === 'object') {
+      for (const f of fields) {
+        if (v[f] !== undefined) return v[f];
+      }
+      return v;
+    }
+    return v;
+  }
+
   async function probeLocalNetworkPermission() {
     if (!hasBridge('localNetworkAuth')) {
       return row('Local network permission', 'yellow', 'iOS bridge not present');
     }
-    const state = await withTimeout(
+    const raw = await withTimeout(
       Promise.resolve().then(() => g.Nee2PBridge.localNetworkAuth()),
       PROBE_TIMEOUT_MS,
       () => null,
     );
+    const state = _unwrap(raw, ['status', 'state', 'auth']);
     if (state === 'granted' || state === true) return row('Local network permission', 'green');
     if (state === 'denied' || state === false) return row('Local network permission', 'red', 'denied in Settings');
+    if (state === 'prompt' || state === 'undetermined' || state === 'unknown') {
+      // Tolerable yellow — iOS hasn't asked yet. Direct/Local mode will trigger the prompt.
+      return row('Local network permission', 'yellow', state === 'prompt' ? 'will ask on first use' : String(state));
+    }
     return row('Local network permission', 'yellow', 'not determined');
   }
 
@@ -271,13 +291,17 @@
     if (!hasBridge('mpcAvailable')) {
       return row('Multipeer Connectivity', 'yellow', 'iOS bridge not present');
     }
-    const v = await withTimeout(
+    const raw = await withTimeout(
       Promise.resolve().then(() => g.Nee2PBridge.mpcAvailable()),
       PROBE_TIMEOUT_MS,
       () => null,
     );
+    const v = _unwrap(raw, ['available', 'mpc', 'status']);
     if (v === true || v === 'available') return row('Multipeer Connectivity', 'green');
-    if (v === false || v === 'unavailable') return row('Multipeer Connectivity', 'red');
+    if (v === false || v === 'unavailable') {
+      const reason = raw && typeof raw === 'object' ? raw.reason : undefined;
+      return row('Multipeer Connectivity', 'red', reason || 'unavailable');
+    }
     return row('Multipeer Connectivity', 'yellow', 'unknown');
   }
 
@@ -285,14 +309,17 @@
     if (!hasBridge('bluetoothState')) {
       return row('Bluetooth', 'yellow', 'iOS bridge not present');
     }
-    const v = await withTimeout(
+    const raw = await withTimeout(
       Promise.resolve().then(() => g.Nee2PBridge.bluetoothState()),
       PROBE_TIMEOUT_MS,
       () => null,
     );
+    const v = _unwrap(raw, ['state', 'status', 'bluetooth']);
     if (v === 'poweredOn' || v === 'on' || v === true) return row('Bluetooth', 'green');
-    if (v === 'poweredOff' || v === 'off' || v === false) return row('Bluetooth', 'red', 'off');
+    if (v === 'poweredOff' || v === 'off' || v === false) return row('Bluetooth', 'yellow', 'off');
     if (v === 'unauthorized' || v === 'denied') return row('Bluetooth', 'red', 'permission denied');
+    if (v === 'unsupported') return row('Bluetooth', 'red', 'unsupported');
+    if (v === 'resetting' || v === 'unknown') return row('Bluetooth', 'yellow', 'initializing — try again');
     return row('Bluetooth', 'yellow', 'unknown');
   }
 
