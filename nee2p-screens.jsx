@@ -3648,9 +3648,10 @@ function ModePill({ currentMode, onClick }) {
 // but tightened — smaller dot, optional right-aligned mono metric.
 function _ModeCheckRow({ row }) {
   const s = row && row.status;
-  const ok = s === 'ok';
-  const warn = s === 'warn';
-  // anything else (err / undefined) = red
+  // net-probe.js uses 'green'/'yellow'/'red'; accept legacy 'ok'/'warn' too.
+  const ok = s === 'green' || s === 'ok';
+  const warn = s === 'yellow' || s === 'warn';
+  // anything else (red / err / undefined) = red
   const dotBg = ok
     ? 'rgba(80,180,140,0.25)'
     : warn ? 'rgba(255,209,102,0.20)' : 'rgba(232,90,90,0.22)';
@@ -3706,10 +3707,11 @@ function _ModeCard({ mode, result, isActive, onSelect }) {
   // Treat a missing probe (deploy-gap) as all-yellow with one "probe unavailable" row.
   const safeResult = result || {
     status: 'limited',
-    rows: [{ label: tr('mode.status.limited') || 'Probe unavailable', status: 'warn' }],
+    rows: [{ label: tr('mode.status.limited') || 'Probe unavailable', status: 'yellow' }],
   };
   const rows = Array.isArray(safeResult.rows) ? safeResult.rows : [];
-  const greenCount = rows.filter(r => r && r.status === 'ok').length;
+  // net-probe.js uses 'green'/'yellow'/'red'; accept legacy 'ok'/'warn' too.
+  const greenCount = rows.filter(r => r && (r.status === 'green' || r.status === 'ok')).length;
   const total = rows.length;
 
   const style = _modeStatusStyle(safeResult.status);

@@ -134,9 +134,17 @@
   // Synchronous-ish: we don't actually open a TLS socket here — we trust
   // that if the HEAD above succeeded over https, TLS is fine. Returns a row.
   async function probeRelayTls(reachable) {
-    const isHttps = location.protocol === 'https:' || getRelayBase().isFallback;
+    const proto = location.protocol || '';
+    // iOS WKWebView uses a custom scheme (nee:, app:, file:) — the *relay* URL
+    // is still hit over https inside probeRelayReachable. So treat any non-http:
+    // origin as "TLS-clean" because the HEAD request itself was https.
+    const isNativeScheme = proto !== 'http:' && proto !== 'https:' && proto !== '';
+    const isHttps = proto === 'https:' || isNativeScheme || getRelayBase().isFallback;
+    if (proto === 'http:') {
+      return row('TLS (https)', 'red', 'page is served over plain http');
+    }
     if (!isHttps) {
-      return row('TLS (https)', 'red', 'page is not served over https');
+      return row('TLS (https)', 'yellow', 'unknown scheme');
     }
     if (!reachable || reachable.status === 'red') {
       return row('TLS (https)', 'yellow', 'cannot verify — relay not reachable');
