@@ -49,7 +49,8 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column',
-      padding: '20px 22px 22px', position: 'relative' }}>
+      padding: 'max(20px, calc(env(safe-area-inset-top, 0px) + 8px)) 22px 22px',
+      position: 'relative' }}>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         animation: 'welcome-rise 0.7s ease both' }}>
@@ -3819,25 +3820,46 @@ function _ModeCard({ mode, result, isActive, onSelect }) {
 function ModeSwitcherSheet({ open, currentMode, onSelect, onClose }) {
   const tr = window.Nee2Pi18n.t;
   const [results, setResults] = React.useState(null);
+  const [probing, setProbing] = React.useState(false);
+  const [lastRunAt, setLastRunAt] = React.useState(null);
+  const [probeError, setProbeError] = React.useState(null);
 
-  // On mount: seed from probeAll(), then subscribe to live updates. Tolerates
-  // window.Nee2PProbe being absent (renders all-yellow cards instead).
+  // Manual probe trigger. Always callable from the Refresh button — bypasses
+  // the 30s cache by calling refresh() if available, falling back to probeAll().
+  const runProbes = React.useCallback(async () => {
+    if (!window.Nee2PProbe) {
+      setProbeError('window.Nee2PProbe is undefined (net-probe.js failed to load)');
+      setResults({});
+      return;
+    }
+    setProbing(true);
+    setProbeError(null);
+    try {
+      const fn = typeof window.Nee2PProbe.refresh === 'function'
+        ? window.Nee2PProbe.refresh
+        : window.Nee2PProbe.probeAll;
+      const r = await fn();
+      setResults(r || {});
+      setLastRunAt(Date.now());
+    } catch (e) {
+      setProbeError(String(e && e.message ? e.message : e));
+      setResults({});
+    } finally {
+      setProbing(false);
+    }
+  }, []);
+
+  // On mount: trigger an initial probe, then subscribe to live updates.
   React.useEffect(() => {
     if (!open) return;
     let cancelled = false;
-
-    (async () => {
-      const r = await (window.Nee2PProbe && window.Nee2PProbe.probeAll
-        ? window.Nee2PProbe.probeAll().catch(() => null)
-        : Promise.resolve(null));
-      if (!cancelled) setResults(r || {});
-    })();
+    runProbes();
 
     let unsub = null;
     if (window.Nee2PProbe && typeof window.Nee2PProbe.subscribe === 'function') {
       try {
         unsub = window.Nee2PProbe.subscribe((next) => {
-          if (!cancelled) setResults(next || {});
+          if (!cancelled) { setResults(next || {}); setLastRunAt(Date.now()); }
         });
       } catch { /* ignore — keep initial result */ }
     }
@@ -3848,7 +3870,7 @@ function ModeSwitcherSheet({ open, currentMode, onSelect, onClose }) {
         try { unsub(); } catch { /* ignore */ }
       }
     };
-  }, [open]);
+  }, [open, runProbes]);
 
   if (!open) return null;
 
@@ -3871,13 +3893,51 @@ function ModeSwitcherSheet({ open, currentMode, onSelect, onClose }) {
         maxHeight: 'min(85vh, 85dvh)', overflowY: 'auto',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          marginBottom: 16 }}>
+          marginBottom: 8 }}>
           <div style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>{tr('mode.title')}</div>
-          <button onClick={onClose} style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            color: 'rgba(255,255,255,0.4)', fontSize: 20, padding: '0 4px',
-          }}>✕</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              onClick={runProbes}
+              disabled={probing}
+              title="Run network checks"
+              style={{
+                background: probing ? 'rgba(255,255,255,0.04)' : 'rgba(123,224,177,0.12)',
+                border: '0.5px solid ' + (probing ? 'rgba(255,255,255,0.08)' : 'rgba(123,224,177,0.3)'),
+                cursor: probing ? 'wait' : 'pointer',
+                color: probing ? 'rgba(255,255,255,0.4)' : '#7be0b1',
+                fontSize: 11, padding: '5px 10px', borderRadius: 9999,
+                fontFamily: 'var(--ff-mono, ui-monospace, monospace)',
+                textTransform: 'uppercase', letterSpacing: 0.3,
+              }}>{probing ? '⟳ checking…' : '↻ check'}</button>
+            <button onClick={onClose} style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'rgba(255,255,255,0.4)', fontSize: 20, padding: '0 4px',
+            }}>✕</button>
+          </div>
         </div>
+
+        {/* Diagnostic strip — visible only when there's something to show */}
+        {(probeError || (lastRunAt && !probing) || (results && Object.keys(results).length === 0)) && (
+          <div style={{
+            marginBottom: 12, padding: '8px 12px', borderRadius: 8,
+            background: probeError ? 'rgba(232,90,90,0.12)' : 'rgba(255,255,255,0.03)',
+            fontSize: 10.5, color: probeError ? '#ff9a9a' : 'rgba(255,255,255,0.5)',
+            fontFamily: 'var(--ff-mono, ui-monospace, monospace)',
+            lineHeight: 1.4,
+          }}>
+            {probeError ? (
+              <>⚠ probe error: {probeError}</>
+            ) : (
+              <>last check: {lastRunAt ? new Date(lastRunAt).toLocaleTimeString() : '—'}
+                {' · '}probe modules: {[
+                  window.Nee2PProbe ? 'probe✓' : 'probe✗',
+                  window.NeeCall ? 'webrtc✓' : 'webrtc✗',
+                  window.TrackerRendezvous ? 'tracker✓' : 'tracker✗',
+                  window.Nee2PBridge ? 'bridge✓' : 'bridge✗',
+                ].join(' ')}</>
+            )}
+          </div>
+        )}
 
         {MODES.map(mode => (
           <_ModeCard
