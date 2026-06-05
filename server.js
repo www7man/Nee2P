@@ -776,6 +776,15 @@ const server = http.createServer((req, res) => {
   if (url.pathname.startsWith('/2Pee/')) url.pathname = url.pathname.slice(5) || '/';
   const p = url.pathname;
 
+  // Lightweight health check used by clients to probe relay reachability
+  // in the mode-switcher UI. Returns 200 with no body. Allowed for HEAD too.
+  // Registered as early as possible so it short-circuits before rate-limiting
+  // or any heavier handler. The /2Pee/ prefix was already stripped above, so
+  // this single registration covers both /healthz and /2Pee/healthz.
+  if ((req.method === 'GET' || req.method === 'HEAD') && p === '/healthz') {
+    res.writeHead(200); return res.end();
+  }
+
   // Rate-limit API endpoints by client IP. CDN forwards X-Forwarded-For;
   // fall back to remote address. Static files and stream/poll skip the
   // limiter (the stream is one long-lived connection, not a burst).

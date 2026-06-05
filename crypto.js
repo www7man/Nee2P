@@ -630,6 +630,54 @@
     return dec.decode(ptBuf);
   }
 
+  // ── Mode 2 (Direct P2P) primitives ──
+  // SHA-1 — needed for WebTorrent-style infoHash derivation in Mode 2 (Direct P2P).
+  // 20-byte output. Same crypto.subtle path as sha256Hex but returns raw Uint8Array.
+  async function sha1(data) {
+    const u8 = data instanceof Uint8Array ? data : (typeof data === 'string' ? enc.encode(data) : new Uint8Array(data));
+    const buf = await crypto.subtle.digest('SHA-1', u8);
+    return new Uint8Array(buf);
+  }
+
+  // HMAC-SHA-256 — needed for PSK-MAC over SDP in Mode 2.
+  async function hmacSha256(keyBytes, dataBytes) {
+    const k = keyBytes instanceof Uint8Array ? keyBytes : new Uint8Array(keyBytes);
+    const d = dataBytes instanceof Uint8Array ? dataBytes : (typeof dataBytes === 'string' ? enc.encode(dataBytes) : new Uint8Array(dataBytes));
+    const cryptoKey = await crypto.subtle.importKey('raw', k, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const sig = await crypto.subtle.sign('HMAC', cryptoKey, d);
+    return new Uint8Array(sig);
+  }
+
+  // HKDF-SHA-256 → raw bytes. Generic version of the one already inlined in derivePeerKey.
+  // Used by Mode 2 to derive (a) infoHash labels, (b) session PSK from masterKey.
+  async function hkdf(ikm, salt, info, lenBytes) {
+    const ikmU8 = ikm instanceof Uint8Array ? ikm : (typeof ikm === 'string' ? enc.encode(ikm) : new Uint8Array(ikm));
+    const saltU8 = salt instanceof Uint8Array ? salt : (typeof salt === 'string' ? enc.encode(salt) : new Uint8Array(salt || 0));
+    const infoU8 = info instanceof Uint8Array ? info : (typeof info === 'string' ? enc.encode(info) : new Uint8Array(info || 0));
+    const baseKey = await crypto.subtle.importKey('raw', ikmU8, { name: 'HKDF' }, false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits(
+      { name: 'HKDF', hash: 'SHA-256', salt: saltU8, info: infoU8 },
+      baseKey,
+      lenBytes * 8
+    );
+    return new Uint8Array(bits);
+  }
+
+  // Raw X25519 ECDH → 32 bytes. Thin wrapper over the existing internal _ecdh.
+  // Mode 2 needs the raw secret as the first chunk of its handshake IKM
+  // (Mode 1 / derivePeerKey folds ECDH inside HKDF — that's the relay flow).
+  async function rawEcdh(privKey, peerPubBytes) {
+    return _ecdh(privKey, peerPubBytes);
+  }
+
+  // deriveMasterKey — alias for deriveKey for naming clarity. The existing
+  // deriveKey() is renamed-in-spirit to "master key derivation" since that's
+  // what it does (Argon2id over phrase → 32 raw bytes). Both names coexist;
+  // existing callers (relay path) stay on deriveKey, Mode 2 uses deriveMasterKey.
+  async function deriveMasterKey(phrase) {
+    return deriveKey(phrase);
+  }
+
   g.Nee2PCrypto = {
     deriveKey,
     encrypt, decrypt,
@@ -647,6 +695,8 @@
     exportPub, importPub,
     // Persistence: device-key wrap/unwrap for phrase+pw in IndexedDB
     generateDeviceKey, wrapWithDeviceKey, unwrapWithDeviceKey,
+    // Mode 2 (Direct P2P) primitives ──
+    sha1, hmacSha256, hkdf, rawEcdh, deriveMasterKey,
     // Surfaced library posture for the safety modal. These start `null`
     // (unknown) and get stamped by deriveKey() / generateEphemeralKeypair() /
     // generateKemKeypair() once each library actually fires.
