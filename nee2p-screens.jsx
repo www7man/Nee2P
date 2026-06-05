@@ -19,7 +19,8 @@ const md5 = window.md5;
 
 // ─────────────────────────────────────────────────────────────
 function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
-                         savedRooms, onRestoreSaved }) {
+                         savedRooms, onRestoreSaved,
+                         connMode = 'relay', onChangeMode }) {
   const p = usePalette(palette);
   const [lang] = window.Nee2Pi18n.useLang();
   const t = window.Nee2Pi18n.t;
@@ -32,6 +33,7 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
   }, []);
 
   const [showCloneModal, setShowCloneModal] = React.useState(false);
+  const [showModeSheet, setShowModeSheet] = React.useState(false);
   const [copiedStep, setCopiedStep] = React.useState(null);
   const [selectedOS, setSelectedOS] = React.useState('mac');
   const handleCopyCmd = (stepId, cmd) => {
@@ -52,7 +54,10 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         animation: 'welcome-rise 0.7s ease both' }}>
         <Logo size={11} palette={palette} />
-        <LangToggle />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <ModePill currentMode={connMode} onClick={() => setShowModeSheet(true)} />
+          <LangToggle />
+        </div>
       </div>
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column',
@@ -351,6 +356,14 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
           </div>
         </div>
       )}
+
+      {/* ── Mode switcher sheet ── */}
+      <ModeSwitcherSheet
+        open={showModeSheet}
+        currentMode={connMode}
+        onSelect={(m) => { if (onChangeMode) onChangeMode(m); setShowModeSheet(false); }}
+        onClose={() => setShowModeSheet(false)}
+      />
     </div>
   );
 }
@@ -3520,6 +3533,370 @@ function ActiveCallOverlay({ palette, callState, callMuted, callOnSpeaker, callE
               stroke={callOnSpeaker ? '#7be0b1' : '#fff'} strokeWidth="1.6" strokeLinecap="round"/>
           </svg>
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Connection-mode pill + switcher sheet (owner: main-ux) ───
+// `ModePill` lives in the WelcomeScreen top bar and shows the active mode
+// (RELAY / DIRECT / LOCAL) with a live availability dot from window.Nee2PProbe.
+// Clicking it opens `ModeSwitcherSheet`, a bottom-anchored modal that mirrors
+// NetworkDiagnosticsModal's chrome and lets the user pick a different mode.
+
+// Mode metadata — single source of truth for both pill and sheet.
+const MODES = [
+  { key: 'relay',  icon: '◉', nameKey: 'mode.relay.name',  descKey: 'mode.relay.desc'  },
+  { key: 'direct', icon: '⇄', nameKey: 'mode.direct.name', descKey: 'mode.direct.desc' },
+  { key: 'local',  icon: '⌖', nameKey: 'mode.local.name',  descKey: 'mode.local.desc'  },
+];
+
+// Map probe-result status → (dot color, status-pill colors, i18n key).
+// `status` from the probe is one of 'available' | 'limited' | 'unavailable'.
+function _modeStatusStyle(status) {
+  if (status === 'available') {
+    return {
+      dot: '#7be0b1',
+      pillBg: 'rgba(80,180,140,0.25)',
+      pillFg: '#7be0b1',
+      labelKey: 'mode.status.available',
+    };
+  }
+  if (status === 'limited') {
+    return {
+      dot: '#ffd166',
+      pillBg: 'rgba(255,209,102,0.18)',
+      pillFg: '#ffd166',
+      labelKey: 'mode.status.limited',
+    };
+  }
+  // unavailable / unknown
+  return {
+    dot: '#ff7a4d',
+    pillBg: 'rgba(232,90,90,0.22)',
+    pillFg: '#ff9a9a',
+    labelKey: 'mode.status.unavailable',
+  };
+}
+
+// Helper: kick off a probe and return the result for one mode. Resilient to
+// missing window.Nee2PProbe (returns a synthetic "unavailable" placeholder so
+// callers never crash).
+async function _probeOne(modeKey) {
+  try {
+    const probe = window.Nee2PProbe;
+    if (!probe || typeof probe.probeAll !== 'function') return null;
+    const all = await probe.probeAll();
+    return (all && all[modeKey]) || null;
+  } catch {
+    return null;
+  }
+}
+
+function ModePill({ currentMode, onClick }) {
+  const tr = window.Nee2Pi18n.t;
+  const [status, setStatus] = React.useState('unknown');
+
+  // Probe the current mode now; refresh every 30s while mounted.
+  React.useEffect(() => {
+    let cancelled = false;
+    const refresh = async () => {
+      const r = await _probeOne(currentMode);
+      if (cancelled) return;
+      setStatus((r && r.status) || 'unknown');
+    };
+    refresh();
+    const id = setInterval(refresh, 30000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [currentMode]);
+
+  const style = _modeStatusStyle(status);
+  const labelKey = 'mode.pill.' + currentMode;
+  const label = tr(labelKey) || currentMode.toUpperCase();
+
+  return (
+    <button
+      onClick={onClick}
+      aria-label={label}
+      style={{
+        height: 28, padding: '0 9px', border: 'none', cursor: 'pointer',
+        borderRadius: 9999,
+        background: 'rgba(255,255,255,0.025)',
+        boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.1)',
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        fontSize: 9.5, fontWeight: 600, letterSpacing: 1.6, textTransform: 'uppercase',
+        color: 'var(--tx-40)',
+        fontFamily: 'var(--ff-mono)',
+        WebkitTapHighlightColor: 'transparent',
+        userSelect: 'none',
+        transition: 'background 0.18s ease',
+      }}
+    >
+      <span style={{
+        width: 6, height: 6, borderRadius: '50%',
+        background: style.dot,
+        boxShadow: '0 0 6px ' + style.dot + '55',
+      }} />
+      <span>{label}</span>
+      <span style={{ fontSize: 8, opacity: 0.55, marginLeft: 1 }}>▾</span>
+    </button>
+  );
+}
+
+// Single row inside a mode-card's checklist. Mirrors NetworkDiagnosticsModal.Row
+// but tightened — smaller dot, optional right-aligned mono metric.
+function _ModeCheckRow({ row }) {
+  const s = row && row.status;
+  const ok = s === 'ok';
+  const warn = s === 'warn';
+  // anything else (err / undefined) = red
+  const dotBg = ok
+    ? 'rgba(80,180,140,0.25)'
+    : warn ? 'rgba(255,209,102,0.20)' : 'rgba(232,90,90,0.22)';
+  const dotStroke = ok
+    ? 'rgba(123,224,177,0.6)'
+    : warn ? 'rgba(255,209,102,0.6)' : 'rgba(255,140,140,0.5)';
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 6,
+      paddingLeft: 8, paddingTop: 6, paddingBottom: 6,
+      borderBottom: '0.5px solid rgba(255,255,255,0.04)',
+      fontSize: 12.5,
+    }}>
+      <div style={{
+        flexShrink: 0,
+        width: 14, height: 14, borderRadius: '50%',
+        background: dotBg,
+        boxShadow: 'inset 0 0 0 0.5px ' + dotStroke,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {ok ? (
+          <svg width="8" height="8" viewBox="0 0 24 24" fill="none">
+            <path d="M5 12l5 5 9-11" stroke="#7be0b1" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        ) : warn ? (
+          <span style={{ fontSize: 9, fontWeight: 700, color: '#ffd166', lineHeight: 1 }}>!</span>
+        ) : (
+          <svg width="7" height="7" viewBox="0 0 24 24" fill="none">
+            <path d="M6 6l12 12M18 6L6 18" stroke="#ff9a9a" strokeWidth="3" strokeLinecap="round"/>
+          </svg>
+        )}
+      </div>
+      <div style={{ flex: 1, minWidth: 0, color: 'rgba(255,255,255,0.85)' }}>
+        {row && row.label}
+      </div>
+      {row && (row.value || row.detail) && (
+        <div style={{
+          flexShrink: 0, fontFamily: 'var(--ff-mono)',
+          fontSize: 11, color: 'rgba(255,255,255,0.5)',
+          letterSpacing: 0.2,
+        }}>
+          {row.value || row.detail}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function _ModeCard({ mode, result, isActive, onSelect }) {
+  const tr = window.Nee2Pi18n.t;
+  const [expanded, setExpanded] = React.useState(false);
+
+  // Treat a missing probe (deploy-gap) as all-yellow with one "probe unavailable" row.
+  const safeResult = result || {
+    status: 'limited',
+    rows: [{ label: tr('mode.status.limited') || 'Probe unavailable', status: 'warn' }],
+  };
+  const rows = Array.isArray(safeResult.rows) ? safeResult.rows : [];
+  const greenCount = rows.filter(r => r && r.status === 'ok').length;
+  const total = rows.length;
+
+  const style = _modeStatusStyle(safeResult.status);
+  const unavailable = safeResult.status === 'unavailable';
+
+  const cardBorder = isActive
+    ? '0.5px solid rgba(123,224,177,0.35)'
+    : '0.5px solid rgba(255,255,255,0.06)';
+  const cardShadow = isActive
+    ? '0 0 18px rgba(123,224,177,0.18)'
+    : 'none';
+
+  return (
+    <div style={{
+      padding: 16, borderRadius: 16,
+      background: 'rgba(255,255,255,0.02)',
+      border: cardBorder,
+      boxShadow: cardShadow,
+      display: 'flex', flexDirection: 'column', gap: 12,
+      marginBottom: 10,
+    }}>
+      {/* Header row: icon + name + status pill */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{
+          fontSize: 16, color: style.pillFg, lineHeight: 1,
+          width: 22, textAlign: 'center',
+        }}>{mode.icon}</span>
+        <div style={{
+          flex: 1, fontSize: 14, fontWeight: 600, color: '#fff',
+          letterSpacing: 0.2, textTransform: 'uppercase',
+          fontFamily: 'var(--ff-mono)',
+        }}>{tr(mode.nameKey) || mode.key.toUpperCase()}</div>
+        <div style={{
+          padding: '4px 8px', borderRadius: 9999,
+          background: style.pillBg, color: style.pillFg,
+          fontSize: 9.5, fontWeight: 700, letterSpacing: 1.2,
+          textTransform: 'uppercase', fontFamily: 'var(--ff-mono)',
+        }}>{tr(style.labelKey) || safeResult.status}</div>
+      </div>
+
+      {/* Description */}
+      <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.65)', lineHeight: 1.45 }}>
+        {tr(mode.descKey)}
+      </div>
+
+      <div style={{ height: 0.5, background: 'rgba(255,255,255,0.06)' }} />
+
+      {/* Expandable checklist */}
+      <button
+        onClick={() => setExpanded(e => !e)}
+        style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          padding: 0, color: 'rgba(255,255,255,0.7)',
+          display: 'flex', alignItems: 'center', gap: 6,
+          fontSize: 12, fontWeight: 600, letterSpacing: 0.3,
+          fontFamily: 'inherit', textAlign: 'left',
+        }}
+      >
+        <span style={{ fontSize: 9, transition: 'transform 0.15s', display: 'inline-block',
+          transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)' }}>▾</span>
+        <span>{tr('mode.checks.label')}</span>
+        <span style={{
+          fontFamily: 'var(--ff-mono)', fontSize: 11,
+          color: 'rgba(255,255,255,0.45)',
+        }}>({greenCount}/{total})</span>
+      </button>
+
+      {expanded && (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {rows.map((row, i) => <_ModeCheckRow key={i} row={row} />)}
+        </div>
+      )}
+
+      <div style={{ height: 0.5, background: 'rgba(255,255,255,0.06)' }} />
+
+      {/* Select button (or active chip) */}
+      {isActive ? (
+        <div style={{
+          height: 44, borderRadius: 12,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          background: 'rgba(80,180,140,0.10)',
+          boxShadow: 'inset 0 0 0 0.5px rgba(123,224,177,0.5)',
+          color: '#a8efc8', fontSize: 13, fontWeight: 600, letterSpacing: 0.3,
+        }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+            <path d="M5 12l5 5 9-11" stroke="#a8efc8" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <span>{tr('mode.active')}</span>
+        </div>
+      ) : (
+        <GlassButton
+          primary
+          onClick={() => { if (!unavailable && onSelect) onSelect(mode.key); }}
+          disabled={unavailable}
+          style={{
+            height: 44, borderRadius: 12,
+            opacity: unavailable ? 0.4 : 1,
+            cursor: unavailable ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {tr('mode.select')}
+        </GlassButton>
+      )}
+    </div>
+  );
+}
+
+function ModeSwitcherSheet({ open, currentMode, onSelect, onClose }) {
+  const tr = window.Nee2Pi18n.t;
+  const [results, setResults] = React.useState(null);
+
+  // On mount: seed from probeAll(), then subscribe to live updates. Tolerates
+  // window.Nee2PProbe being absent (renders all-yellow cards instead).
+  React.useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+
+    (async () => {
+      const r = await (window.Nee2PProbe && window.Nee2PProbe.probeAll
+        ? window.Nee2PProbe.probeAll().catch(() => null)
+        : Promise.resolve(null));
+      if (!cancelled) setResults(r || {});
+    })();
+
+    let unsub = null;
+    if (window.Nee2PProbe && typeof window.Nee2PProbe.subscribe === 'function') {
+      try {
+        unsub = window.Nee2PProbe.subscribe((next) => {
+          if (!cancelled) setResults(next || {});
+        });
+      } catch { /* ignore — keep initial result */ }
+    }
+
+    return () => {
+      cancelled = true;
+      if (typeof unsub === 'function') {
+        try { unsub(); } catch { /* ignore */ }
+      }
+    };
+  }, [open]);
+
+  if (!open) return null;
+
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, zIndex: 230,
+      background: 'rgba(0,0,0,0.6)',
+      backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+      padding: '0 12px',
+      paddingBottom: 'max(28px, env(safe-area-inset-bottom, 0px))',
+      animation: 'fade-up 0.2s ease',
+    }}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        width: '100%', maxWidth: 460, background: '#0f0f15',
+        boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.1), 0 32px 80px rgba(0,0,0,0.7)',
+        borderTopLeftRadius: 24, borderTopRightRadius: 24,
+        borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
+        padding: '20px 18px',
+        maxHeight: 'min(85vh, 85dvh)', overflowY: 'auto',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          marginBottom: 16 }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>{tr('mode.title')}</div>
+          <button onClick={onClose} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: 'rgba(255,255,255,0.4)', fontSize: 20, padding: '0 4px',
+          }}>✕</button>
+        </div>
+
+        {MODES.map(mode => (
+          <_ModeCard
+            key={mode.key}
+            mode={mode}
+            result={results ? results[mode.key] : null}
+            isActive={currentMode === mode.key}
+            onSelect={onSelect}
+          />
+        ))}
+
+        <div style={{
+          marginTop: 6, padding: '10px 14px', borderRadius: 10,
+          background: 'rgba(255,255,255,0.03)',
+          fontSize: 11, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5,
+          textAlign: 'center',
+        }}>
+          {tr('mode.footer.phrase_works_everywhere')}
+        </div>
       </div>
     </div>
   );
