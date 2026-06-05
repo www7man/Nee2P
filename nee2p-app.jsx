@@ -188,6 +188,32 @@ function App() {
   // the same record without re-reading deviceKey state.
   const persistedRoomIdRef = React.useRef(null);
 
+  // ── connection mode (Phase 2a wiring) ─────────────────────
+  // 'relay'  — current behaviour, claim a slot via the WS relay.
+  // 'direct' — peer-to-peer WebRTC (planned for Phase 2b).
+  // 'local'  — same-LAN discovery (planned for Phase 2b).
+  // Persisted in localStorage under `nee2p_conn_mode`. Defaults to 'relay'
+  // so existing users see no behaviour change. The mode applies on the NEXT
+  // pair / claim — we don't switch transports mid-flight.
+  const [connMode, setConnMode] = React.useState(() => {
+    try {
+      const v = localStorage.getItem('nee2p_conn_mode');
+      if (v === 'relay' || v === 'direct' || v === 'local') return v;
+    } catch {}
+    return 'relay'; // default: backward-compatible
+  });
+
+  React.useEffect(() => {
+    try { localStorage.setItem('nee2p_conn_mode', connMode); } catch {}
+  }, [connMode]);
+
+  const onChangeMode = React.useCallback((next) => {
+    if (next !== 'relay' && next !== 'direct' && next !== 'local') return;
+    // Persisted on next render via the effect above.
+    // If user is mid-chat, do NOT switch mid-flight — the mode applies on next pair.
+    setConnMode(next);
+  }, []);
+
   // ── live connection state ─────────────────────────────────
   const wsRef = React.useRef(null);
   // aesKeyRef = phrase-only fallback key (legacy, used when there's no peer
@@ -1578,6 +1604,11 @@ function App() {
       if (pubKeyB64)       claimRequest.pubKey     = pubKeyB64;
       if (kemPubKeyB64)    claimRequest.kemPubKey  = kemPubKeyB64;
 
+      // TODO(phase-2b): branch on `connMode` here — for 'direct' / 'local'
+      // call `window.Nee2PTransport.open(connMode, phrase, opts)` instead of
+      // Nee2PWS.createClient, and adapt the returned handle to the same
+      // handler shape. For now we always take the relay path so behaviour is
+      // bit-for-bit identical to pre-Phase-2a.
       const client = Nee2PWS.createClient({
         room: hash,
         handlers: {
@@ -1721,6 +1752,8 @@ function App() {
           },
           onConnectionStatus: (state) => { setConnStatus(state); },
           onClose: () => {
+            // TODO(phase-2b): when transport.open() is used, wire onDrop here
+            // to surface a mid-chat fallback modal (retry / switch mode / cancel).
             if (!resolved) { resolved = true; resolve({ ok: false, reason: 'closed' }); }
           },
           onError: () => {
@@ -2533,7 +2566,8 @@ function App() {
   switch (screen) {
     case 'welcome':
       body = <WelcomeScreen palette={PALETTE} onCreate={goCreate} onJoin={goJoin} onInfo={goInfo}
-        savedRooms={savedRooms} onRestoreSaved={restoreSavedRoom} />;
+        savedRooms={savedRooms} onRestoreSaved={restoreSavedRoom}
+        connMode={connMode} onChangeMode={onChangeMode} />;
       break;
     case 'info':
       body = <InfoScreen palette={PALETTE} onBack={backToWelcome} />;
@@ -2634,7 +2668,8 @@ function App() {
         onRestart={() => { setExpiredReason(null); setScreen('welcome'); }} />;
       break;
     default:
-      body = <WelcomeScreen palette={PALETTE} onCreate={goCreate} onJoin={goJoin} onInfo={goInfo} />;
+      body = <WelcomeScreen palette={PALETTE} onCreate={goCreate} onJoin={goJoin} onInfo={goInfo}
+        connMode={connMode} onChangeMode={onChangeMode} />;
   }
 
   return (
