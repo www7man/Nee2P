@@ -387,6 +387,16 @@ window.addEventListener('error', function (e) {
 <script src="i18n.js"></script>
 <script src="webrtc.js"></script>
 
+<!--
+  Connection-mode foundation (Mode 2 = Direct P2P, Mode 3 = LAN).
+  Loaded after crypto.js + webrtc.js since both modules depend on them.
+  These are inert until the UI mode switcher wires them in (Phase 2).
+-->
+<script src="tracker-rendezvous.js"></script>
+<script src="p2p-session.js"></script>
+<script src="net-probe.js"></script>
+<script src="transport.js"></script>
+
 <script>
 // Auto cache-bust: version = YYYYMMDDHH (UTC), changes every hour.
 // No manual bumping needed — browsers always load the current hour's copy.
