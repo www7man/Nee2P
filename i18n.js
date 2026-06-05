@@ -404,6 +404,50 @@
       'common.no_conn':    'Нет соединения',
       'common.back':       'Назад',
       'common.hide':       'Скрыть',
+
+      // ── Connection mode (Mode 1 relay / Mode 2 direct-P2P / Mode 3 LAN) ──
+      'mode.title':                          'Режим соединения',
+      'mode.pill.relay':                     'РЕЛЕЙ',
+      'mode.pill.direct':                    'ПРЯМОЙ',
+      'mode.pill.local':                     'ЛОКАЛЬНО',
+
+      'mode.status.available':               'Доступно',
+      'mode.status.limited':                 'Ограничено',
+      'mode.status.unavailable':             'Недоступно',
+
+      'mode.checks.label':                   'Проверки',
+      'mode.select':                         'Выбрать',
+      'mode.active':                         'активен',
+
+      'mode.relay.name':                     'Релей Nee2P.',
+      'mode.relay.desc':                     'Через сервер Nee2P. Работает всегда.',
+      'mode.relay.row_server':               'Сервер отвечает',
+      'mode.relay.row_tls':                  'TLS-соединение',
+      'mode.relay.row_latency':              'Латентность',
+
+      'mode.direct.name':                    'Прямой P2P',
+      'mode.direct.desc':                    'WebRTC через публичный трекер. Без нашего сервера.',
+      'mode.direct.row_webrtc':              'WebRTC поддерживается',
+      'mode.direct.row_stun':                'STUN-серверы доступны',
+      'mode.direct.row_nat':                 'Тип NAT',
+      'mode.direct.row_tracker':             'Трекер рандеву отвечает',
+
+      'mode.local.name':                     'Локальная сеть',
+      'mode.local.desc':                     'Wi-Fi или Bluetooth. Без интернета.',
+      'mode.local.row_wifi':                 'Подключение к Wi-Fi',
+      'mode.local.row_lan_perm':             'Разрешение «Локальная сеть»',
+      'mode.local.row_mpc':                  'MultipeerConnectivity доступен',
+      'mode.local.row_bt':                   'Bluetooth',
+
+      'mode.footer.phrase_works_everywhere': 'Секретная фраза работает во всех режимах.',
+
+      'mode.switched_by_peer':               'Собеседник сменил режим связи.',
+      'mode.fallback.title':                 'Текущий режим недоступен',
+      'mode.fallback.body':                  'Перейти на другой режим связи?',
+      'mode.fallback.switch_relay':          'Перейти на релей',
+      'mode.fallback.switch_direct':         'Перейти на прямой P2P',
+      'mode.fallback.retry':                 'Повторить',
+      'mode.fallback.cancel':                'Отмена',
     },
 
     en: {
@@ -784,6 +828,50 @@
       'common.no_conn':    'No connection',
       'common.back':       'Back',
       'common.hide':       'Hide',
+
+      // ── Connection mode (Mode 1 relay / Mode 2 direct-P2P / Mode 3 LAN) ──
+      'mode.title':                          'Connection mode',
+      'mode.pill.relay':                     'RELAY',
+      'mode.pill.direct':                    'DIRECT',
+      'mode.pill.local':                     'LOCAL',
+
+      'mode.status.available':               'Available',
+      'mode.status.limited':                 'Limited',
+      'mode.status.unavailable':             'Unavailable',
+
+      'mode.checks.label':                   'Checks',
+      'mode.select':                         'Select',
+      'mode.active':                         'active',
+
+      'mode.relay.name':                     'Nee2P. relay',
+      'mode.relay.desc':                     'Via the Nee2P server. Always works.',
+      'mode.relay.row_server':               'Server reachable',
+      'mode.relay.row_tls':                  'TLS handshake',
+      'mode.relay.row_latency':              'Latency',
+
+      'mode.direct.name':                    'Direct P2P',
+      'mode.direct.desc':                    'WebRTC via public tracker. No Nee2P server.',
+      'mode.direct.row_webrtc':              'WebRTC supported',
+      'mode.direct.row_stun':                'STUN reachable',
+      'mode.direct.row_nat':                 'NAT type',
+      'mode.direct.row_tracker':             'Rendezvous tracker reachable',
+
+      'mode.local.name':                     'LAN / Local',
+      'mode.local.desc':                     'Wi-Fi or Bluetooth. No internet.',
+      'mode.local.row_wifi':                 'On Wi-Fi',
+      'mode.local.row_lan_perm':             'Local Network permission',
+      'mode.local.row_mpc':                  'MultipeerConnectivity available',
+      'mode.local.row_bt':                   'Bluetooth',
+
+      'mode.footer.phrase_works_everywhere': 'Your secret phrase works in every mode.',
+
+      'mode.switched_by_peer':               'Peer switched connection mode.',
+      'mode.fallback.title':                 'Current mode unavailable',
+      'mode.fallback.body':                  'Switch to another connection mode?',
+      'mode.fallback.switch_relay':          'Switch to relay',
+      'mode.fallback.switch_direct':         'Switch to direct P2P',
+      'mode.fallback.retry':                 'Retry',
+      'mode.fallback.cancel':                'Cancel',
     },
   };
 
