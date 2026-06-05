@@ -25,7 +25,9 @@ const {
 } = window;
 const md5 = window.md5;
 const Nee2PCrypto = window.Nee2PCrypto;
-const Nee2PWS = window.Nee2PWS;
+// Nee2PWS is still loaded (ws-client.js / http-client.js attach to window) and
+// is used by transport.js's relay-mode wrapper. We no longer reference it
+// directly from this file — every connection goes through Nee2PTransport.open().
 
 const PALETTE = 'steel';
 const HASH_RE = /^[a-f0-9]{32}$/i;
@@ -132,6 +134,155 @@ function nowHHMM() {
 // lazily via window.Nee2PSlotUtil.
 window.Nee2PSlotUtil = { coerceSlot, slotForWire, slotLabel, slotHue, friendlyName };
 
+// ── Phase 2b: transport dispatch ─────────────────────────────────────────
+// Relay mode delivers inbound traffic via a fan-out of per-type handlers
+// (onMsg, onAck, onReact, …) wired directly into ws-client.js. Direct and
+// local modes route every inbound envelope through a single `onMessage`
+// callback on the transport handle. To keep the per-type handler map as the
+// one source of truth, we adapt: when running on direct/local we install a
+// single dispatcher that looks at envelope `type` and fans it out to the
+// same handlers the relay path uses. Unknown types are logged (debug only)
+// rather than crashing — forward compatibility with future server fields.
+function dispatchWireToHandlers(msg, handlers) {
+  if (!msg || !msg.type) return;
+  switch (msg.type) {
+    case 'msg':         return handlers.onMsg?.(msg);
+    case 'msg-batch':   return handlers.onMsgBatch?.(msg);
+    case 'msg-delete':
+    case 'delete':      return handlers.onMsgDelete?.(msg);
+    case 'ack':         return handlers.onAck?.(msg);
+    case 'read':        return handlers.onRead?.(msg);
+    case 'react':       return handlers.onReact?.(msg);
+    case 'typing':      return handlers.onTyping?.(msg);
+    case 'signal':      return handlers.onSignal?.(msg);
+    case 'peer-state':  return handlers.onPeerState?.(msg);
+    case 'room-state':  return handlers.onRoomState?.(msg);
+    case 'paired':      return handlers.onPaired?.(msg);
+    case 'peer-online': return handlers.onPeerOnline?.(msg);
+    case 'room-expired':return handlers.onRoomExpired?.(msg);
+    case 'sender-key':  return handlers.onSenderKey?.(msg);
+    case 'peer-pubkey': return handlers.onPeerPubkey?.(msg);
+    case 'kem-ct':      return handlers.onKemCt?.(msg);
+    case 'claim-result':return handlers.onClaimResult?.(msg);
+    default:
+      console.debug('[transport] unhandled wire type', msg.type);
+  }
+}
+
+// Open a transport for the chosen connection mode and return a unified
+// handle (`{send, close, onMessage, onPhase, onDrop, metrics, ...}`). For
+// relay the handle wraps Nee2PWS — its per-type handlers feed straight
+// through, so the behaviour is bit-identical to the pre-Phase-2b path. For
+// direct/local we adapt: the transport's single onMessage callback fans out
+// to the same handlers map via dispatchWireToHandlers, and the lifecycle
+// hooks (onPhase/onDrop) are mapped to the legacy onConnectionStatus / onClose /
+// onPaired callbacks so the rest of the app stays transport-agnostic.
+async function openTransportForMode(mode, room, password, handlers) {
+  const Nee2PTransport = window.Nee2PTransport;
+  if (!Nee2PTransport || typeof Nee2PTransport.open !== 'function') {
+    throw new Error('Nee2PTransport not loaded');
+  }
+  if (mode === 'relay') {
+    // Phrase argument is unused by openRelay (it needs `room` + `handlers`),
+    // but Nee2PTransport.open() validates the phrase as a non-empty string.
+    // Pass the room hash — it's a non-empty string and ignored downstream.
+    return await Nee2PTransport.open('relay', room || 'relay', {
+      room, password, handlers,
+      logger: (...a) => console.debug('[transport:relay]', ...a),
+    });
+  }
+  if (mode === 'direct') {
+    // Mode 2: tracker rendezvous + WebRTC. Phrase IS the password in our model
+    // (the password fed into deriveMasterKey on both sides yields the same
+    // infoHash / PSK). The role tie-breaker is internal to p2p-session.
+    const handle = await Nee2PTransport.open('direct', password, {
+      logger: (...a) => console.debug('[transport:direct]', ...a),
+      role: 'auto',
+    });
+    handle.onMessage = (m) => dispatchWireToHandlers(m, handlers);
+    handle.onPhase = (phase) => {
+      if (phase === 'connecting' || phase === 'handshake') {
+        handlers.onConnectionStatus?.('connecting');
+      } else if (phase === 'ready' || phase === 'paired') {
+        handlers.onConnectionStatus?.('connected');
+        handlers.onPaired?.({ pairedAt: Date.now() });
+      } else if (phase === 'dropped' || phase === 'failed' || phase === 'closed') {
+        handlers.onConnectionStatus?.('disconnected');
+      }
+    };
+    handle.onDrop = (reason) => handlers.onClose?.({ reason, mode: 'direct' });
+    return handle;
+  }
+  if (mode === 'local') {
+    const handle = await Nee2PTransport.open('local', password, {
+      logger: (...a) => console.debug('[transport:local]', ...a),
+    });
+    handle.onMessage = (m) => dispatchWireToHandlers(m, handlers);
+    handle.onPhase = (phase) => {
+      if (phase === 'connecting') {
+        handlers.onConnectionStatus?.('connecting');
+      } else if (phase === 'paired' || phase === 'ready') {
+        handlers.onConnectionStatus?.('connected');
+        handlers.onPaired?.({ pairedAt: Date.now() });
+      } else if (phase === 'dropped' || phase === 'failed' || phase === 'closed') {
+        handlers.onConnectionStatus?.('disconnected');
+      }
+    };
+    handle.onDrop = (reason) => handlers.onClose?.({ reason, mode: 'local' });
+    return handle;
+  }
+  throw new Error('Unknown mode: ' + mode);
+}
+
+// ── Phase 2b: mid-chat fallback modal ────────────────────────────────────
+// Surfaced when a non-relay transport drops mid-chat. Three actions:
+//   • Retry — try the same mode again
+//   • Switch to relay — fall back to the always-on relay path
+//   • Cancel — dismiss; user keeps the disconnected state visible
+// Visually mirrors the lightweight overlay+card style used elsewhere in the
+// app. Renders nothing when `info` is null.
+function ModeFallbackModal({ info, onRetry, onSwitchRelay, onCancel }) {
+  if (!info) return null;
+  const tr = (window.Nee2Pi18n && window.Nee2Pi18n.t) || ((k) => k);
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 100,
+      background: 'rgba(0,0,0,0.55)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 16,
+    }} onClick={onCancel}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        maxWidth: 380, width: '100%',
+        background: '#1b1f24', color: '#f3f4f6',
+        borderRadius: 16, padding: 20,
+        boxShadow: '0 8px 32px rgba(0,0,0,0.45), inset 0 0 0 0.5px rgba(255,255,255,0.08)',
+        display: 'flex', flexDirection: 'column', gap: 14,
+      }}>
+        <div style={{ fontSize: 16, fontWeight: 600 }}>{tr('mode.fallback.title')}</div>
+        <div style={{ fontSize: 13, opacity: 0.8, lineHeight: 1.4 }}>
+          {tr('mode.fallback.body')}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+          <button onClick={onSwitchRelay} style={{
+            border: 'none', borderRadius: 10, padding: '10px 14px',
+            background: '#4a7fb8', color: '#fff', fontSize: 13, cursor: 'pointer',
+          }}>{tr('mode.fallback.switch_relay')}</button>
+          <button onClick={onRetry} style={{
+            border: 'none', borderRadius: 10, padding: '10px 14px',
+            background: 'rgba(255,255,255,0.08)', color: '#f3f4f6',
+            fontSize: 13, cursor: 'pointer',
+          }}>{tr('mode.fallback.retry')}</button>
+          <button onClick={onCancel} style={{
+            border: 'none', borderRadius: 10, padding: '10px 14px',
+            background: 'transparent', color: 'rgba(243,244,246,0.7)',
+            fontSize: 13, cursor: 'pointer',
+          }}>{tr('mode.fallback.cancel')}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   // ── navigation ────────────────────────────────────────────
   // If opened via a #join=<phrase> deep-link (e.g. from a QR code), jump
@@ -203,7 +354,13 @@ function App() {
     return 'relay'; // default: backward-compatible
   });
 
+  // Ref mirror of connMode so the connectAndClaim closure (memoized with a
+  // stable dep list) can read the current value at call time without having
+  // to be re-created on every mode change. Initialised inline so the ref is
+  // populated before any effect fires (matters for auto-restore on mount).
+  const connModeRef = React.useRef(connMode);
   React.useEffect(() => {
+    connModeRef.current = connMode;
     try { localStorage.setItem('nee2p_conn_mode', connMode); } catch {}
   }, [connMode]);
 
@@ -213,6 +370,16 @@ function App() {
     // If user is mid-chat, do NOT switch mid-flight — the mode applies on next pair.
     setConnMode(next);
   }, []);
+
+  // Mid-chat transport drop → shows a fallback modal asking the user to
+  // retry / switch to relay / cancel. Null when hidden; { reason, mode } when
+  // the modal is up. Only fires for non-relay modes (relay has its own
+  // reconnection logic in ws-client.js and surfaces via connStatus).
+  const [fallbackInfo, setFallbackInfo] = React.useState(null);
+  // Remember the last room/password we connected with so the modal's "Retry"
+  // and "Switch to relay" buttons can re-open without going back through the
+  // create/join screens. Cleared on cleanupConnection / resetAll.
+  const lastConnectArgsRef = React.useRef(null);
 
   // ── live connection state ─────────────────────────────────
   const wsRef = React.useRef(null);
@@ -271,6 +438,11 @@ function App() {
   // For groupMax=2 we keep the legacy {A,B} occupant shape; for >2 it's an Array.
   const [slots, setSlots] = React.useState({ A: { claimed: false, sealed: false }, B: { claimed: false, sealed: false } });
   const [paired, setPaired] = React.useState(false);
+  // Ref mirror of `paired` so the transport's onClose handler can decide
+  // whether to surface the mid-chat fallback modal (only fires once paired,
+  // i.e. mid-chat — pre-pair drops go through the normal flow-error path).
+  const pairedRef = React.useRef(false);
+  React.useEffect(() => { pairedRef.current = paired; }, [paired]);
   const [pairedAt, setPairedAt] = React.useState(null);
   const [createdAt, setCreatedAt] = React.useState(null);
   const [expiresAt, setExpiresAt] = React.useState(null);
@@ -547,6 +719,10 @@ function App() {
   // ── helpers ───────────────────────────────────────────────
   const cleanupConnection = React.useCallback(() => {
     if (wsRef.current) { try { wsRef.current.close(); } catch {} wsRef.current = null; }
+    // Phase 2b: clear the fallback-modal state and the cached connect args
+    // so a fresh session doesn't inherit stale retry inputs.
+    setFallbackInfo(null);
+    lastConnectArgsRef.current = null;
     // Tear down any in-flight WebRTC call; the relay session is gone, so the
     // peer connection has no chance of negotiating ICE renewal anyway.
     if (neeCallRef.current) {
@@ -1604,164 +1780,192 @@ function App() {
       if (pubKeyB64)       claimRequest.pubKey     = pubKeyB64;
       if (kemPubKeyB64)    claimRequest.kemPubKey  = kemPubKeyB64;
 
-      // TODO(phase-2b): branch on `connMode` here — for 'direct' / 'local'
-      // call `window.Nee2PTransport.open(connMode, phrase, opts)` instead of
-      // Nee2PWS.createClient, and adapt the returned handle to the same
-      // handler shape. For now we always take the relay path so behaviour is
-      // bit-for-bit identical to pre-Phase-2a.
-      const client = Nee2PWS.createClient({
-        room: hash,
-        handlers: {
-          onOpen: () => {
-            client.send(claimRequest);
-          },
-          onClaimResult: (m) => {
-            // Immediately seed peerKeysRef from the peers[] roster so we can
-            // start the pairwise-key derivation + sender-key shipping the
-            // moment the room is up — instead of waiting for individual
-            // peer-pubkey events. The peer-pubkey events still fire and are
-            // idempotent (applyPeerPubKey early-outs when nothing changed).
-            if (m && m.ok && Array.isArray(m.peers)) {
-              const gm = typeof m.groupMax === 'number' ? m.groupMax : DEFAULT_GROUP_MAX;
-              const myNum = coerceSlot(m.slot);
-              mySlotRef.current = myNum;
-              groupMaxRef.current = gm;
-              const epoch = typeof m.epoch === 'number' ? m.epoch : 0;
-              if (epoch > currentEpochRef.current) currentEpochRef.current = epoch;
-              enqueue(async () => {
-                for (const p of m.peers) {
-                  await applyPeerPubKey(p.slot, p.pubKey, p.kemPubKey, epoch);
-                }
-              });
-            }
-            // 2-party legacy fields: server still emits peerPubKey for old
-            // clients. Route through the same handler so the peer at the OTHER
-            // 2-party slot gets seeded.
-            if (m && m.ok && m.peerPubKey
-                && (!Array.isArray(m.peers) || m.peers.length === 0)) {
-              const myNum = coerceSlot(m.slot);
-              const peerNum = myNum === 0 ? 1 : 0;
-              const epoch = typeof m.epoch === 'number' ? m.epoch : 0;
-              mySlotRef.current = myNum;
-              groupMaxRef.current = 2;
-              if (epoch > currentEpochRef.current) currentEpochRef.current = epoch;
-              enqueue(() => applyPeerPubKey(peerNum, m.peerPubKey, m.peerKemPubKey, epoch));
-            }
-            if (!resolved) { resolved = true; resolve(m); }
-          },
-          onRoomState: (m) => {
-            // informational only — we'll get claim-result after our claim
-            if (m.exists) {
-              setCreatedAt(m.createdAt);
-              setExpiresAt(m.expiresAt);
-              setSlots(m.slots);
-              setPaired(!!m.paired);
-              if (typeof m.groupMax === 'number') {
-                setGroupMax(m.groupMax);
-                groupMaxRef.current = m.groupMax;
+      // Mode-aware transport open. For 'relay' we still go through the
+      // existing Nee2PWS factory (wrapped by transport.js so close/send/onDrop
+      // semantics line up with the other modes — behaviour is identical for
+      // users who never leave the default). For 'direct' / 'local' the
+      // transport's single onMessage is fanned out to the same per-type
+      // handlers below via dispatchWireToHandlers.
+      const modeForThisOpen = connModeRef.current;
+      const handlers = {
+        onOpen: () => {
+          // The handle is assigned to wsRef.current synchronously after the
+          // transport.open() promise resolves; by the time onOpen fires
+          // (next tick or later — when the underlying socket / DC opens)
+          // wsRef.current is the handle.
+          try { wsRef.current && wsRef.current.send(claimRequest); } catch {}
+        },
+        onClaimResult: (m) => {
+          // Immediately seed peerKeysRef from the peers[] roster so we can
+          // start the pairwise-key derivation + sender-key shipping the
+          // moment the room is up — instead of waiting for individual
+          // peer-pubkey events. The peer-pubkey events still fire and are
+          // idempotent (applyPeerPubKey early-outs when nothing changed).
+          if (m && m.ok && Array.isArray(m.peers)) {
+            const gm = typeof m.groupMax === 'number' ? m.groupMax : DEFAULT_GROUP_MAX;
+            const myNum = coerceSlot(m.slot);
+            mySlotRef.current = myNum;
+            groupMaxRef.current = gm;
+            const epoch = typeof m.epoch === 'number' ? m.epoch : 0;
+            if (epoch > currentEpochRef.current) currentEpochRef.current = epoch;
+            enqueue(async () => {
+              for (const p of m.peers) {
+                await applyPeerPubKey(p.slot, p.pubKey, p.kemPubKey, epoch);
               }
-            }
-          },
-          onPeerState: (m) => {
+            });
+          }
+          // 2-party legacy fields: server still emits peerPubKey for old
+          // clients. Route through the same handler so the peer at the OTHER
+          // 2-party slot gets seeded.
+          if (m && m.ok && m.peerPubKey
+              && (!Array.isArray(m.peers) || m.peers.length === 0)) {
+            const myNum = coerceSlot(m.slot);
+            const peerNum = myNum === 0 ? 1 : 0;
+            const epoch = typeof m.epoch === 'number' ? m.epoch : 0;
+            mySlotRef.current = myNum;
+            groupMaxRef.current = 2;
+            if (epoch > currentEpochRef.current) currentEpochRef.current = epoch;
+            enqueue(() => applyPeerPubKey(peerNum, m.peerPubKey, m.peerKemPubKey, epoch));
+          }
+          if (!resolved) { resolved = true; resolve(m); }
+        },
+        onRoomState: (m) => {
+          // informational only — we'll get claim-result after our claim
+          if (m.exists) {
+            setCreatedAt(m.createdAt);
+            setExpiresAt(m.expiresAt);
             setSlots(m.slots);
             setPaired(!!m.paired);
-          },
-          onPaired: (m) => {
-            setPaired(true);
-            setPairedAt(m.pairedAt);
-          },
-          onPeerOnline: (m) => {
-            const slotNum = coerceSlot(m.peer);
-            if (slotNum === null) return;
-            setPeerOnline(prev => {
-              const next = new Map(prev);
-              next.set(slotNum, !!m.online);
-              return next;
-            });
-            if (!m.online) {
-              setPeerTyping(prev => {
-                if (!prev.get(slotNum)) return prev;
-                const next = new Map(prev);
-                next.set(slotNum, false);
-                return next;
-              });
+            if (typeof m.groupMax === 'number') {
+              setGroupMax(m.groupMax);
+              groupMaxRef.current = m.groupMax;
             }
-          },
-          onPeerPubkey: (m) => {
-            // Derive a new pairwise key for this epoch & ship our sender key.
-            // Serialized so any following msg/msg-batch waits.
-            enqueue(() => applyPeerPubKey(m.peer, m.pubKey, m.kemPubKey, m.epoch));
-          },
-          onKemCt: (m) => {
-            // Post-quantum: peer (initiator slot) shipped ML-KEM ciphertext.
-            // Decap → store shared → recompute pairwise → reship sender key.
-            enqueue(() => applyKemCt(m.ct, m.from, m.epoch));
-          },
-          onSenderKey: (m) => {
-            // Group chat: peer shipped their AES sender key wrapped under our
-            // pairwise key. Unwrap → cache → replay buffered msgs from them.
-            enqueue(() => applySenderKey(m.from, m.iv, m.ct, m.senderKeyEpoch, m.epoch));
-          },
-          onSignal: (m) => {
-            // WebRTC signalling envelope from a peer. Decrypt with the right
-            // sender key (mirrors ingestMessage's pickKeyForItem path) and
-            // hand to NeeCall.
-            enqueue(() => ingestSignal(m));
-          },
-          onMsg: (m) => { enqueue(() => ingestMessage(m)); },
-          onMsgBatch: (m) => {
-            if (!Array.isArray(m.items)) return;
-            enqueue(async () => {
-              for (const it of m.items) await ingestMessage(it);
-            });
-          },
-          onTyping: (m) => {
-            // Legacy 2-party: no `from` field. Map to peerSlot for that case.
-            let slotNum = coerceSlot(m.from);
-            if (slotNum === null && groupMaxRef.current === 2 && mySlotRef.current !== null) {
-              slotNum = mySlotRef.current === 0 ? 1 : 0;
-            }
-            if (slotNum === null) return;
-            setPeerTyping(prev => {
-              const next = new Map(prev);
-              next.set(slotNum, !!m.on);
-              return next;
-            });
-          },
-          onMsgDelete: (m) => { ingestDelete(m.id); },
-          onRead: (m) => {
-            if (!m.upto) return;
-            let slotNum = coerceSlot(m.peer);
-            if (slotNum === null && groupMaxRef.current === 2 && mySlotRef.current !== null) {
-              slotNum = mySlotRef.current === 0 ? 1 : 0;
-            }
-            if (slotNum === null) return;
-            setPeerLastReadIds(prev => {
-              const next = new Map(prev);
-              next.set(slotNum, m.upto);
-              return next;
-            });
-          },
-          onReact: (m) => { ingestReact(m.msgId, m.emoji, m.from, m.op); },
-          onRoomExpired: () => {
-            // Drop the persisted record (if any) — the room is gone server-side
-            // and nothing we have can re-enter it. Best-effort: forget() swallows
-            // IDB errors. Then continue with the existing reset/expired flow.
-            try { forgetSessionRecord(roomIdRef.current); } catch {}
-            resetAll('Таймер обнулился. Все сообщения и ключи стёрты.');
-          },
-          onConnectionStatus: (state) => { setConnStatus(state); },
-          onClose: () => {
-            // TODO(phase-2b): when transport.open() is used, wire onDrop here
-            // to surface a mid-chat fallback modal (retry / switch mode / cancel).
-            if (!resolved) { resolved = true; resolve({ ok: false, reason: 'closed' }); }
-          },
-          onError: () => {
-            if (!resolved) { resolved = true; resolve({ ok: false, reason: 'error' }); }
-          },
+          }
         },
+        onPeerState: (m) => {
+          setSlots(m.slots);
+          setPaired(!!m.paired);
+        },
+        onPaired: (m) => {
+          setPaired(true);
+          setPairedAt(m.pairedAt);
+        },
+        onPeerOnline: (m) => {
+          const slotNum = coerceSlot(m.peer);
+          if (slotNum === null) return;
+          setPeerOnline(prev => {
+            const next = new Map(prev);
+            next.set(slotNum, !!m.online);
+            return next;
+          });
+          if (!m.online) {
+            setPeerTyping(prev => {
+              if (!prev.get(slotNum)) return prev;
+              const next = new Map(prev);
+              next.set(slotNum, false);
+              return next;
+            });
+          }
+        },
+        onPeerPubkey: (m) => {
+          // Derive a new pairwise key for this epoch & ship our sender key.
+          // Serialized so any following msg/msg-batch waits.
+          enqueue(() => applyPeerPubKey(m.peer, m.pubKey, m.kemPubKey, m.epoch));
+        },
+        onKemCt: (m) => {
+          // Post-quantum: peer (initiator slot) shipped ML-KEM ciphertext.
+          // Decap → store shared → recompute pairwise → reship sender key.
+          enqueue(() => applyKemCt(m.ct, m.from, m.epoch));
+        },
+        onSenderKey: (m) => {
+          // Group chat: peer shipped their AES sender key wrapped under our
+          // pairwise key. Unwrap → cache → replay buffered msgs from them.
+          enqueue(() => applySenderKey(m.from, m.iv, m.ct, m.senderKeyEpoch, m.epoch));
+        },
+        onSignal: (m) => {
+          // WebRTC signalling envelope from a peer. Decrypt with the right
+          // sender key (mirrors ingestMessage's pickKeyForItem path) and
+          // hand to NeeCall.
+          enqueue(() => ingestSignal(m));
+        },
+        onMsg: (m) => { enqueue(() => ingestMessage(m)); },
+        onMsgBatch: (m) => {
+          if (!Array.isArray(m.items)) return;
+          enqueue(async () => {
+            for (const it of m.items) await ingestMessage(it);
+          });
+        },
+        onTyping: (m) => {
+          // Legacy 2-party: no `from` field. Map to peerSlot for that case.
+          let slotNum = coerceSlot(m.from);
+          if (slotNum === null && groupMaxRef.current === 2 && mySlotRef.current !== null) {
+            slotNum = mySlotRef.current === 0 ? 1 : 0;
+          }
+          if (slotNum === null) return;
+          setPeerTyping(prev => {
+            const next = new Map(prev);
+            next.set(slotNum, !!m.on);
+            return next;
+          });
+        },
+        onMsgDelete: (m) => { ingestDelete(m.id); },
+        onRead: (m) => {
+          if (!m.upto) return;
+          let slotNum = coerceSlot(m.peer);
+          if (slotNum === null && groupMaxRef.current === 2 && mySlotRef.current !== null) {
+            slotNum = mySlotRef.current === 0 ? 1 : 0;
+          }
+          if (slotNum === null) return;
+          setPeerLastReadIds(prev => {
+            const next = new Map(prev);
+            next.set(slotNum, m.upto);
+            return next;
+          });
+        },
+        onReact: (m) => { ingestReact(m.msgId, m.emoji, m.from, m.op); },
+        onRoomExpired: () => {
+          // Drop the persisted record (if any) — the room is gone server-side
+          // and nothing we have can re-enter it. Best-effort: forget() swallows
+          // IDB errors. Then continue with the existing reset/expired flow.
+          try { forgetSessionRecord(roomIdRef.current); } catch {}
+          resetAll('Таймер обнулился. Все сообщения и ключи стёрты.');
+        },
+        onConnectionStatus: (state) => { setConnStatus(state); },
+        onClose: (info) => {
+          // Pre-paired drop: just resolve the claim promise with a failure
+          // reason so the create/join flow can surface a flow-level error.
+          // Post-paired drop on a non-relay transport: pop the fallback
+          // modal so the user can retry / switch to relay / cancel. Relay
+          // keeps its existing reconnection logic (driven by connStatus).
+          if (!resolved) {
+            resolved = true;
+            const reason = (info && info.reason) || 'closed';
+            resolve({ ok: false, reason });
+            return;
+          }
+          const mode = (info && info.mode) || modeForThisOpen;
+          if (mode !== 'relay' && pairedRef.current) {
+            setFallbackInfo({
+              reason: (info && info.reason) || 'closed',
+              mode,
+            });
+          }
+        },
+        onError: () => {
+          if (!resolved) { resolved = true; resolve({ ok: false, reason: 'error' }); }
+        },
+      };
+
+      // Kick off the transport open. For relay this is a thin wrap around
+      // Nee2PWS.createClient (same connection underneath); for direct/local
+      // it bootstraps the rendezvous + p2p-session / MultipeerConnectivity.
+      openTransportForMode(modeForThisOpen, hash, pwd, handlers).then((handle) => {
+        wsRef.current = handle;
+        lastConnectArgsRef.current = { hash, pwd, opts };
+      }, (err) => {
+        console.error('openTransportForMode failed:', err);
+        if (!resolved) { resolved = true; resolve({ ok: false, reason: 'open-failed' }); }
       });
-      wsRef.current = client;
     });
   }, [ingestMessage, ingestDelete, ingestReact, ingestSignal, resetAll,
       applyPeerPubKey, applyKemCt, applySenderKey, rotateMySenderKey,
@@ -2672,12 +2876,44 @@ function App() {
         connMode={connMode} onChangeMode={onChangeMode} />;
   }
 
+  // ── Phase 2b: fallback-modal handlers ─────────────────────
+  // Reused for both "Retry" and "Switch to relay". Tears the old transport
+  // down (clean send/close semantics live in transport.js) and re-runs the
+  // claim against the last room/password we saw. Same code path as restoreSavedRoom
+  // for the post-connect state propagation.
+  const reopenWithMode = React.useCallback(async (mode) => {
+    const last = lastConnectArgsRef.current;
+    setFallbackInfo(null);
+    if (!last) return;
+    if (wsRef.current) { try { wsRef.current.close(); } catch {} wsRef.current = null; }
+    if (mode && mode !== connModeRef.current) {
+      // Persist + sync the ref before connectAndClaim reads connModeRef.
+      connModeRef.current = mode;
+      setConnMode(mode);
+    }
+    try {
+      await connectAndClaim(last.hash, last.pwd, last.opts || {});
+    } catch (e) {
+      console.error('reopenWithMode failed:', e);
+    }
+  }, [connectAndClaim]);
+
+  const onFallbackRetry      = React.useCallback(() => { reopenWithMode(connModeRef.current); }, [reopenWithMode]);
+  const onFallbackSwitchRelay = React.useCallback(() => { reopenWithMode('relay'); }, [reopenWithMode]);
+  const onFallbackCancel     = React.useCallback(() => { setFallbackInfo(null); }, []);
+
   return (
     <div className="app-frame">
       <GradientMesh palette={PALETTE} intensity={0.85} variant={screen === 'chat' ? 'chat' : 'home'} />
       <div style={{ position: 'relative', height: '100%', zIndex: 1 }} data-screen={screen}>
         {body}
       </div>
+      <ModeFallbackModal
+        info={fallbackInfo}
+        onRetry={onFallbackRetry}
+        onSwitchRelay={onFallbackSwitchRelay}
+        onCancel={onFallbackCancel}
+      />
       {twoTabsWarning && (
         <div style={{
           position: 'absolute', top: 8, left: 8, right: 8, zIndex: 50,
