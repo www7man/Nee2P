@@ -164,6 +164,8 @@ function dispatchWireToHandlers(msg, handlers) {
     case 'peer-pubkey': return handlers.onPeerPubkey?.(msg);
     case 'kem-ct':      return handlers.onKemCt?.(msg);
     case 'claim-result':return handlers.onClaimResult?.(msg);
+    case 'msg-stored':  return handlers.onMsgStored?.(msg);
+    case 'send-error':  return handlers.onSendError?.(msg);
     default:
       console.debug('[transport] unhandled wire type', msg.type);
   }
@@ -1648,8 +1650,18 @@ function App() {
       list.push({ ivB64, ctB64, senderKeyEpoch, epoch });
       pendingDecryptRef.current.set(`sk:${fromNum}`, list);
       console.warn('unwrapSenderKey failed:', e && e.message ? e.message : e);
+      // Schedule a one-shot redrain on the next tick. recomputePairwiseKey is
+      // idempotent within an epoch and drains 'sk:N' — without this nudge,
+      // an unwrap failure that lands AFTER the room has stabilised stays
+      // buffered forever (no future pubkey/kem-ct event to trigger drain).
+      // This is the root cause of "pairing stuck, no error" when the
+      // sender-key arrives a beat before kem-ct on a slow link.
+      if (peer.pairwiseEpoch != null) {
+        const ep = peer.pairwiseEpoch;
+        setTimeout(() => { try { recomputePairwiseKey(fromNum, ep); } catch {} }, 0);
+      }
     }
-  }, [replayPendingFor, replayPendingSignalsFor]);
+  }, [replayPendingFor, replayPendingSignalsFor, recomputePairwiseKey]);
 
   // Tiny byte-equality helper for the pubKey/kemPub change-detection above.
   function sameBytes(a, b) {

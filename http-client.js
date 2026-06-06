@@ -119,8 +119,12 @@
           createdAt: out.createdAt, expiresAt: out.expiresAt, ttlMs: out.ttlMs,
           slots: out.slots, paired: out.paired,
         });
-        const { sessionToken: _t, batch: _b, ...claimResult } = out;
-        dispatch(claimResult);
+        // claim-result must carry its own `type` — dispatch() early-returns
+        // anything without a string `.type`, so the rest-spread without the
+        // explicit field silently dropped the handler call (bug exposed when
+        // we destructured out token/batch and lost the `type` Cygnus injects).
+        const { sessionToken: _t, batch: _b, ...rest } = out;
+        dispatch({ type: 'claim-result', ...rest });
         if (out.paired && out.pairedAt) dispatch({ type: 'paired', pairedAt: out.pairedAt });
         // IMPORTANT ordering: deliver peer-pubkey BEFORE the history batch so
         // the app already has the session key when it starts decrypting. The
@@ -178,7 +182,12 @@
       // URL here. This is a known privacy/log-hygiene tradeoff documented in
       // FIX 9; mitigated by short session TTL and Caddy log scrubbing.
       const url = origin + basePath + 'r/stream?token=' + encodeURIComponent(token);
-      const es = new EventSource(url);
+      // withCredentials: true is REQUIRED so the proxy bypass cookie set by the
+      // PUT /claim response is also sent on the EventSource handshake. Without
+      // it, fronting proxies (Caddy / Pinggy / tunnel) treat the SSE request as
+      // an anonymous client, return an interstitial HTML body, and onmessage
+      // never fires — the loop appears "live" but no events ever flow.
+      const es = new EventSource(url, { withCredentials: true });
       activeEs = es;
       es.onopen = () => {
         if (lostTimer) { clearTimeout(lostTimer); lostTimer = null; }

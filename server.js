@@ -1304,7 +1304,11 @@ function rateLimitOk(ip) {
 // 'too-many-streams' so the client can surface a clear error instead of
 // silently failing.
 const activeStreamsByIp = new Map(); // ip → integer count
-const MAX_STREAMS_PER_IP = 10;
+// 32 covers a CGNAT-shared IP comfortably (e.g. mobile carrier or shared
+// office Wi-Fi where multiple users + their reconnect churn share one IP).
+// Was 10 — too tight when EventSource auto-reconnects (retry: 1500ms) and
+// the counter ratcheted up before the old stream's onClose fired.
+const MAX_STREAMS_PER_IP = 32;
 setInterval(() => {
   const cutoff = Date.now() - 5 * 60 * 1000;
   for (const [ip, b] of RL_BUCKET) if (b.lastRefill < cutoff) RL_BUCKET.delete(ip);
@@ -1379,6 +1383,24 @@ function handleStream(req, res, url) {
   const xff = req.headers['x-forwarded-for'];
   const ip = (typeof xff === 'string' ? xff.split(',')[0].trim() : '')
           || req.socket.remoteAddress || 'unknown';
+  // If the same session already has a live SSE stream open, evict it FIRST
+  // and synchronously reclaim its IP-counter slot. Otherwise the new stream
+  // races the displaced stream's late (or never-firing, if CDN dropped the
+  // socket without FIN) `close` event, and the counter ratchets up on every
+  // EventSource auto-reconnect (retry: 1500ms). Two CGNAT'd clients used to
+  // silently hit 429 after a handful of reconnects, producing "pairing
+  // stuck on waiting screen with no error" symptom.
+  if (sess.streamRes && sess.streamRes !== res && !sess.streamRes.writableEnded) {
+    const oldRes = sess.streamRes;
+    sess.streamRes = null;
+    try { oldRes.end(); } catch {}
+    if (!oldRes.__nee2pIpDecremented) {
+      oldRes.__nee2pIpDecremented = true;  // sentinel so the late onClose is a no-op
+      const prev = activeStreamsByIp.get(ip) || 0;
+      if (prev <= 1) activeStreamsByIp.delete(ip);
+      else activeStreamsByIp.set(ip, prev - 1);
+    }
+  }
   const currentStreams = activeStreamsByIp.get(ip) || 0;
   if (currentStreams >= MAX_STREAMS_PER_IP) {
     return sendJSON(res, 429, { ok: false, reason: 'too-many-streams' });
@@ -1396,13 +1418,8 @@ function handleStream(req, res, url) {
   for (const ev of sess.pendingEvents.splice(0)) {
     res.write('data: ' + JSON.stringify(ev) + '\n\n');
   }
-  // If the same session already has a live SSE stream open (e.g. user opened
-  // a second tab, or a stale stream is still hanging), close it cleanly so
-  // pushEvent never targets a stale socket. The old stream's 'close' handler
-  // will clear its heartbeat; we'll install ours below.
-  if (sess.streamRes && sess.streamRes !== res && !sess.streamRes.writableEnded) {
-    try { sess.streamRes.end(); } catch {}
-  }
+  // (Stale-stream eviction already happened above, before the cap check,
+  // so the IP counter stays in sync with the actual number of live streams.)
   sess.streamRes = res;
 
   // keepalive comment line every 20s so CDN / Caddy don't time the idle out
@@ -1419,6 +1436,10 @@ function handleStream(req, res, url) {
     closed = true;
     clearInterval(heartbeat);
     if (sess.streamRes === res) sess.streamRes = null;
+    // If the eviction-block above already decremented this stream's IP slot
+    // (because a newer stream displaced us), skip the second decrement here.
+    if (res.__nee2pIpDecremented) return;
+    res.__nee2pIpDecremented = true;
     const next = (activeStreamsByIp.get(ip) || 0) - 1;
     if (next <= 0) activeStreamsByIp.delete(ip);
     else activeStreamsByIp.set(ip, next);
