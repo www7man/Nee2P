@@ -2189,6 +2189,16 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
     }) : Promise.resolve();
     try { if (wasRecording) ctx.mediaRecorder.stop(); } catch {}
     await stopPromise;
+    // Release the mic now that the recorder is stopped — otherwise iOS keeps
+    // the OS-level mic indicator lit until ChatScreen unmounts (the stream was
+    // cached for reuse and only stopped on unmount). Re-acquired on the next
+    // recording; getUserMedia won't re-prompt once granted this session.
+    try {
+      if (micStreamRef.current) {
+        for (const tr of micStreamRef.current.getTracks()) tr.stop();
+        micStreamRef.current = null;
+      }
+    } catch {}
     setRecording(null);
     if (!commit) return;
     const blob = new Blob(ctx.chunks, { type: ctx.mime });
