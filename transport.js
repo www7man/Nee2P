@@ -176,6 +176,14 @@
       try { client.close(); } catch {}
     };
     handle._client = client;     // escape hatch — see comment above
+    // Forward the relay client's blob helpers onto the handle. The app calls
+    // `wsRef.current.uploadBlob(…)` / `.downloadBlob(…)` directly (nee2p-app.jsx
+    // ~2413/2433/2584), but `wsRef.current` is THIS handle, which otherwise only
+    // exposes send/close — so attachments threw 'no-client' and images never
+    // uploaded or rendered. Bind only what the client actually has (the WS
+    // transport has no blob API).
+    if (typeof client.uploadBlob === 'function') handle.uploadBlob = client.uploadBlob.bind(client);
+    if (typeof client.downloadBlob === 'function') handle.downloadBlob = client.downloadBlob.bind(client);
     handle._emitPhase('connecting');
     // Relay has no separate "paired" phase distinct from "ready"; the relay's
     // own claim-result/paired messages drive the app's logical pairing state.
