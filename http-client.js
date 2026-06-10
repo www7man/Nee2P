@@ -264,12 +264,18 @@
     window.addEventListener('beforeunload', unloadHandler);
 
     // HTTP has no "connect" handshake — but the caller (nee2p-app.jsx) waits for
-    // onOpen before sending the initial `claim`. Fire it on the next tick so
-    // the WS-shaped contract is preserved.
-    Promise.resolve().then(() => {
+    // onOpen before sending the initial `claim`. Defer to a macrotask (not a
+    // microtask): nee2p-app assigns `wsRef.current = handle` in a .then() that
+    // resolves AFTER the async Nee2PTransport.open() promise settles — a later
+    // microtask than this callback. A Promise.resolve().then() here fired while
+    // wsRef.current was still null, so onOpen's `wsRef.current && send(claim)`
+    // short-circuited and the claim was never sent (HTTP-only pairing hung on
+    // "creating…" forever). setTimeout(…,0) runs after all pending microtasks,
+    // by which time the handle is assigned.
+    setTimeout(() => {
       if (!stopped && handlers.onConnect) handlers.onConnect();
       if (!stopped && handlers.onOpen) handlers.onOpen();
-    });
+    }, 0);
 
     // ── Encrypted blob upload / download ────────────────────
     //
