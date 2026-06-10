@@ -367,6 +367,48 @@
   <!-- 01 — Latest update -->
   <section>
     <div class="section-num"><span lang="ru">01 — Последнее обновление</span><span lang="en">01 — Latest update</span></div>
+    <h2 class="section-heading"><span lang="ru">v0.9.15 — Работа на любом reverse-proxy без CDN + картинки в чате</span><span lang="en">v0.9.15 — Runs behind any plain reverse-proxy (no CDN) + chat images</span></h2>
+
+    <div class="release">
+      <div class="release-meta">
+        <span class="release-version">v0.9.15</span>
+        <span class="release-date"><span lang="ru">июнь 2026</span><span lang="en">June 2026</span></span>
+        <span class="release-tag"><span lang="ru">фикс</span><span lang="en">fixes</span></span>
+        <span class="release-tag"><span lang="ru">развёртывание</span><span lang="en">deployment</span></span>
+        <span class="release-tag"><span lang="ru">вложения</span><span lang="en">attachments</span></span>
+      </div>
+      <h3 class="release-title">
+        <span lang="ru">Stock-сборка теперь работает на любом обычном reverse-proxy (Caddy/nginx) без CDN спереди, и в чате снова грузятся картинки</span>
+        <span lang="en">The stock build now works behind any plain reverse-proxy (Caddy/nginx) with no CDN in front, and chat images load again</span>
+      </h3>
+
+      <h4><span lang="ru">Критические фиксы развёртывания</span><span lang="en">Critical deployment fixes</span></h4>
+      <ul>
+        <li>
+          <span lang="ru"><code>server.js</code>: добавлены <code>.mjs</code> и <code>.wasm</code> в MIME-карту. Раньше ES-модули из <code>vendor/</code> (<code>mlkem.bundle.mjs</code>, <code>noble-ed25519.bundle.mjs</code>) отдавались как <code>application/octet-stream</code>, и браузеры отклоняли их динамический <code>import()</code> — ломалась загрузка ML-KEM-768 на любом деплое без CDN, переписывавшего Content-Type</span>
+          <span lang="en"><code>server.js</code>: added <code>.mjs</code> and <code>.wasm</code> to the MIME map. ES modules in <code>vendor/</code> (<code>mlkem.bundle.mjs</code>, <code>noble-ed25519.bundle.mjs</code>) were served as <code>application/octet-stream</code>, so browsers rejected their dynamic <code>import()</code> — breaking ML-KEM-768 loading on any deploy without a CDN that rewrote Content-Type</span>
+        </li>
+        <li>
+          <span lang="ru"><code>http-client.js</code>: устранена гонка, из-за которой HTTP-транспорт никогда не отправлял первый <code>claim</code>. <code>onOpen</code> вызывался из микротаски — раньше присваивания <code>wsRef.current</code>, поэтому пейринг-запрос тихо терялся и UI вечно висел на «creating…». Колбэк перенесён в макротаску (<code>setTimeout(…,0)</code>), к этому моменту хэндл уже присвоен</span>
+          <span lang="en"><code>http-client.js</code>: fixed a race where the HTTP transport never sent the initial <code>claim</code>. <code>onOpen</code> fired from a microtask before <code>wsRef.current</code> was assigned, so the pairing request was silently dropped and the UI hung on "creating…" forever. The callback now runs as a macrotask (<code>setTimeout(…,0)</code>), by which time the handle is assigned</span>
+        </li>
+      </ul>
+
+      <h4><span lang="ru">Вложения</span><span lang="en">Attachments</span></h4>
+      <ul>
+        <li>
+          <span lang="ru"><code>transport.js</code>: картинки в чате снова грузятся. Relay-хэндл не пробрасывал методы <code>uploadBlob</code>/<code>downloadBlob</code> наружу (они оставались только на внутреннем клиенте), поэтому отправка/приём изображений падали с <code>no-client</code> и вложение не появлялось. Методы теперь проброшены на хэндл</span>
+          <span lang="en"><code>transport.js</code>: chat images load again. The relay handle didn't forward the <code>uploadBlob</code>/<code>downloadBlob</code> methods (they lived only on the inner client), so sending/receiving images failed with <code>no-client</code> and the attachment never appeared. The methods are now forwarded onto the handle</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <hr />
+
+  <!-- 02 — Previous release -->
+  <section>
+    <div class="section-num"><span lang="ru">02 — Предыдущий релиз</span><span lang="en">02 — Previous release</span></div>
     <h2 class="section-heading"><span lang="ru">v0.9.13 — Критические фиксы + Nee2P Lite + полная локализация</span><span lang="en">v0.9.13 — Critical fixes + Nee2P Lite + complete localization</span></h2>
 
     <div class="release">
@@ -448,9 +490,9 @@
 
   <hr />
 
-  <!-- 02 — Previous release -->
+  <!-- 03 — Earlier release -->
   <section>
-    <div class="section-num"><span lang="ru">02 — Предыдущий релиз</span><span lang="en">02 — Previous release</span></div>
+    <div class="section-num"><span lang="ru">03 — Ранний релиз</span><span lang="en">03 — Earlier release</span></div>
     <h2 class="section-heading"><span lang="ru">v0.8.7 — Критический фикс парного соединения + Nee2P Lite</span><span lang="en">v0.8.7 — Critical pairing fix + Nee2P Lite</span></h2>
 
     <div class="release">
@@ -519,9 +561,9 @@
 
   <hr />
 
-  <!-- 03 — Version history -->
+  <!-- 04 — Version history -->
   <section>
-    <div class="section-num"><span lang="ru">03 — История версий</span><span lang="en">03 — Version history</span></div>
+    <div class="section-num"><span lang="ru">04 — История версий</span><span lang="en">04 — Version history</span></div>
     <h2 class="section-heading"><span lang="ru">v0.8.5 — Полная локализация + умный Service Worker</span><span lang="en">v0.8.5 — Full localization + smart Service Worker</span></h2>
 
     <div class="release">
