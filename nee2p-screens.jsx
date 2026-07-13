@@ -1916,6 +1916,16 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
   // fullscreen image overlay (click thumb to open)
   const [fullscreenUrl, setFullscreenUrl] = React.useState(null);
 
+  // ── drag-and-drop file attach ──────────────────────────────
+  // Dropping files onto the chat surfaces a confirmation modal listing the
+  // files (name + size) with "Отправить"/"Отмена". Nothing is uploaded until
+  // the user confirms — a stray drop never leaks a file. dragDepthRef counts
+  // enter/leave events because the browser fires one leave per child element,
+  // which would flicker the overlay off when crossing a bubble boundary.
+  const [dragOver, setDragOver] = React.useState(false);
+  const dragDepthRef = React.useRef(0);
+  const [pendingDrop, setPendingDrop] = React.useState(null); // null | File[]
+
   // ── voice recording state ─────────────────────────────────
   const [recording, setRecording] = React.useState(null);
   // recording = null | { startMs, elapsed, cancel, dragDx }
@@ -2122,6 +2132,52 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
       }
     }
   };
+
+  // ── drag-and-drop attach ──────────────────────────────────
+  // Count enter/leave transitions because dragenter/dragleave fire once per
+  // child element; without a depth counter the overlay would flicker off
+  // whenever the cursor crosses a message bubble inside the drop zone.
+  const onDragEnter = (e) => {
+    if (!onAttach) return;
+    if (!e.dataTransfer || !Array.from(e.dataTransfer.types || []).includes('Files')) return;
+    e.preventDefault();
+    dragDepthRef.current += 1;
+    setDragOver(true);
+  };
+  const onDragOver = (e) => {
+    if (!onAttach) return;
+    if (!e.dataTransfer || !Array.from(e.dataTransfer.types || []).includes('Files')) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+  };
+  const onDragLeave = (e) => {
+    e.preventDefault();
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) setDragOver(false);
+  };
+  const onDrop = (e) => {
+    e.preventDefault();
+    dragDepthRef.current = 0;
+    setDragOver(false);
+    if (!onAttach) return;
+    const files = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
+    if (files.length === 0) return;
+    // Surface the confirmation modal; nothing is uploaded until the user
+    // explicitly accepts, so an accidental drop can't leak a file.
+    setPendingDrop(files);
+  };
+  // User confirmed: send every pending file via the same onAttach path the
+  // paperclip button uses, then close the modal.
+  const confirmPendingDrop = async () => {
+    const files = pendingDrop || [];
+    setPendingDrop(null);
+    for (const f of files) {
+      if (onAttach) {
+        try { await onAttach(f); } catch (err) { console.warn('attach failed', err); }
+      }
+    }
+  };
+  const cancelPendingDrop = () => setPendingDrop(null);
 
   // ── voice recording ─────────────────────────────────────
   // 32-sample RMS waveform across the recorded buffer.
@@ -2534,11 +2590,36 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
         )}
       </div>
 
-      <div ref={scrollRef} className="no-scrollbar" style={{
+      <div ref={scrollRef} className="no-scrollbar"
+        onDragEnter={onDragEnter}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+        style={{
         flex: 1, overflowY: 'auto', padding: '14px 16px 16px',
         display: 'flex', flexDirection: 'column', gap: 8,
         position: 'relative', zIndex: 1,
       }}>
+        {dragOver && (
+          <div style={{
+            position: 'absolute', inset: 8, borderRadius: 18, zIndex: 50,
+            border: '2px dashed ' + (p.glow || '#7c5cff'),
+            background: 'rgba(124,92,255,0.08)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            pointerEvents: 'none',
+          }}>
+            <div style={{
+              padding: '14px 22px', borderRadius: 16,
+              background: 'rgba(20,18,28,0.92)',
+              boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.14), 0 12px 36px rgba(0,0,0,0.5)',
+              color: '#fff', fontSize: 14, fontWeight: 600, letterSpacing: 0.3,
+              display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+              <Icon.Plus size={16} color={p.glow || '#7c5cff'} />
+              <span>{t('drop.hint')}</span>
+            </div>
+          </div>
+        )}
         <div style={{ alignSelf: 'center', marginBottom: 6 }}>
           <Glass radius={9999} padding="6px 12px">
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11,
@@ -3369,6 +3450,71 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
             maxWidth: '100%', maxHeight: '100%', objectFit: 'contain',
             borderRadius: 12, boxShadow: '0 30px 80px rgba(0,0,0,0.6)',
           }} />
+        </div>
+      )}
+
+      {/* Drag-and-drop confirmation modal. Lists the dropped files and asks
+          the user before sending anything — an accidental drop never leaks. */}
+      {pendingDrop && (
+        <div onPointerDown={(e) => { if (e.target === e.currentTarget) cancelPendingDrop(); }} style={{
+          position: 'absolute', inset: 0, zIndex: 90,
+          background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)',
+          WebkitBackdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 16, animation: 'fade-up 0.18s ease',
+        }}>
+          <div style={{
+            width: '100%', maxWidth: 380, background: '#0f0f15',
+            boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.1), 0 32px 80px rgba(0,0,0,0.7)',
+            borderRadius: 20, padding: '18px 16px 14px',
+          }}>
+            <div style={{ color: '#fff', fontSize: 15, fontWeight: 600, letterSpacing: 0.2,
+              marginBottom: 4, textAlign: 'center' }}>
+              {pendingDrop.length === 1 ? t('drop.confirm_one') : t('drop.confirm_many')}
+            </div>
+            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center',
+              marginBottom: 14 }}>
+              {pendingDrop.length === 1
+                ? (pendingDrop[0].name || t('drop.untitled'))
+                : (pendingDrop.length + ' ' + t('drop.files_word'))}
+            </div>
+
+            <div style={{ maxHeight: 180, overflowY: 'auto', marginBottom: 14,
+              display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {pendingDrop.map((f, i) => (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '8px 10px', borderRadius: 12,
+                  background: 'rgba(255,255,255,0.05)',
+                }}>
+                  <Icon.Plus size={14} color="rgba(255,255,255,0.5)" />
+                  <span style={{ flex: 1, color: '#fff', fontSize: 13,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {f.name || t('drop.untitled')}
+                  </span>
+                  <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11,
+                    fontFamily: "'Geist Mono', monospace" }}>
+                    {formatBytes(f.size)}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={cancelPendingDrop} style={{
+                flex: 1, minHeight: 48, borderRadius: 14, border: 'none', cursor: 'pointer',
+                background: 'rgba(255,255,255,0.06)',
+                boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.12)',
+                color: 'rgba(255,255,255,0.8)', fontSize: 14, fontWeight: 600, fontFamily: 'inherit',
+              }}>{t('drop.cancel')}</button>
+              <button onClick={confirmPendingDrop} style={{
+                flex: 1, minHeight: 48, borderRadius: 14, border: 'none', cursor: 'pointer',
+                background: 'rgba(80,180,140,0.25)',
+                boxShadow: 'inset 0 0 0 0.5px rgba(123,224,177,0.6), 0 0 18px rgba(123,224,177,0.18)',
+                color: '#bff3d6', fontSize: 14, fontWeight: 600, fontFamily: 'inherit',
+              }}>{t('drop.send')}</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

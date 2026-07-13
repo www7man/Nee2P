@@ -288,6 +288,15 @@
       'blob.byte_kb':               'КБ',
       'blob.byte_mb':               'МБ',
 
+      // ── Drag-and-drop file attach ───────────────────────────────────────
+      'drop.hint':                  'Отпустите, чтобы прикрепить файлы',
+      'drop.confirm_one':           'Отправить этот файл?',
+      'drop.confirm_many':          'Отправить эти файлы?',
+      'drop.files_word':            'файл.',
+      'drop.untitled':              'Без названия',
+      'drop.send':                  'Отправить',
+      'drop.cancel':                'Отмена',
+
       // ── Message action menu ──────────────────────────────────────────────
       'menu.copy':                  'Скопировать',
       'menu.quote':                 'Процитировать',
@@ -710,6 +719,15 @@
       'blob.byte_b':                'B',
       'blob.byte_kb':               'KB',
       'blob.byte_mb':               'MB',
+
+      // ── Drag-and-drop file attach ───────────────────────────────────────
+      'drop.hint':                  'Drop to attach the files',
+      'drop.confirm_one':           'Send this file?',
+      'drop.confirm_many':          'Send these files?',
+      'drop.files_word':            'file(s).',
+      'drop.untitled':              'Untitled',
+      'drop.send':                  'Send',
+      'drop.cancel':                'Cancel',
 
       // ── Message action menu ──────────────────────────────────────────────
       'menu.copy':                  'Copy',
