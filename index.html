@@ -386,16 +386,6 @@ window.addEventListener('error', function (e) {
 -->
 <script src="i18n.js"></script>
 <script src="webrtc.js"></script>
-<!--
-  P2P file transfer. Exposes window.NeeFile — a WebRTC DataChannel transport
-  for direct (server-less) file delivery between paired peers. Mesh: one
-  peer-link per peer slot. Signalling rides the same 'signal' wire-type as
-  voice calls (file-offer/file-answer/file-ice kinds). Resume-tolerant: an
-  ICE restart recreates the DataChannel but the supervisor (nee2p-app.jsx)
-  holds transfer state and re-sends from the last acked seq, so a brief
-  connection drop does not abort an in-flight transfer.
--->
-<script src="webrtc-file.js"></script>
 
 <!--
   Connection-mode foundation (Mode 2 = Direct P2P, Mode 3 = LAN).

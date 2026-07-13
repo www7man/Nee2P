@@ -478,24 +478,6 @@ function App() {
   const callToastTimerRef = React.useRef(null);
   const neeCallRef = React.useRef(null);
 
-  // ─── P2P file transfer: supervisor state (owner: p2p-files) ───
-  // Mesh of NeeFile peer-links (one per peer slot) for direct chunked file
-  // transfer. Survives brief connection drops: transfer state lives HERE
-  // (not in the peerLink), so an ICE restart that recreates the DataChannel
-  // does not lose progress — the supervisor re-sends from the last acked seq.
-  // fileLinksRef:   Map<slotNum, peerLink>          lazily created per peer.
-  // transfersRef:   Map<transferId, TransferState>  outbound transfers.
-  // recvChunksRef:  Map<transferId, {total, chunks:Map<seq,Uint8Array>, meta}>
-  //                 inbound chunk accumulator (reassembled on last chunk).
-  const fileLinksRef = React.useRef(new Map());
-  const transfersRef = React.useRef(new Map());
-  const recvChunksRef = React.useRef(new Map());
-  const fileToastTimerRef = React.useRef(null);
-  const [fileToast, setFileToast] = React.useState(null);
-  // Transfer progress surfaced to UI (Map serialized as plain object for render).
-  const [transferStates, setTransferStates] = React.useState({}); // transferId → {mode, progress, state}
-
-
   // Show a transient (3s) toast in the chat for a peer-side call outcome.
   const flashCallToast = React.useCallback((text) => {
     if (callToastTimerRef.current) clearTimeout(callToastTimerRef.current);
@@ -504,18 +486,6 @@ function App() {
       setCallToast(null);
       callToastTimerRef.current = null;
     }, 3500);
-  }, []);
-
-  // Show a transient (4s) toast for P2P file-transfer outcomes (fallback to
-  // relay, unrecoverable failure, etc). Separate timer from callToast so a
-  // call and a file transfer can surface simultaneously.
-  const flashFileToast = React.useCallback((text) => {
-    if (fileToastTimerRef.current) clearTimeout(fileToastTimerRef.current);
-    setFileToast(text);
-    fileToastTimerRef.current = setTimeout(() => {
-      setFileToast(null);
-      fileToastTimerRef.current = null;
-    }, 4000);
   }, []);
 
   // FIX 8 — two-tabs detection via BroadcastChannel. If two tabs of Nee2P.
@@ -771,15 +741,6 @@ function App() {
       callToastTimerRef.current = null;
     }
     setCallToast(null);
-    // Tear down P2P file-transfer links + drop in-flight transfers. Same
-    // reasoning as the call above: no relay ⇒ no ICE-restart path ⇒ any open
-    // DataChannel has no chance of recovery, so close cleanly.
-    teardownFileLinks();
-    if (fileToastTimerRef.current) {
-      clearTimeout(fileToastTimerRef.current);
-      fileToastTimerRef.current = null;
-    }
-    setFileToast(null);
     // Revoke any blob object URLs we minted so the browser can free the
     // backing Blob memory. (Closures inside this callback can't reference
     // refs declared later in the component without a guard — null-check just
@@ -1311,23 +1272,6 @@ function App() {
     catch { return; }
     if (!payload || typeof payload.kind !== 'string') return;
 
-    // ── P2P file-transfer signalling: route file-* kinds to the file supervisor
-    // instead of NeeCall. These carry SDP/ICE for the file DataChannel mesh.
-    // Control messages (file-resume-*, file-ack, file-offer-meta, file-cancel)
-    // arrive either here (pre-DC) or over the open DataChannel (post-DC) — both
-    // land in the same handleControl, which is idempotent on transferId.
-    if (payload.kind === 'file-offer' || payload.kind === 'file-answer' || payload.kind === 'file-ice') {
-      const link = getFileLink(fromNum);
-      if (link) {
-        try { link.handleSignal(payload); } catch (e) { console.warn('file signal', e); }
-      } else if (window.NeeFile && window.NeeFile.isSupported()) {
-        // create the link lazily (receiver side) — responder accepts the offer
-        const newLink = getFileLink(fromNum); // second call returns the just-created instance
-        if (newLink) try { newLink.handleSignal(payload); } catch {}
-      }
-      return;
-    }
-
     // For incoming offers in 2-party mode we surface the caller slot to UI.
     if (payload.kind === 'call-offer') setCallPeer(fromNum);
 
@@ -1355,7 +1299,7 @@ function App() {
     })();
     if (!inst) return;
     inst.handleSignal(payload);
-  }, [sendSignal, getFileLink]);
+  }, [sendSignal]);
 
   // Stable ref so applySenderKey can replay buffered signals without taking
   // ingestSignal as a dep (which would re-create the connectAndClaim closure
@@ -2402,409 +2346,6 @@ function App() {
     }
   }, [callState]);
 
-  // ─── P2P file transfer: mesh supervisor (owner: p2p-files) ───
-  // One NeeFile peer-link per peer slot, lazily created on the first transfer.
-  // Signalling rides the existing 'signal' envelope (server.js broadcasts to
-  // all slots), so a single offer reaches every peer — mesh without per-pair
-  // plumbing. Transfer state lives HERE (not in peerLink), so an ICE restart
-  // that recreates the DataChannel loses nothing: we resume from the last acked
-  // seq via the file-resume-request / file-resume-response control messages.
-
-  const CHUNK_SIZE = 64 * 1024;          // 64 KiB plaintext per chunk (before GCM tag)
-  const P2P_SETUP_TIMEOUT_MS = 30000;    // fall back to relay if no DC in 30s
-  const P2P_FALLBACK_THRESHOLD = 0;      // always try P2P first when supported
-
-  // Lazy: create (or return existing) peer-link for a slot. The link's
-  // sendSignal callback routes through our encrypted 'signal' channel; its
-  // inbound callbacks land in the handlers below.
-  const getFileLink = React.useCallback((slotNum) => {
-    if (slotNum === null || slotNum === undefined) return null;
-    const existing = fileLinksRef.current.get(slotNum);
-    if (existing) return existing;
-    if (!window.NeeFile || !window.NeeFile.isSupported()) return null;
-    const link = window.NeeFile.create({
-      sendSignal: (p) => { sendSignal(p); },
-      onStateChange: (s) => {
-        // 'reconnecting' surfaces via transfer state; 'failed' triggers fallback.
-        if (s === 'failed') {
-          // Any outbound transfer relying on this peer falls back to relay.
-          for (const [tid, t] of transfersRef.current.entries()) {
-            if (t.targetSlots.includes(slotNum) && !t.fellBack) {
-              fallbackTransferToRelay(tid).catch(() => {});
-            }
-          }
-        }
-      },
-      onChunk: (transferId, seq, iv, ct, total, isLast) => {
-        handleIncomingChunk(slotNum, transferId, seq, iv, ct, total, isLast);
-      },
-      onControl: (msg) => { handleControl(slotNum, msg); },
-      onProgress: () => {},
-      onComplete: () => {},
-      onError: (reason) => {
-        console.warn('NeeFile error from slot', slotNum, ':', reason);
-      },
-    });
-    fileLinksRef.current.set(slotNum, link);
-    return link;
-  }, [sendSignal]);
-
-  // Update a transfer's UI-facing state.
-  const setTransferUI = (transferId, patch) => {
-    setTransferStates(prev => ({ ...prev, [transferId]: { ...(prev[transferId] || {}), ...patch } }));
-  };
-
-  // Decide whether a file should go P2P. Requires WebRTC support, every peer
-  // online, and a non-trivial size. Falls back to the relay path otherwise.
-  const canSendP2P = React.useCallback(() => {
-    if (!window.NeeFile || !window.NeeFile.isSupported()) return false;
-    if (typeof window !== 'undefined' && !window.isSecureContext) return false;
-    // All peers must be online — P2P is synchronous, both sides must be present.
-    const slots = Array.from(peerKeysRef.current.keys());
-    if (slots.length === 0) return false;
-    for (const s of slots) {
-      if (!peerOnline.get(s)) return false;
-    }
-    return true;
-  }, [peerOnline]);
-
-  // Start an outbound P2P file transfer. Reads the file in CHUNK_SIZE slices
-  // (streaming, not file.arrayBuffer() — so RAM stays bounded on large files),
-  // encrypts each chunk under the per-transfer key, and pushes it to every
-  // peer's link. Returns a local message id so the bubble renders immediately
-  // with a transfer-status badge.
-  const startFileTransfer = React.useCallback(async (file, extra) => {
-    const targetSlots = Array.from(peerKeysRef.current.keys());
-    if (targetSlots.length === 0) throw new Error('no-peers');
-
-    // Derive a per-transfer key from our chat sender-key via HKDF. The key is
-    // isolated from chat crypto (different HKDF info), and the receiver derives
-    // the SAME key from the sender-key we already distributed — so no key
-    // material crosses the wire for the transfer itself.
-    if (!mySenderKeyRef.current) throw new Error('p2p-needs-sender-key');
-
-    const transferId = 'ft-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
-    const msgId = 'p' + Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
-    const totalChunks = Math.max(1, Math.ceil(file.size / CHUNK_SIZE));
-
-    // ikm for HKDF: our sender-key bytes. The receiver derives an identical
-    // key from the sender-key it received from us via the existing protocol.
-    const fileKey = await Nee2PCrypto.hkdfFileTransferKey(mySenderKeyRef.current, transferId);
-
-    // Register the transfer state BEFORE sending so ack/resume handlers find it.
-    transfersRef.current.set(transferId, {
-      id: transferId, msgId, file, fileKey, totalChunks,
-      acked: new Set(),            // seqs acknowledged by ALL peers
-      perPeerAcked: new Map(),     // slotNum → Set<seq>
-      perPeerNext: new Map(),      // slotNum → next expected ack (resume)
-      targetSlots,
-      paused: false,
-      fellBack: false,
-      done: false,
-      sent: 0,
-      chunkCache: new Map(),       // seq → {iv, ct}  (kept for re-send after resume)
-    });
-    for (const s of targetSlots) {
-      transfersRef.current.get(transferId).perPeerAcked.set(s, new Set());
-      transfersRef.current.get(transferId).perPeerNext.set(s, 0);
-    }
-
-    setTransferUI(transferId, { mode: 'p2p', progress: 0, state: 'pending' });
-
-    // Tell each peer a transfer is coming (meta only — name/mime/size/thumb
-    // are encrypted under the transfer key; the relay sees opaque blobs).
-    const meta = {
-      kind: 'file-offer-meta',
-      transferId, msgId,
-      size: file.size, totalChunks,
-      mime: file.type || 'application/octet-stream',
-      name: file.name || '',
-      // thumb generated lazily below if image
-    };
-    if (file.type && file.type.startsWith('image/')) {
-      try { meta.thumb = await makeImageThumb(file); } catch {}
-    }
-
-    // Local echo bubble — same shape as a relay blob message, with a transfer
-    // badge instead of a blobId. Once the transfer completes we replace the
-    // blob with the local bytes (ownBlobBytesRef) so ImageBubble renders.
-    const local = {
-      id: msgId, side: mySlotRef.current, text: '', time: nowHHMM(),
-      at: Date.now(), _epoch: currentEpochRef.current, _from: mySlotRef.current,
-      blob: {
-        mime: meta.mime, size: meta.size, name: meta.name,
-        ...(meta.thumb ? { thumb: meta.thumb } : {}),
-        p2p: { transferId, mode: 'p2p', state: 'transferring', progress: 0 },
-      },
-      transferId,
-    };
-    setMessages(prev => [...prev, local]);
-
-    // Ship the meta to peers + ensure each link is open + offering.
-    const sendPromises = [];
-    for (const s of targetSlots) {
-      const link = getFileLink(s);
-      if (!link) continue;
-      // Control messages before DC-up go through the relay signal channel;
-      // NeeFile.sendControl handles that internally if DC isn't open.
-      try { link.sendControl(meta); } catch {}
-      // The lower slot initiates the offer (deterministic tie-break, matches
-      // transport.js convention) so we don't get a glare of dual offers.
-      if ((mySlotRef.current || 0) < s) {
-        try { link.startOffer(); } catch (e) { console.warn('startOffer', e); }
-      }
-    }
-
-    // Stream the file: read slice, encrypt, cache for resume, push to links.
-    // We await between chunks implicitly via the link's backpressure (it queues
-    // internally and respects bufferedAmountLowThreshold).
-    (async () => {
-      const t = transfersRef.current.get(transferId);
-      if (!t) return;
-      for (let seq = 0; seq < totalChunks; seq++) {
-        if (t.fellBack || t.done) break;
-        // Pause if connection dropped — wait for resume/reconnect.
-        // (connStatus loop below flips t.paused.)
-        while (t.paused && !t.fellBack && !t.done) {
-          await new Promise(r => setTimeout(r, 300));
-        }
-        const off = seq * CHUNK_SIZE;
-        const slice = file.slice(off, off + CHUNK_SIZE);
-        const buf = new Uint8Array(await slice.arrayBuffer());
-        const { iv, ct } = await Nee2PCrypto.encryptChunk(t.fileKey, buf);
-        t.chunkCache.set(seq, { iv, ct });
-        // Send to every peer that hasn't acked past this seq.
-        for (const s of t.targetSlots) {
-          const link = fileLinksRef.current.get(s);
-          if (!link) continue;
-          const next = t.perPeerNext.get(s) || 0;
-          if (seq < next) continue; // already received+acked by this peer
-          try {
-            link.sendChunk(transferId, seq, iv, ct, totalChunks, seq === totalChunks - 1);
-          } catch (e) { console.warn('sendChunk failed', e); }
-        }
-        t.sent = seq + 1;
-        setTransferUI(transferId, { progress: (seq + 1) / totalChunks, state: 'transferring' });
-      }
-    })().catch(e => console.warn('streamLoop', e));
-
-    return msgId;
-  }, [getFileLink, makeImageThumb]);
-
-  // Handle an incoming encrypted chunk from a peer. Accumulate per transferId;
-  // when the last chunk arrives (or all seqs present), reassemble into a Blob,
-  // decrypt is per-chunk (we stored ct; decrypt at reassembly time to bound RAM
-  // we'd need to keep plaintext around). Actually we decrypt lazily on render
-  // via getBlobObjectURL — so here we just stash ct+iv per seq.
-  const handleIncomingChunk = React.useCallback((slotNum, transferId, seq, iv, ct, total, isLast) => {
-    let r = recvChunksRef.current.get(transferId);
-    if (!r) {
-      r = { total, chunks: new Map(), meta: null };
-      recvChunksRef.current.set(transferId, r);
-    }
-    r.chunks.set(seq, { iv, ct });
-    // Update receive progress for the UI.
-    setTransferUI(transferId, { progress: r.chunks.size / r.total, state: 'transferring' });
-    // Send an ACK back to the sender so it can advance its per-peer window and
-    // skip re-sending on resume. Batch the last acked contiguous seq.
-    const link = fileLinksRef.current.get(slotNum);
-    if (link) {
-      // Compute contiguous acked prefix.
-      let next = 0;
-      while (r.chunks.has(next)) next++;
-      try {
-        link.sendControl({ kind: 'file-ack', transferId, nextSeq: next });
-      } catch {}
-    }
-    // If complete, finalize the inbound message.
-    if (r.meta && r.chunks.size >= r.total) {
-      finalizeInboundTransfer(transferId).catch(() => {});
-    }
-  }, []);
-
-  // Handle control messages: file-offer-meta (incoming transfer announcement),
-  // file-ack (peer tells us how far it got), file-resume-request (peer
-  // reconnected and wants to know what to re-send), file-resume-response.
-  const handleControl = React.useCallback((slotNum, msg) => {
-    if (!msg || typeof msg.kind !== 'string') return;
-    if (msg.kind === 'file-offer-meta') {
-      // Peer announced an outbound transfer. Register inbound state + a bubble.
-      const { transferId, msgId, size, totalChunks, mime, name, thumb } = msg;
-      // Derive the file key from the SENDER's sender-key — both sides know it
-      // (the sender distributed it via the existing sender-key protocol). No
-      // key material crosses the wire for the transfer itself; HKDF-branching
-      // under transferId isolates each transfer's crypto.
-      const peer = peerKeysRef.current.get(slotNum);
-      if (!peer || !peer.senderKey) {
-        // Sender-key not yet arrived — buffer; supervisor replay handles it
-        // once applySenderKey fires. For now just drop; the sender will retry
-        // on its next chunk send (idempotent by transferId).
-        console.warn('file-offer before sender-key, dropping', transferId);
-        return;
-      }
-      // peer.senderKey is the remote peer's sender-key (raw bytes). The sender
-      // derived the file key from ITS OWN sender-key, which is exactly what we
-      // received as peer.senderKey — same bytes, same HKDF → same key.
-      const fileKey = Nee2PCrypto.hkdfFileTransferKey(peer.senderKey, transferId);
-      if (recvChunksRef.current.has(transferId)) {
-        const r = recvChunksRef.current.get(transferId);
-        r.meta = { msgId, size, totalChunks, mime, name, thumb };
-        r.fileKey = fileKey;
-        if (r.chunks.size >= totalChunks) finalizeInboundTransfer(transferId);
-        return;
-      }
-      recvChunksRef.current.set(transferId, {
-        total: totalChunks, chunks: new Map(),
-        meta: { msgId, size, totalChunks, mime, name, thumb },
-        fromSlot: slotNum, fileKey,
-      });
-      setTransferUI(transferId, { mode: 'p2p', progress: 0, state: 'transferring' });
-      // Surface a placeholder bubble immediately.
-      const incoming = {
-        id: msgId, side: slotNum, text: '', time: nowHHMM(),
-        at: Date.now(), _epoch: currentEpochRef.current, _from: slotNum,
-        blob: {
-          mime: mime || 'application/octet-stream', size, name: name || '',
-          ...(thumb ? { thumb } : {}),
-          p2p: { transferId, mode: 'p2p', state: 'transferring', progress: 0 },
-        },
-        transferId,
-      };
-      setMessages(prev => prev.some(m => m.id === msgId) ? prev : [...prev, incoming]);
-      return;
-    }
-    if (msg.kind === 'file-ack') {
-      // Peer (slotNum) acknowledged contiguous receipt up to nextSeq for this
-      // transfer. Advance our per-peer window.
-      const t = transfersRef.current.get(msg.transferId);
-      if (!t) return;
-      const prev = t.perPeerNext.get(slotNum) || 0;
-      const next = msg.nextSeq || 0;
-      if (next > prev) t.perPeerNext.set(slotNum, next);
-      // When ALL peers ack the full file, mark done.
-      let allDone = true;
-      for (const s of t.targetSlots) {
-        if ((t.perPeerNext.get(s) || 0) < t.totalChunks) { allDone = false; break; }
-      }
-      if (allDone && !t.done) {
-        t.done = true;
-        setTransferUI(t.id, { state: 'done', progress: 1 });
-      }
-      return;
-    }
-    if (msg.kind === 'file-resume-request') {
-      // Peer reconnected mid-transfer; tell it where to resume from.
-      const r = recvChunksRef.current.get(msg.transferId);
-      const link = fileLinksRef.current.get(slotNum);
-      if (!link) return;
-      let next = 0;
-      if (r) { while (r.chunks.has(next)) next++; }
-      try { link.sendControl({ kind: 'file-resume-response', transferId: msg.transferId, nextSeq: next }); } catch {}
-      return;
-    }
-    if (msg.kind === 'file-resume-response') {
-      // Sender side: after our ICE restart, peer told us how much it already
-      // has. Update the per-peer window so the stream loop doesn't re-send.
-      const t = transfersRef.current.get(msg.transferId);
-      if (!t) return;
-      t.perPeerNext.set(slotNum, Math.max(t.perPeerNext.get(slotNum) || 0, msg.nextSeq || 0));
-      return;
-    }
-    if (msg.kind === 'file-cancel') {
-      recvChunksRef.current.delete(msg.transferId);
-      setMessages(prev => prev.filter(m => m.transferId !== msg.transferId));
-      setTransferStates(prev => { const n = { ...prev }; delete n[msg.transferId]; return n; });
-    }
-  }, []);
-
-  // Reassemble a completed inbound transfer: decrypt each chunk under the
-  // derived file key, concatenate, build a Blob, and stash it in
-  // ownBlobBytesRef keyed by msgId so the existing getBlobObjectURL fast-path
-  // (which checks ownBlobBytesRef first) renders it without a relay round-trip.
-  const finalizeInboundTransfer = React.useCallback(async (transferId) => {
-    const r = recvChunksRef.current.get(transferId);
-    if (!r || !r.meta || !r.fileKey) return;
-    if (r.chunks.size < r.total) return;
-    try {
-      const fileKey = await r.fileKey;  // hkdf returns a Promise
-      const parts = new Array(r.total);
-      for (let seq = 0; seq < r.total; seq++) {
-        const c = r.chunks.get(seq);
-        if (!c) { console.warn('missing chunk', transferId, seq); return; }
-        parts[seq] = await Nee2PCrypto.decryptChunk(fileKey, c.iv, c.ct);
-      }
-      const combined = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
-      let off = 0;
-      for (const p of parts) { combined.set(p, off); off += p.length; }
-      ownBlobBytesRef.current.set(r.meta.msgId, combined);
-      if (ownBlobBytesRef.current.size > 16) {
-        const oldest = ownBlobBytesRef.current.keys().next().value;
-        ownBlobBytesRef.current.delete(oldest);
-      }
-      // Mark the bubble's blob as ready (drop the p2p badge) so ImageBubble /
-      // FileBubble treat it as a normal local-cached attachment.
-      setMessages(prev => prev.map(m => m.id === r.meta.msgId ? {
-        ...m,
-        blob: { ...(m.blob || {}), p2pReady: true },
-      } : m));
-      setTransferUI(transferId, { state: 'done', progress: 1 });
-    } catch (e) {
-      console.warn('finalizeInbound failed', transferId, e);
-      setTransferUI(transferId, { state: 'failed' });
-    }
-  }, []);
-
-  // Fall back to the relay path when P2P fails (ICE unrecoverable, or setup
-  // timed out). Re-uses _encryptAndUploadBlob so the file lands as a normal
-  // blob message — seamless for the user, just via the server.
-  const fallbackTransferToRelay = React.useCallback(async (transferId) => {
-    const t = transfersRef.current.get(transferId);
-    if (!t || t.fellBack) return;
-    t.fellBack = true;
-    setTransferUI(transferId, { mode: 'relay', state: 'transferring' });
-    flashFileToast((window.Nee2Pi18n && window.Nee2Pi18n.t('file.fallback_relay')) || 'Прямое соединение не удалось — отправляю через сервер');
-    try {
-      const buf = await t.file.arrayBuffer();
-      await _encryptAndUploadBlob(buf, {
-        mime: t.file.type || 'application/octet-stream',
-        size: t.file.size, name: t.file.name || '',
-      });
-      // The relay path added its own bubble; drop the P2P placeholder.
-      setMessages(prev => prev.filter(m => m.transferId !== transferId));
-      setTransferStates(prev => { const n = { ...prev }; delete n[transferId]; return n; });
-    } catch (e) {
-      console.warn('fallback relay failed:', e);
-      setTransferUI(transferId, { state: 'failed' });
-    }
-  }, []);
-
-  // Pause/resume outbound transfers when the relay connection (which carries
-  // our signalling) drops. Without a relay there is no ICE restart path, so we
-  // hold chunks until signalling returns. P2P itself may survive a brief relay
-  // blip (the DataChannel stays up), but a restart would need the relay.
-  React.useEffect(() => {
-    for (const t of transfersRef.current.values()) {
-      if (t.done || t.fellBack) continue;
-      const shouldPause = (connStatus === 'reconnecting' || connStatus === 'lost');
-      if (shouldPause !== t.paused) {
-        t.paused = shouldPause;
-        if (shouldPause) setTransferUI(t.id, { state: 'paused' });
-        else setTransferUI(t.id, { state: 'transferring' });
-      }
-    }
-  }, [connStatus]);
-
-  // Tear down all file links on session cleanup (called from cleanupConnection).
-  const teardownFileLinks = React.useCallback(() => {
-    for (const link of fileLinksRef.current.values()) {
-      try { link.close(); } catch {}
-    }
-    fileLinksRef.current.clear();
-    transfersRef.current.clear();
-    recvChunksRef.current.clear();
-    setTransferStates({});
-  }, []);
-
   // ── attachments / voice ───────────────────────────────────
   // Upload progress is a simple counter — every pending op +1, every settled
   // op -1. ChatScreen can render a dot whenever it's > 0.
@@ -2958,28 +2499,6 @@ function App() {
 
   const sendBlob = React.useCallback(async (file) => {
     if (!wsRef.current || !file) return;
-    // Branch: P2P (direct, no relay) when supported and all peers are online;
-    // otherwise the existing relay path (uploadBlob → /r/blob, 5MB cap).
-    // P2P removes the size cap and hides the transfer from the relay entirely.
-    if (canSendP2P() && file.size > P2P_FALLBACK_THRESHOLD) {
-      setUploadProgress(n => n + 1);
-      try {
-        await startFileTransfer(file, {});
-      } catch (e) {
-        console.warn('P2P startFileTransfer failed, falling back to relay:', e && e.message ? e.message : e);
-        // Fall back to relay inline — better a delivered file via server than none.
-        try {
-          const buf = await file.arrayBuffer();
-          await _encryptAndUploadBlob(buf, {
-            mime: file.type || 'application/octet-stream',
-            size: file.size, name: file.name || '',
-          });
-        } catch (e2) { console.warn('relay fallback failed', e2); }
-      } finally {
-        setUploadProgress(n => Math.max(0, n - 1));
-      }
-      return;
-    }
     setUploadProgress(n => n + 1);
     try {
       const buf = await file.arrayBuffer();
@@ -2998,7 +2517,7 @@ function App() {
     } finally {
       setUploadProgress(n => Math.max(0, n - 1));
     }
-  }, [mySlot, canSendP2P, startFileTransfer]);
+  }, [mySlot]);
 
   const sendVoice = React.useCallback(async (arrayBuf, mime, durationMs, waveform) => {
     if (!wsRef.current || !arrayBuf) return;
@@ -3337,8 +2856,6 @@ function App() {
         onVoice={sendVoice}
         onBlobUrl={getBlobObjectURL}
         uploadProgress={uploadProgress}
-        transferStates={transferStates}
-        fileToast={fileToast}
         connStatus={connStatus}
         callState={callState}
         callPeer={callPeer}

@@ -161,40 +161,6 @@
     return new Uint8Array(ptBuf);
   }
 
-  // ── P2P file transfer primitives ────────────────────────
-  // Each file transfer is encrypted under a fresh key derived from the chat
-  // session_key (or sender-key) via HKDF, scoped to a unique transferId. This
-  // isolates file-stream crypto from chat-message crypto: a future IV collision
-  // under one key never crosses the other domain, and rotating a transfer's key
-  // does not rotate the chat. The derived key is a raw 32-byte AES-256 key
-  // suitable for encryptBytes/decryptBytes.
-  //
-  // ikm   — raw bytes of the chat session key (sender-key or pairwise key bytes)
-  // transferId — unique per transfer (see newFileTransferId in nee2p-app.jsx)
-  async function hkdfFileTransferKey(ikm, transferId) {
-    return hkdf(ikm, 'nee2p.p2p.file', 'nee2p.p2p.file.v1:' + transferId, 32);
-  }
-
-  // Encrypt one plaintext chunk of a file stream. Each chunk gets its own
-  // fresh 12-byte IV — so IV reuse under one file key needs ~2^48 chunks (far
-  // beyond any realistic file size), and resume can re-send a chunk without
-  // ever reusing a (key, iv) pair. Output stays raw bytes (no base64) so chunks
-  // go straight to the DataChannel without ~33% overhead.
-  async function encryptChunk(fileKey, uint8) {
-    // fileKey may be either raw 32 bytes or an imported CryptoKey. Normalise.
-    const key = fileKey instanceof CryptoKey
-      ? fileKey
-      : await crypto.subtle.importKey('raw', fileKey, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
-    return encryptBytes(key, uint8);
-  }
-
-  async function decryptChunk(fileKey, iv, ct) {
-    const key = fileKey instanceof CryptoKey
-      ? fileKey
-      : await crypto.subtle.importKey('raw', fileKey, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
-    return decryptBytes(key, iv, ct);
-  }
-
   // SHA-256 hex of an arbitrary string. Used to derive the per-slot
   // passwordHash the relay uses for slot ownership: hex(SHA-256(roomId + '|' + password)).
   // The server never sees the plaintext password.
@@ -716,8 +682,6 @@
     deriveKey,
     encrypt, decrypt,
     encryptBytes, decryptBytes,
-    // P2P file transfer: per-transfer key derivation + per-chunk encryption.
-    hkdfFileTransferKey, encryptChunk, decryptChunk,
     sha256Hex, passwordSlotHash,
     generateEphemeralKeypair, derivePeerKey,
     // ML-KEM-768 post-quantum hybrid
