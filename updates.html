@@ -367,6 +367,55 @@
   <!-- 01 — Latest update -->
   <section>
     <div class="section-num"><span lang="ru">01 — Последнее обновление</span><span lang="en">01 — Latest update</span></div>
+    <h2 class="section-heading"><span lang="ru">v0.9.18 — Передача файлов напрямую между пользователями (без сервера)</span><span lang="en">v0.9.18 — Direct peer-to-peer file transfer (no server)</span></h2>
+
+    <div class="release">
+      <div class="release-meta">
+        <span class="release-version">v0.9.18</span>
+        <span class="release-date"><span lang="ru">июль 2026</span><span lang="en">July 2026</span></span>
+        <span class="release-tag"><span lang="ru">функция</span><span lang="en">feature</span></span>
+        <span class="release-tag"><span lang="ru">приватность</span><span lang="en">privacy</span></span>
+      </div>
+      <h3 class="release-title">
+        <span lang="ru">Файлы теперь передаются напрямую от пользователя к пользователю через WebRTC — сервер видит только факт установки соединения, но не сам файл. Передача устойчива к кратковременным обрывам связи и возобновляется автоматически</span>
+        <span lang="en">Files now transfer directly between users over WebRTC — the server sees only the connection setup, never the file itself. Transfers survive brief connection drops and resume automatically</span>
+      </h3>
+
+      <h4><span lang="ru">Прямая передача файлов (P2P)</span><span lang="en">Direct file transfer (P2P)</span></h4>
+      <ul>
+        <li>
+          <span lang="ru">Когда оба участника онлайн, файлы идут напрямую через WebRTC DataChannel — сервер их не видит и не хранит. Снимается ограничение в 5 МБ: реально передаются файлы до сотен мегабайт</span>
+          <span lang="en">When both peers are online, files flow directly over a WebRTC DataChannel — the server never sees or stores them. The 5 MB cap is lifted: files up to hundreds of megabytes transfer reliably</span>
+        </li>
+        <li>
+          <span lang="ru">Шифрование AES-256-GCM на каждый чанк, ключ выводится из ключа чата через HKDF — отдельный домен крипто от сообщений. Ключ файла никогда не пересекает провод: обе стороны выводят его детерминированно</span>
+          <span lang="en">Per-chunk AES-256-GCM encryption; the key is HKDF-derived from the chat key — a separate crypto domain from messages. The file key never crosses the wire: both sides derive it deterministically</span>
+        </li>
+        <li>
+          <span lang="ru">При кратковременном обрыве связи передача встаёт на паузу и автоматически возобновляется с того же чанка после восстановления (ICE restart + resume-протокол). Бэкпрессура держит RAM в рамках</span>
+          <span lang="en">On a brief connection drop the transfer pauses and automatically resumes from the last acknowledged chunk once connectivity returns (ICE restart + resume protocol). Backpressure keeps RAM bounded</span>
+        </li>
+        <li>
+          <span lang="ru">Группы 2–8: файл раздаётся всем участникам по mesh-каналам. Если прямое соединение не пробивается (строгий NAT), бесшовный откат на серверный путь — файл всё равно доходит</span>
+          <span lang="en">Groups of 2–8: the file fans out to every participant over mesh channels. If a direct connection can't form (strict NAT), it seamlessly falls back to the server path — the file still arrives</span>
+        </li>
+      </ul>
+
+      <h4><span lang="ru">Известные ограничения</span><span lang="en">Known limitations</span></h4>
+      <ul>
+        <li>
+          <span lang="ru">Без TURN-сервера ~10–20% пар за строгим NAT (часть корпоративных/мобильных сетей) уходят на серверный путь с ограничением 5 МБ. P2P требует, чтобы оба были онлайн</span>
+          <span lang="en">Without a TURN server, ~10–20% of pairs behind strict NAT (some corporate/mobile networks) fall back to the server path with the 5 MB cap. P2P requires both peers to be online</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <hr />
+
+  <!-- 02 — Previous release -->
+  <section>
+    <div class="section-num"><span lang="ru">02 — Предыдущий релиз</span><span lang="en">02 — Previous release</span></div>
     <h2 class="section-heading"><span lang="ru">v0.9.16 — Голосовые и картинки доезжают до всех + микрофон гаснет после записи</span><span lang="en">v0.9.16 — Voice &amp; images now reach everyone + mic released after recording</span></h2>
 
     <div class="release">
@@ -402,9 +451,9 @@
 
   <hr />
 
-  <!-- 02 — Previous release -->
+  <!-- 03 — Previous release -->
   <section>
-    <div class="section-num"><span lang="ru">02 — Предыдущий релиз</span><span lang="en">02 — Previous release</span></div>
+    <div class="section-num"><span lang="ru">03 — Предыдущий релиз</span><span lang="en">03 — Previous release</span></div>
     <h2 class="section-heading"><span lang="ru">v0.9.15 — Работа на любом reverse-proxy без CDN + картинки в чате</span><span lang="en">v0.9.15 — Runs behind any plain reverse-proxy (no CDN) + chat images</span></h2>
 
     <div class="release">
@@ -444,9 +493,9 @@
 
   <hr />
 
-  <!-- 03 — Earlier release -->
+  <!-- 04 — Earlier release -->
   <section>
-    <div class="section-num"><span lang="ru">03 — Ранний релиз</span><span lang="en">03 — Earlier release</span></div>
+    <div class="section-num"><span lang="ru">04 — Ранний релиз</span><span lang="en">04 — Earlier release</span></div>
     <h2 class="section-heading"><span lang="ru">v0.9.13 — Критические фиксы + Nee2P Lite + полная локализация</span><span lang="en">v0.9.13 — Critical fixes + Nee2P Lite + complete localization</span></h2>
 
     <div class="release">
@@ -528,9 +577,9 @@
 
   <hr />
 
-  <!-- 04 — Earlier still -->
+  <!-- 05 — Earlier still -->
   <section>
-    <div class="section-num"><span lang="ru">04 — Ещё ранее</span><span lang="en">04 — Earlier still</span></div>
+    <div class="section-num"><span lang="ru">05 — Ещё ранее</span><span lang="en">05 — Earlier still</span></div>
     <h2 class="section-heading"><span lang="ru">v0.8.7 — Критический фикс парного соединения + Nee2P Lite</span><span lang="en">v0.8.7 — Critical pairing fix + Nee2P Lite</span></h2>
 
     <div class="release">
@@ -599,9 +648,9 @@
 
   <hr />
 
-  <!-- 05 — Version history -->
+  <!-- 06 — Version history -->
   <section>
-    <div class="section-num"><span lang="ru">05 — История версий</span><span lang="en">05 — Version history</span></div>
+    <div class="section-num"><span lang="ru">06 — История версий</span><span lang="en">06 — Version history</span></div>
     <h2 class="section-heading"><span lang="ru">v0.8.5 — Полная локализация + умный Service Worker</span><span lang="en">v0.8.5 — Full localization + smart Service Worker</span></h2>
 
     <div class="release">
