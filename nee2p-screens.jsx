@@ -1831,10 +1831,12 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                        safetyFingerprint,
                        onSend, onDelete, onMarkRead, onReact, onBack, banner,
                        onAttach, onVoice, onBlobUrl, uploadProgress = 0,
+                       transferStates = {},
                        connStatus = 'live',
                        callState = 'idle', callPeer = null,
                        callMuted = false, callOnSpeaker = false, callError = null,
                        callToast = null, callSupported = false,
+                       fileToast = null,
                        onCall, onAnswerCall, onRejectCall, onHangup,
                        onToggleMute, onToggleSpeaker }) {
   const [lang] = window.Nee2Pi18n.useLang();
@@ -2766,6 +2768,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                     mine={mine}
                     onBlobUrl={onBlobUrl}
                     onOpenFullscreen={(url) => setFullscreenUrl(url)}
+                    transferState={m.transferId ? transferStates[m.transferId] : null}
                   />
                 )}
                 {(m.text || (!m.blob)) && (
@@ -3271,6 +3274,22 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
           animation: 'fade-up 0.2s ease',
           pointerEvents: 'none',
         }}>{callToast}</div>
+      )}
+
+      {/* P2P file-transfer toast (fallback notice / failure). Sits just below
+          the call-toast slot so both can surface at once. */}
+      {fileToast && (
+        <div style={{
+          position: 'absolute', top: 'max(108px, calc(env(safe-area-inset-top, 0px) + 36px))',
+          left: '50%', transform: 'translateX(-50%)',
+          zIndex: 229, maxWidth: 'calc(100% - 24px)',
+          padding: '8px 14px', borderRadius: 12,
+          background: 'rgba(40,28,18,0.94)',
+          boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.14), 0 8px 24px rgba(0,0,0,0.4)',
+          color: '#ffd9a0', fontSize: 12, letterSpacing: 0.2, textAlign: 'center',
+          animation: 'fade-up 0.2s ease',
+          pointerEvents: 'none',
+        }}>{fileToast}</div>
       )}
 
       {/* ─── WebRTC call UI: incoming bottom sheet (owner: webrtc-calls) ─── */}
@@ -4235,7 +4254,7 @@ function NetworkDiagnosticsModal({ onClose, mode = 'post-failure', onConfirm }) 
 
 // ─────────────────────────────────────────────────────────────
 // Blob bubble: image (thumb → full), voice (player), or file card.
-function BlobBubble({ msg, palette, mine, onBlobUrl, onOpenFullscreen }) {
+function BlobBubble({ msg, palette, mine, onBlobUrl, onOpenFullscreen, transferState }) {
   const p = usePalette(palette);
   const [lang] = window.Nee2Pi18n.useLang();
   const t = window.Nee2Pi18n.t;
@@ -4252,6 +4271,13 @@ function BlobBubble({ msg, palette, mine, onBlobUrl, onOpenFullscreen }) {
     );
   }
 
+  // P2P transfer in progress (or paused/failed) — show a badge instead of the
+  // normal bubble. When done, the supervisor flips p2pReady and we render the
+  // image/file as a normal local-cached attachment.
+  if (blob.p2p && !blob.p2pReady) {
+    return <TransferBadge palette={palette} mine={mine} blob={blob} transferState={transferState} />;
+  }
+
   if (blob.mime && blob.mime.startsWith('image/')) {
     return <ImageBubble msg={msg} palette={palette} mine={mine}
                         onBlobUrl={onBlobUrl} onOpenFullscreen={onOpenFullscreen} />;
@@ -4261,6 +4287,56 @@ function BlobBubble({ msg, palette, mine, onBlobUrl, onOpenFullscreen }) {
   }
   return <FileBubble msg={msg} palette={palette} mine={mine} onBlobUrl={onBlobUrl} />;
 }
+
+// P2P file-transfer badge: progress bar + status text. Shown while a file is
+// streaming directly between peers (no relay). State comes from the supervisor
+// in nee2p-app.jsx via transferStates[transferId].
+function TransferBadge({ palette, mine, blob, transferState }) {
+  const p = usePalette(palette);
+  const [lang] = window.Nee2Pi18n.useLang();
+  const t = window.Nee2Pi18n.t;
+  const ts = transferState || {};
+  const progress = typeof ts.progress === 'number' ? ts.progress : 0;
+  const pct = Math.round(progress * 100);
+  const state = ts.state || 'pending';
+  const label = state === 'paused' ? t('file.p2p_paused')
+    : state === 'failed' ? t('file.p2p_failed')
+    : state === 'done' ? t('file.p2p_done')
+    : t('file.p2p_progress', { pct: String(pct) });
+  const barColor = state === 'failed' ? 'rgba(210,70,70,0.8)'
+    : state === 'paused' ? 'rgba(210,140,60,0.8)'
+    : state === 'done' ? 'rgba(120,200,140,0.8)'
+    : (p.glow || 'rgba(124,92,255,0.85)');
+  const size = blob.size ? formatBytes(blob.size) : '';
+  return (
+    <div style={{
+      margin: '2px 0 4px', padding: '10px 12px', borderRadius: 14,
+      background: 'rgba(255,255,255,0.06)',
+      minWidth: 200, maxWidth: 260,
+    }}>
+      <div style={{ fontSize: 12, color: 'var(--tx-80)', marginBottom: 6,
+        display: 'flex', alignItems: 'center', gap: 6 }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={barColor}
+          strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+          <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z" />
+        </svg>
+        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {blob.name || (blob.mime || 'file')}
+        </span>
+        {size && <span style={{ fontSize: 10, color: 'var(--tx-50)' }}>{size}</span>}
+      </div>
+      <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+        <div style={{
+          height: '100%', width: pct + '%', background: barColor,
+          transition: 'width 0.25s ease',
+        }} />
+      </div>
+      <div style={{ fontSize: 10, color: 'var(--tx-50)', marginTop: 4 }}>{label}</div>
+    </div>
+  );
+}
+
 
 function ImageBubble({ msg, palette, mine, onBlobUrl, onOpenFullscreen }) {
   const blob = msg.blob;

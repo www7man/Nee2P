@@ -288,6 +288,16 @@
       'blob.byte_kb':               'КБ',
       'blob.byte_mb':               'МБ',
 
+      // ── P2P file transfer (direct, peer-to-peer) ───────────────────────
+      'file.p2p_progress':          'напрямую · {pct}%',
+      'file.p2p_transferring':      'передача напрямую…',
+      'file.p2p_paused':            'пауза (восстановление…)',
+      'file.p2p_resuming':          'возобновление…',
+      'file.p2p_done':              'передано напрямую',
+      'file.p2p_failed':            'не удалось передать напрямую',
+      'file.fallback_relay':        'Прямое соединение не удалось — отправляю через сервер',
+      'file.p2p_unsupported':       'Прямая передача недоступна — используется сервер',
+
       // ── Message action menu ──────────────────────────────────────────────
       'menu.copy':                  'Скопировать',
       'menu.quote':                 'Процитировать',
@@ -710,6 +720,16 @@
       'blob.byte_b':                'B',
       'blob.byte_kb':               'KB',
       'blob.byte_mb':               'MB',
+
+      // ── P2P file transfer (direct, peer-to-peer) ───────────────────────
+      'file.p2p_progress':          'direct · {pct}%',
+      'file.p2p_transferring':      'transferring direct…',
+      'file.p2p_paused':            'paused (recovering…)',
+      'file.p2p_resuming':          'resuming…',
+      'file.p2p_done':              'sent direct',
+      'file.p2p_failed':            'direct transfer failed',
+      'file.fallback_relay':        'Direct connection failed — sending via server',
+      'file.p2p_unsupported':       'Direct transfer unavailable — using server',
 
       // ── Message action menu ──────────────────────────────────────────────
       'menu.copy':                  'Copy',
