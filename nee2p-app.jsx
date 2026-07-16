@@ -1818,6 +1818,10 @@ function App() {
             const myNum = coerceSlot(m.slot);
             mySlotRef.current = myNum;
             groupMaxRef.current = gm;
+            setGroupMax(gm);   // BUGFIX: room-state over HTTP omits groupMax, so
+                                // the only guaranteed carrier is claim-result.
+                                // Without this the header stayed on the 2-party
+                                // layout ("1 of 2") for groups of 3–8.
             const epoch = typeof m.epoch === 'number' ? m.epoch : 0;
             if (epoch > currentEpochRef.current) currentEpochRef.current = epoch;
             enqueue(async () => {
@@ -1836,6 +1840,7 @@ function App() {
             const epoch = typeof m.epoch === 'number' ? m.epoch : 0;
             mySlotRef.current = myNum;
             groupMaxRef.current = 2;
+            setGroupMax(2);   // same BUGFIX for the legacy 2-party claim path
             if (epoch > currentEpochRef.current) currentEpochRef.current = epoch;
             enqueue(() => applyPeerPubKey(peerNum, m.peerPubKey, m.peerKemPubKey, epoch));
           }

@@ -118,6 +118,7 @@
           type: 'room-state', exists: true,
           createdAt: out.createdAt, expiresAt: out.expiresAt, ttlMs: out.ttlMs,
           slots: out.slots, paired: out.paired,
+          groupMax: out.groupMax,
         });
         // claim-result must carry its own `type` — dispatch() early-returns
         // anything without a string `.type`, so the rest-spread without the
