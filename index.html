@@ -126,13 +126,16 @@
     }
   }
 
-  /* desktop ≥1024px — fills the viewport, 2-column ChatScreen (sidebar + main). */
+  /* desktop ≥1024px — fills the WHOLE viewport (no max-width cap), so the app
+     stretches edge-to-edge on any monitor. ChatScreen constrains its own
+     ribbon + input to a readable max-width internally (see nee2p-screens.jsx),
+     so message bubbles won't get absurdly wide on 4K. */
   @media (min-width: 1024px) {
     .app-frame {
-      max-width: 1320px;
       width: 100%;
+      max-width: none;
       height: 100dvh;
-      margin: auto;
+      margin: 0;
       align-self: stretch;
       border-radius: 0;
       box-shadow: none;

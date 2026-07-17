@@ -2542,7 +2542,8 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
         height: '100%', flex: 1, minWidth: 0,
         display: 'flex', flexDirection: 'column', position: 'relative',
       }}>
-      <div style={{ position: 'relative', zIndex: 5, paddingTop: 'max(16px, env(safe-area-inset-top))' }}>
+      <div style={{ position: 'relative', zIndex: 5, paddingTop: 'max(16px, env(safe-area-inset-top))',
+        ...(isDesktop ? { maxWidth: 900, width: '100%', margin: '0 auto' } : null) }}>
         <div style={{
           position: 'relative', margin: '0 10px',
           borderRadius: 24, overflow: 'hidden',
@@ -2720,6 +2721,10 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
         flex: 1, overflowY: 'auto', padding: '14px 16px 16px',
         display: 'flex', flexDirection: 'column', gap: 8,
         position: 'relative', zIndex: 1,
+        // Desktop: cap the message ribbon width so bubbles stay readable on
+        // wide monitors (the app-frame itself now fills the whole screen).
+        // Center it so the ribbon sits in the middle of the main column.
+        ...(isDesktop ? { maxWidth: 900, width: '100%', margin: '0 auto' } : null),
       }}>
         {dragOver && (
           <div style={{
@@ -3120,7 +3125,10 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
         )}
       </div>
 
-      <div style={{ padding: '8px 12px 0', paddingBottom: 'max(30px, env(safe-area-inset-bottom, 0px))', position: 'relative', zIndex: 5 }}>
+      <div style={{ padding: '8px 12px 0', paddingBottom: 'max(30px, env(safe-area-inset-bottom, 0px))', position: 'relative', zIndex: 5,
+        // Desktop: align input width with the message ribbon above (both capped
+        // at 900px, centered) so the composer stays under the chat column.
+        ...(isDesktop ? { maxWidth: 900, width: '100%', margin: '0 auto' } : null) }}>
         {/* Burn-after-read — icon toggle; panel expands on tap or when armed */}
         {(burnPanelOpen || burnTtl) && (
           <div style={{
