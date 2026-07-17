@@ -100,8 +100,12 @@
     background: var(--bg-deep);
   }
 
-  /* on desktop / tablets — center a tall, phone-sized window with chrome */
-  @media (min-width: 540px) {
+  /* Ambient gradient backdrop — shown on any screen wider than a phone.
+     Painted on #stage::before so it sits behind the centered .app-frame.
+     (Kept identical to the original; only the frame sizing policy below
+     changed: the old 460×920 phone-in-a-frame is gone in favor of real
+     tablet/desktop tiers.) */
+  @media (min-width: 768px) {
     body { background: #03030a; }
     #stage::before {
       content: '';
@@ -111,16 +115,27 @@
         radial-gradient(50% 40% at 80% 80%, rgba(80,100,140,0.08), transparent 70%);
       pointer-events: none;
     }
+  }
+
+  /* tablet 768–1023px — centered, no phone frame. Single-column chat. */
+  @media (min-width: 768px) and (max-width: 1023px) {
     .app-frame {
-      max-width: 460px;
-      max-height: 920px;
+      max-width: 760px;
       margin: auto;
       align-self: center;
-      border-radius: 38px;
-      box-shadow:
-        0 30px 80px rgba(0,0,0,0.55),
-        0 0 0 1px rgba(255,255,255,0.06),
-        inset 0 0 0 0.5px rgba(255,255,255,0.04);
+    }
+  }
+
+  /* desktop ≥1024px — fills the viewport, 2-column ChatScreen (sidebar + main). */
+  @media (min-width: 1024px) {
+    .app-frame {
+      max-width: 1320px;
+      width: 100%;
+      height: 100dvh;
+      margin: auto;
+      align-self: stretch;
+      border-radius: 0;
+      box-shadow: none;
     }
   }
 

@@ -161,12 +161,13 @@
       'chat.security':     'Безопасность сессии',
       'chat.search':       'Поиск',
       'chat.search_title': 'Поиск по сообщениям',
-      'chat.online':       'online',
-      'chat.offline':      'offline',
+      'chat.online':       'в сети',
+      'chat.offline':      'не в сети',
       'chat.typing':       'печатает',
       'chat.group_label':  'Группа',
       'chat.msg_deleted':  '[сообщение удалено]',
       'chat.invite_panel': 'Пригласить в сессию',
+      'chat.prev_key_encrypted': '[зашифровано прежним ключом — недоступно]',
 
       // ── Call (WebRTC overlay + diagnostics) ──────────────────────────────
       // Used by ActiveCallOverlay, NetworkDiagnosticsModal, and the
@@ -353,10 +354,23 @@
       'info.trust_label':           'Доверие:',
       'info.trust_body':            'мы не можем читать ваши сообщения. Это не обещание, а свойство протокола — у нас нет ключей.',
 
+      // ── Create / Join flow errors ───────────────────────────────────────
+      'flow.create.failed':         'Не удалось создать сессию.',
+      'flow.create.failed_retry':   'Не удалось создать сессию. Попробуй ещё раз.',
+      'flow.create.phrase_in_use':  'Эту фразу уже использует другая группа. Возьми другую.',
+      'flow.create.group_conflict': 'По этой фразе уже есть комната с другим размером группы.',
+      'flow.join.failed_retry':     'Не удалось подключиться. Попробуй ещё раз.',
+      'flow.join.check_phrase':     'Не удалось подключиться. Проверь фразу и пароль.',
+
+      // ── Confirm dialogs ─────────────────────────────────────────────────
+      'confirm.close_session':      'Закрыть сессию? Сообщения исчезнут навсегда.',
+      'confirm.leave_chat':         'Выйти из чата? Сессия останется активной — сможешь вернуться по фразе+паролю.',
+
       // ── Expired / Share / Locked screens ─────────────────────────────────
       'expired.title_top':          'Сессия',
       'expired.title_bottom':       'растворилась.',
       'expired.reason_default':     'Таймер обнулился. Все сообщения и ключи стёрты с устройств.',
+      'expired.reason_timer_reset': 'Таймер обнулился. Все сообщения и ключи стёрты.',
       'expired.open_new':           'Открыть новую',
       'share.status_both':          'оба в сессии',
       'share.status_peer_in':       'второй внутри',
@@ -395,9 +409,17 @@
       'settings.ttl.3d':   '3 дня',
       'settings.ttl.7d':   '7 дней',
 
+      // ── Burn-after-read chooser buttons ──────────────────────────────────
+      'burn.10s':          '10 с',
+      'burn.1m':           '1 мин',
+      'burn.1h':           '1 ч',
+
       // ── Chat banners ─────────────────────────────────────────────────────
       'chat.partner_not_logged_in':
         'Партнёр ещё не вошёл по своему паролю. Сообщения сохранятся и придут ему при входе.',
+      'chat.banner.partner_offline':  'Партнёр сейчас оффлайн. Сообщения придут ему как только он вернётся.',
+      'chat.banner.group_pending':    'Не все участники вошли. Сообщения дойдут после входа.',
+      'chat.banner.group_offline':    'Часть участников оффлайн.',
 
       // ── Cross-tab warning ────────────────────────────────────────────────
       'tabs.already_open': 'Nee2P. уже открыт в другой вкладке. Закройте одну для нормальной работы.',
@@ -605,6 +627,7 @@
       'chat.group_label':  'Group',
       'chat.msg_deleted':  '[message deleted]',
       'chat.invite_panel': 'Invite to session',
+      'chat.prev_key_encrypted': '[encrypted with a previous key — unavailable]',
 
       // ── Call (WebRTC overlay + diagnostics) ──────────────────────────────
       'call.status.connecting':       'Connecting…',
@@ -786,10 +809,23 @@
       'info.trust_label':           'Trust:',
       'info.trust_body':            'we cannot read your messages. That is not a promise, it is a property of the protocol — we have no keys.',
 
+      // ── Create / Join flow errors ───────────────────────────────────────
+      'flow.create.failed':         'Could not create session.',
+      'flow.create.failed_retry':   'Could not create session. Please try again.',
+      'flow.create.phrase_in_use':  'Another group is already using this phrase. Pick another.',
+      'flow.create.group_conflict': 'A room with a different group size already exists for this phrase.',
+      'flow.join.failed_retry':     'Could not connect. Please try again.',
+      'flow.join.check_phrase':     'Could not connect. Check the phrase and password.',
+
+      // ── Confirm dialogs ─────────────────────────────────────────────────
+      'confirm.close_session':      'Close session? Messages will be gone forever.',
+      'confirm.leave_chat':         'Leave chat? The session stays active — you can come back with phrase + password.',
+
       // ── Expired / Share / Locked screens ─────────────────────────────────
       'expired.title_top':          'The session',
       'expired.title_bottom':       'has dissolved.',
       'expired.reason_default':     'The timer hit zero. All messages and keys have been wiped from the devices.',
+      'expired.reason_timer_reset': 'The timer hit zero. All messages and keys have been wiped.',
       'expired.open_new':           'Open a new one',
       'share.status_both':          'both in the session',
       'share.status_peer_in':       'contact joined',
@@ -828,9 +864,17 @@
       'settings.ttl.3d':   '3 days',
       'settings.ttl.7d':   '7 days',
 
+      // ── Burn-after-read chooser buttons ──────────────────────────────────
+      'burn.10s':          '10 s',
+      'burn.1m':           '1 min',
+      'burn.1h':           '1 h',
+
       // ── Chat banners ─────────────────────────────────────────────────────
       'chat.partner_not_logged_in':
         "Partner hasn't entered their password yet. Messages will be saved and delivered when they sign in.",
+      'chat.banner.partner_offline':  'Your partner is offline right now. Messages will reach them as soon as they return.',
+      'chat.banner.group_pending':    'Not all participants have joined. Messages will be delivered after they join.',
+      'chat.banner.group_offline':    'Some participants are offline.',
 
       // ── Cross-tab warning ────────────────────────────────────────────────
       'tabs.already_open': 'Nee2P. is already open in another tab. Close one for normal operation.',

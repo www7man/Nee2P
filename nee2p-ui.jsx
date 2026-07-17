@@ -445,6 +445,36 @@ function Sheet({ children, style = {} }) {
   );
 }
 
+// Returns a coarse layout tier: 'mobile' | 'tablet' | 'desktop'.
+//   mobile  < 768px    — single-column, unchanged mobile layout
+//   tablet  768–1023px — centered, max 760px, single-column chat
+//   desktop ≥ 1024px   — 2-column ChatScreen (sidebar + main)
+//
+// matchMedia-based so React only re-renders on actual breakpoint crossing
+// (NOT on every px of resize — that causes input-focus loss on mobile when
+// the layout thrashes). SSR-safe: returns 'mobile' when window/matchMedia
+// are unavailable. addEventListener('change') on two mqls covers transitions
+// in both directions.
+function useBreakpoint() {
+  const get = () => {
+    if (typeof window === 'undefined' || !window.matchMedia) return 'mobile';
+    if (window.matchMedia('(min-width: 1024px)').matches) return 'desktop';
+    if (window.matchMedia('(min-width: 768px)').matches) return 'tablet';
+    return 'mobile';
+  };
+  const [bp, setBp] = React.useState(get);
+  React.useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const dMq = window.matchMedia('(min-width: 1024px)');
+    const tMq = window.matchMedia('(min-width: 768px)');
+    const upd = () => setBp(get());
+    dMq.addEventListener('change', upd);
+    tMq.addEventListener('change', upd);
+    return () => { dMq.removeEventListener('change', upd); tMq.removeEventListener('change', upd); };
+  }, []);
+  return bp;
+}
+
 // Returns the visual viewport height in px — updates on keyboard open/close.
 // Use instead of '100%' in form screens so the bottom CTA button always
 // stays above the soft keyboard on iOS and Android.
@@ -472,5 +502,5 @@ function useViewportHeight() {
 
 Object.assign(window, {
   PALETTES, usePalette, GradientMesh, Glass, GlassButton, Logo, StatusDot, HashDisplay, Icon, Sheet,
-  useViewportHeight, LangToggle,
+  useViewportHeight, useBreakpoint, LangToggle,
 });
