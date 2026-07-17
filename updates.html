@@ -367,6 +367,59 @@
   <!-- 01 — Latest update -->
   <section>
     <div class="section-num"><span lang="ru">01 — Последнее обновление</span><span lang="en">01 — Latest update</span></div>
+    <h2 class="section-heading"><span lang="ru">v0.9.21 — Настоящий десктоп + переводы английской версии</span><span lang="en">v0.9.21 — Real desktop layout + English-version translations</span></h2>
+
+    <div class="release">
+      <div class="release-meta">
+        <span class="release-version">v0.9.21</span>
+        <span class="release-date"><span lang="ru">июль 2026</span><span lang="en">July 2026</span></span>
+        <span class="release-tag"><span lang="ru">десктоп</span><span lang="en">desktop</span></span>
+        <span class="release-tag"><span lang="ru">i18n</span><span lang="en">i18n</span></span>
+      </div>
+      <h3 class="release-title">
+        <span lang="ru">На широких экранах чат теперь раскрывается в две колонки — сайдбар с информацией о сессии и кнопками слева, лента сообщений справа. Заодно вычистили русский текст, который просачивался в английскую версию</span>
+        <span lang="en">On wide screens the chat now opens up into two columns — a session-info sidebar with buttons on the left, the message ribbon on the right. We also cleaned up Russian text that was leaking into the English version</span>
+      </h3>
+
+      <h4><span lang="ru">Десктоп и адаптив</span><span lang="en">Desktop &amp; responsive</span></h4>
+      <ul>
+        <li>
+          <span lang="ru">Раньше на любом экране показывался «телефон-в-рамке» 460&nbsp;px по центру. Теперь три уровня: мобильный (&lt;768&nbsp;px) без изменений, планшет (768–1023&nbsp;px) — центрировано без рамки, десктоп (≥1024&nbsp;px) — на весь экран</span>
+          <span lang="en">Previously every screen showed a 460&nbsp;px phone-in-a-frame centered. Now three tiers: mobile (&lt;768&nbsp;px) unchanged, tablet (768–1023&nbsp;px) — centered without a frame, desktop (≥1024&nbsp;px) — full screen</span>
+        </li>
+        <li>
+          <span lang="ru">На десктопе ChatScreen становится двухколоночным: слева сайдбар (фраза, хэш, таймер TTL, участники, кнопки звонка/приглашения/проверки ключей/поиска), справа — шапка, лента сообщений и поле ввода. На мобильном и планшете всё осталось в одну колонку</span>
+          <span lang="en">On desktop ChatScreen goes two-column: a sidebar on the left (phrase, hash, TTL timer, participants, call/invite/verify-keys/search buttons), and on the right the header, message ribbon and input field. On mobile and tablet everything stays single-column</span>
+        </li>
+        <li>
+          <span lang="ru">Окна создания и входа на десктопе центрируются с ограничением по ширине — поля ввода больше не растягиваются на весь широкий монитор</span>
+          <span lang="en">Create and join screens center with a width cap on desktop — inputs no longer stretch across the whole wide monitor</span>
+        </li>
+        <li>
+          <span lang="ru">Модалки и оверлеи чата перевязаны к области приложения, чтобы на десктопе они не уезжали за пределы окна</span>
+          <span lang="en">Chat modals and overlays are bound to the app area so they don't escape the window bounds on desktop</span>
+        </li>
+      </ul>
+
+      <h4><span lang="ru">Переводы (i18n)</span><span lang="en">Translations (i18n)</span></h4>
+      <ul>
+        <li>
+          <span lang="ru">Несколько строк оставались захардкожены по-русски и были видны в английской версии — например, «Таймер обнулился». Теперь все они переводятся: сообщения о создании/подключении сессии, баннеры онлайн-статуса, диалоги подтверждения, метки участников, опции авто-удаления</span>
+          <span lang="en">Several strings were still hardcoded in Russian and showed up in the English version — for instance "Timer reset to zero". They all translate now: create/connect-session messages, online-status banners, confirm dialogs, participant labels, auto-delete options</span>
+        </li>
+        <li>
+          <span lang="ru"><code>«в сети»</code> / <code>«не в сети»</code> вместо английских <code>online</code> / <code>offline</code> в русской версии</span>
+          <span lang="en"><code>"в сети"</code> / <code>"не в сети"</code> instead of the English <code>online</code> / <code>offline</code> in the Russian version</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <hr />
+
+  <!-- 02 — Previous release -->
+  <section>
+    <div class="section-num"><span lang="ru">02 — Предыдущий релиз</span><span lang="en">02 — Previous release</span></div>
     <h2 class="section-heading"><span lang="ru">v0.9.20 — Фикс: групповые сессии (3–8) показывали «1 of 2»</span><span lang="en">v0.9.20 — Fix: group sessions (3–8) showed "1 of 2"</span></h2>
 
     <div class="release">
@@ -395,7 +448,7 @@
 
   <!-- 03 — Previous release -->
   <section>
-    <div class="section-num"><span lang="ru">02 — Предыдущий релиз</span><span lang="en">02 — Previous release</span></div>
+    <div class="section-num"><span lang="ru">03 — Предыдущий релиз</span><span lang="en">03 — Previous release</span></div>
     <h2 class="section-heading"><span lang="ru">v0.9.19 — Перетащите файлы в окно чата, чтобы отправить</span><span lang="en">v0.9.19 — Drop files into the chat window to send them</span></h2>
 
     <div class="release">
@@ -424,7 +477,7 @@
 
   <!-- 03 — Previous release -->
   <section>
-    <div class="section-num"><span lang="ru">03 — Предыдущий релиз</span><span lang="en">03 — Previous release</span></div>
+    <div class="section-num"><span lang="ru">04 — Предыдущий релиз</span><span lang="en">04 — Previous release</span></div>
     <h2 class="section-heading"><span lang="ru">v0.9.16 — Голосовые и картинки доезжают до всех + микрофон гаснет после записи</span><span lang="en">v0.9.16 — Voice &amp; images now reach everyone + mic released after recording</span></h2>
 
     <div class="release">
@@ -462,7 +515,7 @@
 
   <!-- 03 — Previous release -->
   <section>
-    <div class="section-num"><span lang="ru">04 — Предыдущий релиз</span><span lang="en">04 — Previous release</span></div>
+    <div class="section-num"><span lang="ru">05 — Предыдущий релиз</span><span lang="en">05 — Previous release</span></div>
     <h2 class="section-heading"><span lang="ru">v0.9.15 — Работа на любом reverse-proxy без CDN + картинки в чате</span><span lang="en">v0.9.15 — Runs behind any plain reverse-proxy (no CDN) + chat images</span></h2>
 
     <div class="release">
@@ -504,7 +557,7 @@
 
   <!-- 04 — Earlier release -->
   <section>
-    <div class="section-num"><span lang="ru">05 — Ранний релиз</span><span lang="en">05 — Earlier release</span></div>
+    <div class="section-num"><span lang="ru">06 — Ранний релиз</span><span lang="en">06 — Earlier release</span></div>
     <h2 class="section-heading"><span lang="ru">v0.9.13 — Критические фиксы + Nee2P Lite + полная локализация</span><span lang="en">v0.9.13 — Critical fixes + Nee2P Lite + complete localization</span></h2>
 
     <div class="release">
@@ -588,7 +641,7 @@
 
   <!-- 05 — Earlier still -->
   <section>
-    <div class="section-num"><span lang="ru">06 — Ещё ранее</span><span lang="en">06 — Earlier still</span></div>
+    <div class="section-num"><span lang="ru">07 — Ещё ранее</span><span lang="en">07 — Earlier still</span></div>
     <h2 class="section-heading"><span lang="ru">v0.8.7 — Критический фикс парного соединения + Nee2P Lite</span><span lang="en">v0.8.7 — Critical pairing fix + Nee2P Lite</span></h2>
 
     <div class="release">
@@ -659,7 +712,7 @@
 
   <!-- 06 — Version history -->
   <section>
-    <div class="section-num"><span lang="ru">07 — История версий</span><span lang="en">07 — Version history</span></div>
+    <div class="section-num"><span lang="ru">08 — История версий</span><span lang="en">08 — Version history</span></div>
     <h2 class="section-heading"><span lang="ru">v0.8.5 — Полная локализация + умный Service Worker</span><span lang="en">v0.8.5 — Full localization + smart Service Worker</span></h2>
 
     <div class="release">
