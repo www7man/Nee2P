@@ -367,6 +367,47 @@
   <!-- 01 — Latest update -->
   <section>
     <div class="section-num"><span lang="ru">01 — Последнее обновление</span><span lang="en">01 — Latest update</span></div>
+    <h2 class="section-heading"><span lang="ru">v0.9.21 — Перевод: больше не цепляет русский текст в английской версии</span><span lang="en">v0.9.21 — i18n: no more Russian text leaking into the English version</span></h2>
+
+    <div class="release">
+      <div class="release-meta">
+        <span class="release-version">v0.9.21</span>
+        <span class="release-date"><span lang="ru">июль 2026</span><span lang="en">July 2026</span></span>
+        <span class="release-tag"><span lang="ru">фикс</span><span lang="en">fix</span></span>
+        <span class="release-tag"><span lang="ru">перевод</span><span lang="en">i18n</span></span>
+      </div>
+      <h3 class="release-title">
+        <span lang="ru">Около 20 захардкоженных строк теперь ходят через словарь переводов — «Таймер обнулился», ошибки создания/входа, баннеры, кнопки таймера и «в сети» вместо английского «online» в русской версии</span>
+        <span lang="en">About 20 previously-hardcoded strings now go through the translation dictionary — "Timer hit zero", create/join errors, banners, timer buttons, and "в сети" instead of the English "online" in the Russian version</span>
+      </h3>
+
+      <h4><span lang="ru">Перевод</span><span lang="en">i18n</span></h4>
+      <ul>
+        <li>
+          <span lang="ru">Критичный баг: <code>Таймер обнулился. Все сообщения и ключи стёрты.</code> появлялся по-русски даже в английской локали — теперь ключ <code>expired.reason_timer_reset</code></span>
+          <span lang="en">Critical leak: <code>The timer hit zero…</code> showed in Russian even in the English locale — now keyed as <code>expired.reason_timer_reset</code></span>
+        </li>
+        <li>
+          <span lang="ru">Ошибки создания/входа (<code>flow.create.*</code>, <code>flow.join.*</code>), баннеры (<code>chat.banner.*</code>), диалоги закрытия (<code>confirm.*</code>), плейсхолдер шифра-прежним-ключом, кнопки таймера самоуничтожения (<code>burn.10s/1m/1h</code>) — всё переведено в оба словаря</span>
+          <span lang="en">Create/join errors (<code>flow.create.*</code>, <code>flow.join.*</code>), banners (<code>chat.banner.*</code>), close dialogs (<code>confirm.*</code>), the previous-key-encrypted placeholder, and burn-timer buttons (<code>burn.10s/1m/1h</code>) — all localized into both dictionaries</span>
+        </li>
+        <li>
+          <span lang="ru"><code>chat.online</code> в русской версии теперь «в сети» (был англоязычный «online»), <code>chat.offline</code> → «не в сети». Групповой хедер: убран «online»-литерал, теперь тоже из словаря</span>
+          <span lang="en"><code>chat.online</code> in the Russian version is now "в сети" (was the English "online"), <code>chat.offline</code> → "не в сети". Group header: removed the hardcoded "online" literal, now also dictionary-driven</span>
+        </li>
+        <li>
+          <span lang="ru">Шапка чата: онлайн-текст теперь нейтрально-серый (зелёным осталась только точка-индикатор), убран растянутый <code>letterSpacing</code>. Чище иерархия имя/статус</span>
+          <span lang="en">Chat header: online text is now neutral grey (only the dot indicator stays green), removed the stretched <code>letterSpacing</code>. Cleaner name/status hierarchy</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <hr />
+
+  <!-- 02 — Previous release -->
+  <section>
+    <div class="section-num"><span lang="ru">02 — Предыдущий релиз</span><span lang="en">02 — Previous release</span></div>
     <h2 class="section-heading"><span lang="ru">v0.9.20 — Фикс: групповые сессии (3–8) показывали «1 of 2»</span><span lang="en">v0.9.20 — Fix: group sessions (3–8) showed "1 of 2"</span></h2>
 
     <div class="release">
@@ -395,7 +436,7 @@
 
   <!-- 03 — Previous release -->
   <section>
-    <div class="section-num"><span lang="ru">02 — Предыдущий релиз</span><span lang="en">02 — Previous release</span></div>
+    <div class="section-num"><span lang="ru">03 — Предыдущий релиз</span><span lang="en">03 — Previous release</span></div>
     <h2 class="section-heading"><span lang="ru">v0.9.19 — Перетащите файлы в окно чата, чтобы отправить</span><span lang="en">v0.9.19 — Drop files into the chat window to send them</span></h2>
 
     <div class="release">
@@ -424,7 +465,7 @@
 
   <!-- 03 — Previous release -->
   <section>
-    <div class="section-num"><span lang="ru">03 — Предыдущий релиз</span><span lang="en">03 — Previous release</span></div>
+    <div class="section-num"><span lang="ru">04 — Предыдущий релиз</span><span lang="en">04 — Previous release</span></div>
     <h2 class="section-heading"><span lang="ru">v0.9.16 — Голосовые и картинки доезжают до всех + микрофон гаснет после записи</span><span lang="en">v0.9.16 — Voice &amp; images now reach everyone + mic released after recording</span></h2>
 
     <div class="release">
@@ -462,7 +503,7 @@
 
   <!-- 03 — Previous release -->
   <section>
-    <div class="section-num"><span lang="ru">04 — Предыдущий релиз</span><span lang="en">04 — Previous release</span></div>
+    <div class="section-num"><span lang="ru">05 — Предыдущий релиз</span><span lang="en">05 — Previous release</span></div>
     <h2 class="section-heading"><span lang="ru">v0.9.15 — Работа на любом reverse-proxy без CDN + картинки в чате</span><span lang="en">v0.9.15 — Runs behind any plain reverse-proxy (no CDN) + chat images</span></h2>
 
     <div class="release">
@@ -504,7 +545,7 @@
 
   <!-- 04 — Earlier release -->
   <section>
-    <div class="section-num"><span lang="ru">05 — Ранний релиз</span><span lang="en">05 — Earlier release</span></div>
+    <div class="section-num"><span lang="ru">06 — Ранний релиз</span><span lang="en">06 — Earlier release</span></div>
     <h2 class="section-heading"><span lang="ru">v0.9.13 — Критические фиксы + Nee2P Lite + полная локализация</span><span lang="en">v0.9.13 — Critical fixes + Nee2P Lite + complete localization</span></h2>
 
     <div class="release">
@@ -588,7 +629,7 @@
 
   <!-- 05 — Earlier still -->
   <section>
-    <div class="section-num"><span lang="ru">06 — Ещё ранее</span><span lang="en">06 — Earlier still</span></div>
+    <div class="section-num"><span lang="ru">07 — Ещё ранее</span><span lang="en">07 — Earlier still</span></div>
     <h2 class="section-heading"><span lang="ru">v0.8.7 — Критический фикс парного соединения + Nee2P Lite</span><span lang="en">v0.8.7 — Critical pairing fix + Nee2P Lite</span></h2>
 
     <div class="release">
@@ -659,7 +700,7 @@
 
   <!-- 06 — Version history -->
   <section>
-    <div class="section-num"><span lang="ru">07 — История версий</span><span lang="en">07 — Version history</span></div>
+    <div class="section-num"><span lang="ru">08 — История версий</span><span lang="en">08 — Version history</span></div>
     <h2 class="section-heading"><span lang="ru">v0.8.5 — Полная локализация + умный Service Worker</span><span lang="en">v0.8.5 — Full localization + smart Service Worker</span></h2>
 
     <div class="release">
