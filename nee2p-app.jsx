@@ -78,7 +78,11 @@ function slotForWire(slotNum, groupMax) {
 // design); groups become 'Участник N' (1-indexed for humans).
 function slotLabel(slotNum, groupMax) {
   if (groupMax === 2) return slotNum === 0 ? 'A' : 'B';
-  return 'Участник ' + (slotNum + 1);
+  // NOTE: this is a module-level fn, NOT inside App — `tr` (defined in App) is
+  // not in scope here (TDZ → ReferenceError). Use the i18n global directly with
+  // a hardcoded fallback so it works even before Nee2Pi18n is attached.
+  const label = (window.Nee2Pi18n && window.Nee2Pi18n.t('slot.participant')) || 'Участник';
+  return label + ' ' + (slotNum + 1);
 }
 
 // Stable per-slot accent hue (HSL, no palette dependency). Used to color
@@ -1094,7 +1098,7 @@ function App() {
         if (prev.some(m => m.id === item.id)) return prev;
         return [...prev, {
           id: item.id, side: fromNum,
-          text: '[зашифровано прежним ключом — недоступно]',
+          text: tr('chat.prev_key_encrypted'),
           time: item.time || nowHHMM(),
           // `at` is a CLIENT-side ingest timestamp (Date.now()) — used only by
           // ChatScreen for the cluster grouping + "10-minute gap" time-divider
@@ -1191,7 +1195,7 @@ function App() {
         if (prev.some(m => m.id === item.id)) return prev;
         return [...prev, {
           id: item.id, side: fromNum,
-          text: '[зашифровано прежним ключом — недоступно]',
+          text: tr('chat.prev_key_encrypted'),
           time: item.time || nowHHMM(),
           at: Date.now(),                    // client-side ingest ts; see comment above
           replyTo: item.replyTo || null,
@@ -1945,7 +1949,7 @@ function App() {
           // and nothing we have can re-enter it. Best-effort: forget() swallows
           // IDB errors. Then continue with the existing reset/expired flow.
           try { forgetSessionRecord(roomIdRef.current); } catch {}
-          resetAll('Таймер обнулился. Все сообщения и ключи стёрты.');
+          resetAll(tr('expired.reason_timer_reset'));
         },
         onConnectionStatus: (state) => { setConnStatus(state); },
         onClose: (info) => {
@@ -2069,17 +2073,17 @@ function App() {
       });
     } catch (e) {
       setBusy(false);
-      setFlowError('Не удалось создать сессию. Попробуй ещё раз.');
+      setFlowError(tr('flow.create.failed_retry'));
       console.error('submitCreate error:', e);
       return;
     }
     setBusy(false);
     if (!r.ok) {
       setFlowError(r.reason === 'locked'
-        ? 'Эту фразу уже использует другая группа. Возьми другую.'
+        ? tr('flow.create.phrase_in_use')
         : (r.reason === 'groupMax-mismatch'
-            ? 'По этой фразе уже есть комната с другим размером группы.'
-            : 'Не удалось создать сессию.'));
+            ? tr('flow.create.group_conflict')
+            : tr('flow.create.failed')));
       return;
     }
     setActiveHash(createHash);
@@ -2119,14 +2123,14 @@ function App() {
       r = await connectAndClaim(joinHash, password);
     } catch (e) {
       setBusy(false);
-      setFlowError('Не удалось подключиться. Попробуй ещё раз.');
+      setFlowError(tr('flow.join.failed_retry'));
       console.error('submitJoin error:', e);
       return;
     }
     setBusy(false);
     if (!r.ok) {
       if (r.reason === 'locked') setScreen('locked');
-      else setFlowError('Не удалось подключиться. Проверь фразу и пароль.');
+      else setFlowError(tr('flow.join.check_phrase'));
       return;
     }
     setActiveHash(joinHash);
@@ -2763,7 +2767,7 @@ function App() {
       if (!occ?.claimed) {
         setChatBanner((window.Nee2Pi18n && window.Nee2Pi18n.t('chat.partner_not_logged_in')) || 'Партнёр ещё не вошёл по своему паролю. Сообщения сохранятся и придут ему при входе.');
       } else if (!partnerOnline) {
-        setChatBanner('Партнёр сейчас оффлайн. Сообщения придут ему как только он вернётся.');
+        setChatBanner(tr('chat.banner.partner_offline'));
       } else {
         setChatBanner(null);
       }
@@ -2773,9 +2777,9 @@ function App() {
       const claimedPeers = participants.filter(p => p.claimed).length;
       const onlinePeers = participants.filter(p => p.online).length;
       if (claimedPeers < totalPeers) {
-        setChatBanner(`Ещё ${totalPeers - claimedPeers} из ${totalPeers} участников не вошли. Сообщения дойдут после входа.`);
+        setChatBanner(tr('chat.banner.group_pending'));
       } else if (onlinePeers < totalPeers) {
-        setChatBanner(`${totalPeers - onlinePeers} из ${totalPeers} участников оффлайн.`);
+        setChatBanner(tr('chat.banner.group_offline'));
       } else {
         setChatBanner(null);
       }
@@ -2823,7 +2827,7 @@ function App() {
         groupMax={groupMax} participants={participants}
         onEnterChat={enterChat}
         onCancel={() => {
-          if (!confirm('Закрыть сессию? Сообщения исчезнут навсегда.')) return;
+          if (!confirm(tr('confirm.close_session'))) return;
           // Explicit "close session forever" — also forget the persisted record
           // so the auto-restore on next visit doesn't bring this room back.
           try { forgetSessionRecord(roomIdRef.current); } catch {}
@@ -2876,7 +2880,7 @@ function App() {
         onToggleMute={toggleCallMute}
         onToggleSpeaker={toggleCallSpeaker}
         onBack={() => {
-          if (!confirm('Выйти из чата? Сессия останется активной — сможешь вернуться по фразе+паролю.')) return;
+          if (!confirm(tr('confirm.leave_chat'))) return;
           cleanupConnection();
           setScreen('welcome');
         }} banner={chatBanner} />;

@@ -2369,12 +2369,12 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                       <div style={{ fontSize: 14, fontWeight: 600, color: '#fff', lineHeight: 1.1 }}>
                         {t('chat.group_label')} · {groupMax}
                       </div>
-                      <div style={{ fontSize: 11, color: onlineCount > 0 ? '#3dff9a' : 'rgba(255,255,255,0.5)',
-                        lineHeight: 1.2, marginTop: 2, letterSpacing: 0.2,
+                      <div style={{ fontSize: 11, color: onlineCount > 0 ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.5)',
+                        lineHeight: 1.2, marginTop: 2,
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {typingPeer
                           ? `${typingPeer.friendly || typingPeer.label} ${t('chat.typing')}…`
-                          : `online ${onlineCount} / ${ppl.length}`}
+                          : `${t('chat.online')} ${onlineCount} / ${ppl.length}`}
                       </div>
                     </div>
                   </>
@@ -2404,8 +2404,8 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                     title={partnerFriendly ? (partnerFriendly + ' · ' + partnerLetter) : ('anonymous · ' + partnerLetter)}>
                     {partnerFriendly || ('anonymous · ' + partnerLetter)}
                   </div>
-                  <div style={{ fontSize: 11, color: partnerOnline ? '#3dff9a' : 'rgba(255,255,255,0.5)',
-                    lineHeight: 1.2, marginTop: 2, letterSpacing: 0.2 }}>
+                  <div style={{ fontSize: 11, color: partnerOnline ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.5)',
+                    lineHeight: 1.2, marginTop: 2 }}>
                     {partnerOnline ? (partnerTyping ? `${t('chat.online')} · ${t('chat.typing')}` : t('chat.online')) : t('chat.offline')}
                   </div>
                 </div>
@@ -3013,9 +3013,9 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
             <span style={{ opacity: 0.8 }}>🔥 {t('chat.burn_aria').toLowerCase()}:</span>
             {[
               { id: null,  label: t('chat.burn_off') },
-              { id: 10,    label: '10с' },
-              { id: 60,    label: '1м' },
-              { id: 3600,  label: '1ч' },
+              { id: 10,    label: t('burn.10s') },
+              { id: 60,    label: t('burn.1m') },
+              { id: 3600,  label: t('burn.1h') },
             ].map(opt => {
               const active = burnTtl === opt.id;
               return (
