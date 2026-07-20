@@ -78,11 +78,7 @@ function slotForWire(slotNum, groupMax) {
 // design); groups become 'Участник N' (1-indexed for humans).
 function slotLabel(slotNum, groupMax) {
   if (groupMax === 2) return slotNum === 0 ? 'A' : 'B';
-  // NOTE: this is a module-level fn, NOT inside App — `tr` (defined in App) is
-  // not in scope here (TDZ → ReferenceError). Use the i18n global directly with
-  // a hardcoded fallback so it works even before Nee2Pi18n is attached.
-  const label = (window.Nee2Pi18n && window.Nee2Pi18n.t('slot.participant')) || 'Участник';
-  return label + ' ' + (slotNum + 1);
+  return 'Участник ' + (slotNum + 1);
 }
 
 // Stable per-slot accent hue (HSL, no palette dependency). Used to color
@@ -1098,7 +1094,7 @@ function App() {
         if (prev.some(m => m.id === item.id)) return prev;
         return [...prev, {
           id: item.id, side: fromNum,
-          text: tr('chat.prev_key_encrypted'),
+          text: '[зашифровано прежним ключом — недоступно]',
           time: item.time || nowHHMM(),
           // `at` is a CLIENT-side ingest timestamp (Date.now()) — used only by
           // ChatScreen for the cluster grouping + "10-minute gap" time-divider
@@ -1195,7 +1191,7 @@ function App() {
         if (prev.some(m => m.id === item.id)) return prev;
         return [...prev, {
           id: item.id, side: fromNum,
-          text: tr('chat.prev_key_encrypted'),
+          text: '[зашифровано прежним ключом — недоступно]',
           time: item.time || nowHHMM(),
           at: Date.now(),                    // client-side ingest ts; see comment above
           replyTo: item.replyTo || null,
@@ -1949,7 +1945,7 @@ function App() {
           // and nothing we have can re-enter it. Best-effort: forget() swallows
           // IDB errors. Then continue with the existing reset/expired flow.
           try { forgetSessionRecord(roomIdRef.current); } catch {}
-          resetAll(tr('expired.reason_timer_reset'));
+          resetAll('Таймер обнулился. Все сообщения и ключи стёрты.');
         },
         onConnectionStatus: (state) => { setConnStatus(state); },
         onClose: (info) => {
@@ -2073,17 +2069,17 @@ function App() {
       });
     } catch (e) {
       setBusy(false);
-      setFlowError(tr('flow.create.failed_retry'));
+      setFlowError('Не удалось создать сессию. Попробуй ещё раз.');
       console.error('submitCreate error:', e);
       return;
     }
     setBusy(false);
     if (!r.ok) {
       setFlowError(r.reason === 'locked'
-        ? tr('flow.create.phrase_in_use')
+        ? 'Эту фразу уже использует другая группа. Возьми другую.'
         : (r.reason === 'groupMax-mismatch'
-            ? tr('flow.create.group_conflict')
-            : tr('flow.create.failed')));
+            ? 'По этой фразе уже есть комната с другим размером группы.'
+            : 'Не удалось создать сессию.'));
       return;
     }
     setActiveHash(createHash);
@@ -2123,14 +2119,14 @@ function App() {
       r = await connectAndClaim(joinHash, password);
     } catch (e) {
       setBusy(false);
-      setFlowError(tr('flow.join.failed_retry'));
+      setFlowError('Не удалось подключиться. Попробуй ещё раз.');
       console.error('submitJoin error:', e);
       return;
     }
     setBusy(false);
     if (!r.ok) {
       if (r.reason === 'locked') setScreen('locked');
-      else setFlowError(tr('flow.join.check_phrase'));
+      else setFlowError('Не удалось подключиться. Проверь фразу и пароль.');
       return;
     }
     setActiveHash(joinHash);
@@ -2767,7 +2763,7 @@ function App() {
       if (!occ?.claimed) {
         setChatBanner((window.Nee2Pi18n && window.Nee2Pi18n.t('chat.partner_not_logged_in')) || 'Партнёр ещё не вошёл по своему паролю. Сообщения сохранятся и придут ему при входе.');
       } else if (!partnerOnline) {
-        setChatBanner(tr('chat.banner.partner_offline'));
+        setChatBanner('Партнёр сейчас оффлайн. Сообщения придут ему как только он вернётся.');
       } else {
         setChatBanner(null);
       }
@@ -2777,9 +2773,9 @@ function App() {
       const claimedPeers = participants.filter(p => p.claimed).length;
       const onlinePeers = participants.filter(p => p.online).length;
       if (claimedPeers < totalPeers) {
-        setChatBanner(tr('chat.banner.group_pending'));
+        setChatBanner(`Ещё ${totalPeers - claimedPeers} из ${totalPeers} участников не вошли. Сообщения дойдут после входа.`);
       } else if (onlinePeers < totalPeers) {
-        setChatBanner(tr('chat.banner.group_offline'));
+        setChatBanner(`${totalPeers - onlinePeers} из ${totalPeers} участников оффлайн.`);
       } else {
         setChatBanner(null);
       }
@@ -2827,7 +2823,7 @@ function App() {
         groupMax={groupMax} participants={participants}
         onEnterChat={enterChat}
         onCancel={() => {
-          if (!confirm(tr('confirm.close_session'))) return;
+          if (!confirm('Закрыть сессию? Сообщения исчезнут навсегда.')) return;
           // Explicit "close session forever" — also forget the persisted record
           // so the auto-restore on next visit doesn't bring this room back.
           try { forgetSessionRecord(roomIdRef.current); } catch {}
@@ -2880,7 +2876,7 @@ function App() {
         onToggleMute={toggleCallMute}
         onToggleSpeaker={toggleCallSpeaker}
         onBack={() => {
-          if (!confirm(tr('confirm.leave_chat'))) return;
+          if (!confirm('Выйти из чата? Сессия останется активной — сможешь вернуться по фразе+паролю.')) return;
           cleanupConnection();
           setScreen('welcome');
         }} banner={chatBanner} />;
@@ -2927,19 +2923,7 @@ function App() {
     <div className="app-frame">
       <GradientMesh palette={PALETTE} intensity={0.85} variant={screen === 'chat' ? 'chat' : 'home'} />
       <div style={{ position: 'relative', height: '100%', zIndex: 1 }} data-screen={screen}>
-        {screen !== 'chat' ? (
-          // Non-chat screens (welcome / create / join / password / waiting /
-          // expired / locked / share) get a centered, max-width column on wide
-          // viewports so inputs and copy don't stretch across the whole
-          // desktop. Chat renders full-width — it has its own 2-column layout
-          // (sidebar + main) on desktop, see ChatScreen.
-          <div style={{
-            maxWidth: 520, width: '100%', height: '100%',
-            margin: '0 auto',
-          }}>
-            {body}
-          </div>
-        ) : body}
+        {body}
       </div>
       <ModeFallbackModal
         info={fallbackInfo}

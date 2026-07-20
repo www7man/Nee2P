@@ -14,7 +14,7 @@
 //   i18n           : wrapping user-facing strings in t('key'); never structural.
 // Edit your zone only. For shared areas, leave a `// TODO <owner>:` and ping.
 
-const { GradientMesh, Glass, GlassButton, Logo, StatusDot, HashDisplay, Icon, usePalette, useViewportHeight, useBreakpoint, LangToggle } = window;
+const { GradientMesh, Glass, GlassButton, Logo, StatusDot, HashDisplay, Icon, usePalette, useViewportHeight, LangToggle } = window;
 const md5 = window.md5;
 
 // ─────────────────────────────────────────────────────────────
@@ -2095,10 +2095,6 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
   // For 2-party rooms we still show a single avatar with the peer's letter.
   // For groups we show a row of peer letters / numbers in the header instead.
   const isGroup = groupMax > 2;
-  // Desktop layout (≥1024px): 2-column — sidebar with info+buttons on the left,
-  // chat (header+ribbon+input) on the right. Mobile/tablet: single column,
-  // buttons stay in the header. See useBreakpoint() in nee2p-ui.jsx.
-  const isDesktop = useBreakpoint() === 'desktop';
   const partnerSlotNum = perspective === 0 ? 1 : 0;
   const partnerLetter = isGroup
     ? null
@@ -2107,137 +2103,6 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
   // chat. Both peers compute the same name from (sessionHash, slotNum), so no
   // sync needed. Empty string until sessionHash is available (during handshake).
   const partnerFriendly = isGroup ? '' : friendlyFor(partnerSlotNum);
-
-  // Action buttons (call / invite / shield / search / TTL timer). Rendered in
-  // the chat header on mobile/tablet, and in the left sidebar on desktop. Built
-  // once here so both layouts share identical buttons (no divergence) — only
-  // the container direction differs (header = row, sidebar = wrap). On desktop
-  // this fragment is placed inside the sidebar; on narrow screens inside the
-  // header row. `chatActions` itself has no outer layout — the parent decides
-  // (gap/align) via a wrapping <div>.
-  const chatActions = (
-    <>
-      {/* Call button — visible when at least one peer is in the room.
-          Dimmed (not disabled) when peer appears offline: online state
-          comes from server-side SSE which can be stale for ~30s. Better
-          to let the user try than block them with bad data. The 45s
-          outgoing-call timeout handles the truly-offline case.
-          MVP is 2-party audio; group calls TBD. */}
-      {!isGroup && partnerClaimed && callSupported && (callState === 'idle' || callState === 'ended' || callState === 'failed') && (
-        <button onClick={() => { setDiagMode('pre-flight'); setDiagOpen(true); }}
-          title={partnerOnline ? t('chat.call') : t('chat.call_offline_hint')}
-          aria-label={t('chat.call')}
-          style={{
-            width: 40, height: 40, borderRadius: 12, padding: 0, border: 'none',
-            background: 'rgba(80,180,140,0.18)',
-            boxShadow: 'inset 0 0 0 0.5px rgba(123,224,177,0.4)',
-            cursor: 'pointer',
-            opacity: partnerOnline ? 1 : 0.55,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <path d="M5 4c0-.6.4-1 1-1h3.3c.5 0 .9.3 1 .8l1 4.2c.1.5-.1 1-.5 1.2l-2 1.2c1.2 2.5 3.2 4.5 5.7 5.7l1.2-2c.3-.4.8-.6 1.3-.5l4.2 1c.5.1.8.5.8 1V19c0 .6-.4 1-1 1h-2C9.5 20 4 14.5 4 7V5z"
-              stroke="#7be0b1" strokeWidth="1.6" strokeLinejoin="round" fill="none"/>
-          </svg>
-        </button>
-      )}
-      {/* Invite button — always visible, opens ShareCodeCard as overlay */}
-      <button onClick={() => setInviteOpen(true)}
-        title={t('chat.invite_title')}
-        aria-label={t('chat.invite')}
-        style={{
-          width: 40, height: 40, borderRadius: 12, padding: 0, border: 'none',
-          background: 'rgba(255,255,255,0.06)',
-          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-          <circle cx="9" cy="7" r="4" stroke="rgba(255,255,255,0.8)" strokeWidth="1.8"/>
-          <path d="M2 21c0-4 3-6 7-6" stroke="rgba(255,255,255,0.8)" strokeWidth="1.8" strokeLinecap="round"/>
-          <path d="M19 13v6M16 16h6" stroke="rgba(255,255,255,0.8)" strokeWidth="1.8" strokeLinecap="round"/>
-        </svg>
-      </button>
-      {/*
-        Safety-numbers button. Opens a modal with the 12-word
-        fingerprint computed in app.jsx from both sides' ECDH + KEM
-        public keys. Greyed-out (but still clickable) when the
-        fingerprint isn't ready yet so the user can see we're
-        computing.
-      */}
-      {/* Safety fingerprint nudge — shown once when keys are ready */}
-      {fpNudge && (
-        <button onClick={() => { setSafetyOpen(true); setFpNudge(false); }}
-          title={t('chat.check_keys')}
-          aria-label={t('chat.check_keys')}
-          style={{
-            width: 40, height: 40, borderRadius: 12, border: 'none', cursor: 'pointer',
-            background: 'rgba(80,180,140,0.22)',
-            boxShadow: 'inset 0 0 0 1px rgba(123,224,177,0.5), 0 0 14px rgba(123,224,177,0.2)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            animation: 'welcome-rise 0.4s ease both',
-          }}>
-          <Icon.Shield size={15} color="#7be0b1" />
-        </button>
-      )}
-      <button
-        onClick={() => setSafetyOpen(true)}
-        title={t('chat.security')}
-        aria-label={t('chat.security')}
-        style={{
-          width: 40, height: 40, borderRadius: 12, padding: 0,
-          border: '0.5px solid rgba(255,255,255,0.12)',
-          background: safetyFingerprint
-            ? 'rgba(80,180,140,0.18)'
-            : 'rgba(255,255,255,0.06)',
-          cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}
-      >
-        <Icon.Shield size={14} color={safetyFingerprint ? '#7be0b1' : 'rgba(255,255,255,0.6)'} />
-      </button>
-
-      {/* Local search — opens an inline filter input above the message
-          list. Everything is already decrypted in memory; no server
-          round-trip needed, search stays private. */}
-      <button
-        onClick={() => setSearchOpen(v => !v)}
-        title={t('chat.search_title')}
-        aria-label={t('chat.search')}
-        style={{
-          width: 40, height: 40, borderRadius: 12, padding: 0,
-          border: '0.5px solid rgba(255,255,255,0.12)',
-          background: searchOpen ? 'rgba(122,154,223,0.22)' : 'rgba(255,255,255,0.06)',
-          cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-          <circle cx="11" cy="11" r="6" stroke="rgba(255,255,255,0.85)" strokeWidth="1.8"/>
-          <path d="M16 16l4 4" stroke="rgba(255,255,255,0.85)" strokeWidth="1.8" strokeLinecap="round"/>
-        </svg>
-      </button>
-
-      <div style={{
-        position: 'relative', borderRadius: 12, overflow: 'hidden',
-        padding: '6px 10px',
-      }}>
-        <div style={{
-          position: 'absolute', inset: 0, borderRadius: 12,
-          background: lowTime
-            ? 'linear-gradient(135deg, rgba(255,90,90,0.25), rgba(255,150,50,0.15))'
-            : 'rgba(255,255,255,0.08)',
-          border: '0.5px solid rgba(255,255,255,0.12)',
-          boxShadow: lowTime ? '0 0 16px rgba(255,90,90,0.3)' : 'none',
-        }} />
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Icon.Flame size={12} color={lowTime ? '#ff7a4d' : '#fff'} />
-          <div style={{ fontFamily: 'var(--ff-mono)', fontWeight: 700,
-            fontSize: 12, color: lowTime ? '#ffb088' : '#fff', letterSpacing: -0.2 }}>
-            {hh}:{mm}:{ss}
-          </div>
-        </div>
-      </div>
-    </>
-  );
 
   const send = () => {
     if (!input.trim()) return;
@@ -2436,114 +2301,9 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
   };
 
   return (
-    <div style={{ height: '100%', display: 'flex',
-      flexDirection: isDesktop ? 'row' : 'column',
-      position: 'relative' }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
 
-      {isDesktop && (
-        // ── Desktop sidebar (≥1024px) ───────────────────────────────────
-        // Holds session info + the action buttons that live in the header on
-        // narrow screens. Scrollable independently from the message ribbon.
-        <aside style={{
-          width: 320, flexShrink: 0, height: '100%',
-          display: 'flex', flexDirection: 'column',
-          borderRight: '0.5px solid rgba(255,255,255,0.08)',
-          background: 'rgba(0,0,0,0.18)',
-          overflowY: 'auto',
-          padding: 'max(16px, env(safe-area-inset-top)) 18px max(16px, env(safe-area-inset-bottom))',
-        }}>
-          {/* Back arrow — on desktop lives at the top of the sidebar */}
-          <div onClick={onBack} style={{ width: 40, height: 40, borderRadius: 12,
-            background: 'rgba(255,255,255,0.06)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
-            <Icon.Arrow size={14} color="#fff" dir="left" />
-          </div>
-
-          {/* Session identity: share phrase + hash */}
-          {sharePhrase && (
-            <div style={{ marginTop: 18 }}>
-              <div style={{ fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase',
-                color: 'var(--tx-50)', marginBottom: 6 }}>{t('chat.invite_panel')}</div>
-              <div style={{ fontFamily: 'var(--ff-mono)', fontSize: 13, color: 'var(--tx-90)',
-                wordBreak: 'break-word', lineHeight: 1.3 }}>{sharePhrase}</div>
-            </div>
-          )}
-          {sessionHash && (
-            <div style={{ marginTop: 14 }}>
-              <HashDisplay hash={sessionHash} palette={palette} />
-            </div>
-          )}
-
-          {/* TTL countdown chip — lives here instead of the header on desktop */}
-          <div style={{
-            marginTop: 16, position: 'relative', borderRadius: 12, overflow: 'hidden',
-            padding: '8px 12px', display: 'inline-flex', alignSelf: 'flex-start',
-          }}>
-            <div style={{
-              position: 'absolute', inset: 0, borderRadius: 12,
-              background: lowTime
-                ? 'linear-gradient(135deg, rgba(255,90,90,0.25), rgba(255,150,50,0.15))'
-                : 'rgba(255,255,255,0.08)',
-              border: '0.5px solid rgba(255,255,255,0.12)',
-              boxShadow: lowTime ? '0 0 16px rgba(255,90,90,0.3)' : 'none',
-            }} />
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Icon.Flame size={12} color={lowTime ? '#ff7a4d' : '#fff'} />
-              <div style={{ fontFamily: 'var(--ff-mono)', fontWeight: 700,
-                fontSize: 12, color: lowTime ? '#ffb088' : '#fff', letterSpacing: -0.2 }}>
-                {hh}:{mm}:{ss}
-              </div>
-            </div>
-          </div>
-
-          {/* Participants (group) — chips with online dots, full list (not capped at 4) */}
-          {isGroup && Array.isArray(participants) && participants.length > 0 && (
-            <div style={{ marginTop: 18 }}>
-              <div style={{ fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase',
-                color: 'var(--tx-50)', marginBottom: 8 }}>{t('chat.group_label')} · {groupMax}</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {participants.map(pp => (
-                  <div key={pp.slot} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ position: 'relative' }}>
-                      <div style={{
-                        width: 30, height: 30, borderRadius: '50%',
-                        background: `linear-gradient(135deg, hsl(${pp.hue} 70% 55%), hsl(${(pp.hue + 30) % 360} 70% 45%))`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontFamily: 'Geist Mono, ui-monospace, monospace',
-                        fontWeight: 700, fontSize: 12, color: '#fff',
-                      }}>{pp.slot + 1}</div>
-                      <div style={{ position: 'absolute', bottom: -1, right: -1,
-                        width: 9, height: 9, borderRadius: '50%', background: '#06050c',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <StatusDot online={pp.online} size={6} />
-                      </div>
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--tx-80)',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                      title={pp.friendly ? (pp.friendly + ' · ' + pp.label) : pp.label}>
-                      {pp.friendly || pp.label}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Action buttons — wrap into a vertical-friendly row. Same chatActions
-              fragment as the mobile header; wrapped here in a flex container so
-              it lays out as a wrap row below the info above. */}
-          <div style={{ marginTop: 18, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {chatActions}
-          </div>
-        </aside>
-      )}
-
-      <div style={{
-        height: '100%', flex: 1, minWidth: 0,
-        display: 'flex', flexDirection: 'column', position: 'relative',
-      }}>
-      <div style={{ position: 'relative', zIndex: 5, paddingTop: 'max(16px, env(safe-area-inset-top))',
-        ...(isDesktop ? { maxWidth: 900, width: '100%', margin: '0 auto' } : null) }}>
+      <div style={{ position: 'relative', zIndex: 5, paddingTop: 'max(16px, env(safe-area-inset-top))' }}>
         <div style={{
           position: 'relative', margin: '0 10px',
           borderRadius: 24, overflow: 'hidden',
@@ -2558,13 +2318,11 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
           <div style={{ position: 'relative', padding: '12px 14px', display: 'flex',
             alignItems: 'center', gap: 12 }}>
 
-            {!isDesktop && (
-              <div onClick={onBack} style={{ width: 40, height: 40, borderRadius: 12,
-                background: 'rgba(255,255,255,0.06)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
-                <Icon.Arrow size={14} color="#fff" dir="left" />
-              </div>
-            )}
+            <div onClick={onBack} style={{ width: 40, height: 40, borderRadius: 12,
+              background: 'rgba(255,255,255,0.06)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+              <Icon.Arrow size={14} color="#fff" dir="left" />
+            </div>
 
             {isGroup ? (
               // Group header: a row of small participant chips, max 4 visible
@@ -2607,16 +2365,16 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                         }}>+{overflow}</div>
                       )}
                     </div>
-                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 600, color: '#fff', lineHeight: 1.1 }}>
                         {t('chat.group_label')} · {groupMax}
                       </div>
-                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)',
-                        lineHeight: 1.2, marginTop: 2,
+                      <div style={{ fontSize: 11, color: onlineCount > 0 ? '#3dff9a' : 'rgba(255,255,255,0.5)',
+                        lineHeight: 1.2, marginTop: 2, letterSpacing: 0.2,
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {typingPeer
                           ? `${typingPeer.friendly || typingPeer.label} ${t('chat.typing')}…`
-                          : `${t('chat.online')} ${onlineCount} / ${ppl.length}`}
+                          : `online ${onlineCount} / ${ppl.length}`}
                       </div>
                     </div>
                   </>
@@ -2640,21 +2398,141 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                   </div>
                 </div>
 
-                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', lineHeight: 1.1,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                     title={partnerFriendly ? (partnerFriendly + ' · ' + partnerLetter) : ('anonymous · ' + partnerLetter)}>
                     {partnerFriendly || ('anonymous · ' + partnerLetter)}
                   </div>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)',
-                    lineHeight: 1.2, marginTop: 2 }}>
+                  <div style={{ fontSize: 11, color: partnerOnline ? '#3dff9a' : 'rgba(255,255,255,0.5)',
+                    lineHeight: 1.2, marginTop: 2, letterSpacing: 0.2 }}>
                     {partnerOnline ? (partnerTyping ? `${t('chat.online')} · ${t('chat.typing')}` : t('chat.online')) : t('chat.offline')}
                   </div>
                 </div>
               </>
             )}
 
-            {!isDesktop && chatActions}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {/* Call button — visible when at least one peer is in the room.
+                  Dimmed (not disabled) when peer appears offline: online state
+                  comes from server-side SSE which can be stale for ~30s. Better
+                  to let the user try than block them with bad data. The 45s
+                  outgoing-call timeout handles the truly-offline case.
+                  MVP is 2-party audio; group calls TBD. */}
+              {!isGroup && partnerClaimed && callSupported && (callState === 'idle' || callState === 'ended' || callState === 'failed') && (
+                <button onClick={() => { setDiagMode('pre-flight'); setDiagOpen(true); }}
+                  title={partnerOnline ? t('chat.call') : t('chat.call_offline_hint')}
+                  aria-label={t('chat.call')}
+                  style={{
+                    width: 40, height: 40, borderRadius: 12, padding: 0, border: 'none',
+                    background: 'rgba(80,180,140,0.18)',
+                    boxShadow: 'inset 0 0 0 0.5px rgba(123,224,177,0.4)',
+                    cursor: 'pointer',
+                    opacity: partnerOnline ? 1 : 0.55,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M5 4c0-.6.4-1 1-1h3.3c.5 0 .9.3 1 .8l1 4.2c.1.5-.1 1-.5 1.2l-2 1.2c1.2 2.5 3.2 4.5 5.7 5.7l1.2-2c.3-.4.8-.6 1.3-.5l4.2 1c.5.1.8.5.8 1V19c0 .6-.4 1-1 1h-2C9.5 20 4 14.5 4 7V5z"
+                      stroke="#7be0b1" strokeWidth="1.6" strokeLinejoin="round" fill="none"/>
+                  </svg>
+                </button>
+              )}
+              {/* Invite button — always visible, opens ShareCodeCard as overlay */}
+              <button onClick={() => setInviteOpen(true)}
+                title={t('chat.invite_title')}
+                aria-label={t('chat.invite')}
+                style={{
+                  width: 40, height: 40, borderRadius: 12, padding: 0, border: 'none',
+                  background: 'rgba(255,255,255,0.06)',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <circle cx="9" cy="7" r="4" stroke="rgba(255,255,255,0.8)" strokeWidth="1.8"/>
+                  <path d="M2 21c0-4 3-6 7-6" stroke="rgba(255,255,255,0.8)" strokeWidth="1.8" strokeLinecap="round"/>
+                  <path d="M19 13v6M16 16h6" stroke="rgba(255,255,255,0.8)" strokeWidth="1.8" strokeLinecap="round"/>
+                </svg>
+              </button>
+              {/*
+                Safety-numbers button. Opens a modal with the 12-word
+                fingerprint computed in app.jsx from both sides' ECDH + KEM
+                public keys. Greyed-out (but still clickable) when the
+                fingerprint isn't ready yet so the user can see we're
+                computing.
+              */}
+              {/* Safety fingerprint nudge — shown once when keys are ready */}
+              {fpNudge && (
+                <button onClick={() => { setSafetyOpen(true); setFpNudge(false); }}
+                  title={t('chat.check_keys')}
+                  aria-label={t('chat.check_keys')}
+                  style={{
+                    width: 40, height: 40, borderRadius: 12, border: 'none', cursor: 'pointer',
+                    background: 'rgba(80,180,140,0.22)',
+                    boxShadow: 'inset 0 0 0 1px rgba(123,224,177,0.5), 0 0 14px rgba(123,224,177,0.2)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                    animation: 'welcome-rise 0.4s ease both',
+                  }}>
+                  <Icon.Shield size={15} color="#7be0b1" />
+                </button>
+              )}
+              <button
+                onClick={() => setSafetyOpen(true)}
+                title={t('chat.security')}
+                aria-label={t('chat.security')}
+                style={{
+                  width: 40, height: 40, borderRadius: 12, padding: 0,
+                  border: '0.5px solid rgba(255,255,255,0.12)',
+                  background: safetyFingerprint
+                    ? 'rgba(80,180,140,0.18)'
+                    : 'rgba(255,255,255,0.06)',
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <Icon.Shield size={14} color={safetyFingerprint ? '#7be0b1' : 'rgba(255,255,255,0.6)'} />
+              </button>
+
+              {/* Local search — opens an inline filter input above the message
+                  list. Everything is already decrypted in memory; no server
+                  round-trip needed, search stays private. */}
+              <button
+                onClick={() => setSearchOpen(v => !v)}
+                title={t('chat.search_title')}
+                aria-label={t('chat.search')}
+                style={{
+                  width: 40, height: 40, borderRadius: 12, padding: 0,
+                  border: '0.5px solid rgba(255,255,255,0.12)',
+                  background: searchOpen ? 'rgba(122,154,223,0.22)' : 'rgba(255,255,255,0.06)',
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <circle cx="11" cy="11" r="6" stroke="rgba(255,255,255,0.85)" strokeWidth="1.8"/>
+                  <path d="M16 16l4 4" stroke="rgba(255,255,255,0.85)" strokeWidth="1.8" strokeLinecap="round"/>
+                </svg>
+              </button>
+
+              <div style={{
+                position: 'relative', borderRadius: 12, overflow: 'hidden',
+                padding: '6px 10px',
+              }}>
+                <div style={{
+                  position: 'absolute', inset: 0, borderRadius: 12,
+                  background: lowTime
+                    ? 'linear-gradient(135deg, rgba(255,90,90,0.25), rgba(255,150,50,0.15))'
+                    : 'rgba(255,255,255,0.08)',
+                  border: '0.5px solid rgba(255,255,255,0.12)',
+                  boxShadow: lowTime ? '0 0 16px rgba(255,90,90,0.3)' : 'none',
+                }} />
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Icon.Flame size={12} color={lowTime ? '#ff7a4d' : '#fff'} />
+                  <div style={{ fontFamily: 'var(--ff-mono)', fontWeight: 700,
+                    fontSize: 12, color: lowTime ? '#ffb088' : '#fff', letterSpacing: -0.2 }}>
+                    {hh}:{mm}:{ss}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -2721,10 +2599,6 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
         flex: 1, overflowY: 'auto', padding: '14px 16px 16px',
         display: 'flex', flexDirection: 'column', gap: 8,
         position: 'relative', zIndex: 1,
-        // Desktop: cap the message ribbon width so bubbles stay readable on
-        // wide monitors (the app-frame itself now fills the whole screen).
-        // Center it so the ribbon sits in the middle of the main column.
-        ...(isDesktop ? { maxWidth: 900, width: '100%', margin: '0 auto' } : null),
       }}>
         {dragOver && (
           <div style={{
@@ -3125,10 +2999,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
         )}
       </div>
 
-      <div style={{ padding: '8px 12px 0', paddingBottom: 'max(30px, env(safe-area-inset-bottom, 0px))', position: 'relative', zIndex: 5,
-        // Desktop: align input width with the message ribbon above (both capped
-        // at 900px, centered) so the composer stays under the chat column.
-        ...(isDesktop ? { maxWidth: 900, width: '100%', margin: '0 auto' } : null) }}>
+      <div style={{ padding: '8px 12px 0', paddingBottom: 'max(30px, env(safe-area-inset-bottom, 0px))', position: 'relative', zIndex: 5 }}>
         {/* Burn-after-read — icon toggle; panel expands on tap or when armed */}
         {(burnPanelOpen || burnTtl) && (
           <div style={{
@@ -3142,9 +3013,9 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
             <span style={{ opacity: 0.8 }}>🔥 {t('chat.burn_aria').toLowerCase()}:</span>
             {[
               { id: null,  label: t('chat.burn_off') },
-              { id: 10,    label: t('burn.10s') },
-              { id: 60,    label: t('burn.1m') },
-              { id: 3600,  label: t('burn.1h') },
+              { id: 10,    label: '10с' },
+              { id: 60,    label: '1м' },
+              { id: 3600,  label: '1ч' },
             ].map(opt => {
               const active = burnTtl === opt.id;
               return (
@@ -3395,7 +3266,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
         </div>
         {micToast && (
           <div style={{
-            position: 'absolute', left: 0, right: 0, bottom: 100, display: 'flex',
+            position: 'fixed', left: 0, right: 0, bottom: 100, display: 'flex',
             justifyContent: 'center', pointerEvents: 'none', zIndex: 60,
           }}>
             <div style={{
@@ -3437,7 +3308,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
       {/* Invite overlay — accessible at any time from header */}
       {inviteOpen && (
         <div onClick={() => setInviteOpen(false)} style={{
-          position: 'absolute', inset: 0, zIndex: 200,
+          position: 'fixed', inset: 0, zIndex: 200,
           background: 'rgba(0,0,0,0.55)',
           backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
           display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
@@ -3486,7 +3357,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
       {/* ─── WebRTC call UI: incoming bottom sheet (owner: webrtc-calls) ─── */}
       {callState === 'incoming' && (
         <div style={{
-          position: 'absolute', inset: 0, zIndex: 220,
+          position: 'fixed', inset: 0, zIndex: 220,
           background: 'rgba(0,0,0,0.55)',
           backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
           display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
@@ -3646,7 +3517,6 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
           </div>
         </div>
       )}
-      </div>
     </div>
   );
 }
@@ -3718,7 +3588,7 @@ function ActiveCallOverlay({ palette, callState, callMuted, callOnSpeaker, callE
 
   return (
     <div style={{
-      position: 'absolute', inset: 0, zIndex: 210,
+      position: 'fixed', inset: 0, zIndex: 210,
       background: 'linear-gradient(180deg, rgba(8,10,18,0.92), rgba(2,2,8,0.96))',
       backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
       display: 'flex', flexDirection: 'column',
