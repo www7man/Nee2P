@@ -240,9 +240,9 @@ const MAX_GROUP_MAX = 8;
 // Per-blob ≤ 5 MB; per-room rolling cap 50 MB (LRU evict); relay-wide cap
 // 200 MB → 507. Bytes are pure ciphertext as far as the relay is concerned —
 // the AES-GCM IV + tag live inside the corresponding msg envelope.
-const MAX_BLOB_BYTES   = 5  * 1024 * 1024;
-const MAX_ROOM_BLOB_BYTES  = 50  * 1024 * 1024;
-const MAX_RELAY_BLOB_BYTES = 200 * 1024 * 1024;
+const MAX_BLOB_BYTES   = 250 * 1024 * 1024;
+const MAX_ROOM_BLOB_BYTES  = 500 * 1024 * 1024;
+const MAX_RELAY_BLOB_BYTES = 1024 * 1024 * 1024;
 let RELAY_BLOB_BYTES = 0;
 
 const MIME = {

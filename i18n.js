@@ -287,6 +287,9 @@
       'blob.byte_b':                'Б',
       'blob.byte_kb':               'КБ',
       'blob.byte_mb':               'МБ',
+      'blob.too_large':             'Файл слишком большой (максимум 250 МБ).',
+      'blob.relay_full':            'Сервер переполнен, попробуйте позже.',
+      'blob.upload_failed':         'Не удалось отправить файл.',
 
       // ── Drag-and-drop file attach ───────────────────────────────────────
       'drop.hint':                  'Отпустите, чтобы прикрепить файлы',
@@ -719,6 +722,9 @@
       'blob.byte_b':                'B',
       'blob.byte_kb':               'KB',
       'blob.byte_mb':               'MB',
+      'blob.too_large':             'File too large (maximum 250 MB).',
+      'blob.relay_full':            'Server is full, try again later.',
+      'blob.upload_failed':         'Could not send the file.',
 
       // ── Drag-and-drop file attach ───────────────────────────────────────
       'drop.hint':                  'Drop to attach the files',

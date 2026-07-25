@@ -1830,6 +1830,7 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                        messages, sessionHash, sharePhrase, peerLastReadId,
                        safetyFingerprint,
                        onSend, onDelete, onMarkRead, onReact, onBack, banner,
+                       blobError = null,
                        onAttach, onVoice, onBlobUrl, uploadProgress = 0,
                        connStatus = 'live',
                        callState = 'idle', callPeer = null,
@@ -2586,6 +2587,17 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                 {banner}
               </div>
             </Glass>
+          </div>
+        )}
+
+        {blobError && (
+          <div style={{ padding: '4px 16px 0' }}>
+            <div style={{
+              padding: '8px 12px', borderRadius: 14, textAlign: 'center',
+              background: 'rgba(210, 70, 70, 0.18)',
+              boxShadow: 'inset 0 0 0 0.5px rgba(255, 140, 140, 0.35)',
+              color: '#ff9a9a', fontSize: 11, letterSpacing: 0.2,
+            }}>{blobError}</div>
           </div>
         )}
       </div>

@@ -55,6 +55,12 @@ const TTL_OPTIONS = [
 const GROUP_OPTIONS = [2, 3, 4, 6, 8];
 const DEFAULT_GROUP_MAX = 2;
 
+// Per-file attachment cap. MUST stay in sync with MAX_BLOB_BYTES in server.js —
+// the server enforces it authoritatively (413 too-large), but we check client-
+// side first so the user gets an immediate, clear message instead of uploading
+// hundreds of MB only to be rejected. Keep this literal identical to server.js.
+const MAX_BLOB_BYTES = 250 * 1024 * 1024;
+
 // Wire slot id (string 'A'/'B' for 2-party, number for groups) → internal
 // numeric index. Tolerant: accepts both forms regardless of room size.
 function coerceSlot(v) {
@@ -454,6 +460,21 @@ function App() {
   const [peerTyping, setPeerTyping] = React.useState(new Map());
   const [messages, setMessages] = React.useState([]);
   const [chatBanner, setChatBanner] = React.useState(null);
+  // Transient error banner for attachment failures (file too large, relay full,
+  // upload error). Auto-clears after 4s so it doesn't linger. Separate from the
+  // connection-status chatBanner so a transfer error doesn't clobber the
+  // partner-offline notice and vice versa.
+  const blobErrorTimerRef = React.useRef(null);
+  const showBlobError = React.useCallback((text) => {
+    if (!text) return;
+    if (blobErrorTimerRef.current) clearTimeout(blobErrorTimerRef.current);
+    setBlobError(text);
+    blobErrorTimerRef.current = setTimeout(() => {
+      setBlobError(null);
+      blobErrorTimerRef.current = null;
+    }, 4000);
+  }, []);
+  const [blobError, setBlobError] = React.useState(null);
   // SSE connection status surfaced from http-client.js. 'live' = normal,
   // 'reconnecting' = onerror fired and we're retrying, 'lost' = >5s offline.
   // ChatScreen renders an orange/red bar above the message list when not 'live'.
@@ -741,6 +762,11 @@ function App() {
       callToastTimerRef.current = null;
     }
     setCallToast(null);
+    if (blobErrorTimerRef.current) {
+      clearTimeout(blobErrorTimerRef.current);
+      blobErrorTimerRef.current = null;
+    }
+    setBlobError(null);
     // Revoke any blob object URLs we minted so the browser can free the
     // backing Blob memory. (Closures inside this callback can't reference
     // refs declared later in the component without a guard — null-check just
@@ -2504,6 +2530,16 @@ function App() {
 
   const sendBlob = React.useCallback(async (file) => {
     if (!wsRef.current || !file) return;
+    // Client-side size check BEFORE reading/encrypting the file — saves the
+    // user from uploading 250MB only to get a 413, and bounds tab RAM. The
+    // server cap (MAX_BLOB_BYTES in server.js) is authoritative; this mirrors
+    // it for the early-out + a clear UI message.
+    if (file.size > MAX_BLOB_BYTES) {
+      const msg = ((window.Nee2Pi18n && window.Nee2Pi18n.t('blob.too_large')) ||
+        'Файл слишком большой (максимум 250 МБ).');
+      showBlobError(msg);
+      return;
+    }
     setUploadProgress(n => n + 1);
     try {
       const buf = await file.arrayBuffer();
@@ -2518,7 +2554,24 @@ function App() {
         ...(thumb ? { thumb } : {}),
       });
     } catch (e) {
-      console.warn('sendBlob failed:', e && e.message ? e.message : e);
+      const reason = e && e.message ? e.message : String(e);
+      // Map server-side rejection reasons to user-facing text instead of the
+      // old silent console.warn. too-large = file over cap (shouldn't happen
+      // after the early-out above, but the server is authoritative); relay-full
+      // = the relay has hit its global blob budget.
+      let msg = null;
+      if (reason === 'too-large') {
+        msg = ((window.Nee2Pi18n && window.Nee2Pi18n.t('blob.too_large')) ||
+          'Файл слишком большой (максимум 250 МБ).');
+      } else if (reason === 'relay-full') {
+        msg = ((window.Nee2Pi18n && window.Nee2Pi18n.t('blob.relay_full')) ||
+          'Сервер переполнен, попробуйте позже.');
+      } else {
+        msg = ((window.Nee2Pi18n && window.Nee2Pi18n.t('blob.upload_failed')) ||
+          'Не удалось отправить файл.');
+      }
+      console.warn('sendBlob failed:', reason);
+      showBlobError(msg);
     } finally {
       setUploadProgress(n => Math.max(0, n - 1));
     }
@@ -2879,7 +2932,7 @@ function App() {
           if (!confirm('Выйти из чата? Сессия останется активной — сможешь вернуться по фразе+паролю.')) return;
           cleanupConnection();
           setScreen('welcome');
-        }} banner={chatBanner} />;
+        }} banner={chatBanner} blobError={blobError} />;
       break;
     case 'locked':
       body = <LockedScreen palette={PALETTE} onBack={backToWelcome} />;
