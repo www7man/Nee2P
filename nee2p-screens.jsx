@@ -34,6 +34,7 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
 
   const [showCloneModal, setShowCloneModal] = React.useState(false);
   const [showModeSheet, setShowModeSheet] = React.useState(false);
+  const [showFastFile, setShowFastFile] = React.useState(false);
   const [copiedStep, setCopiedStep] = React.useState(null);
   const [selectedOS, setSelectedOS] = React.useState('mac');
   const handleCopyCmd = (stepId, cmd) => {
@@ -135,6 +136,11 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
           icon={<Icon.Key size={16} color="rgba(255,255,255,0.85)" />}
           style={{ height: 54, borderRadius: 18 }}>
           {t('welcome.join')}
+        </GlassButton>
+        <GlassButton palette={palette} onClick={() => setShowFastFile(true)}
+          icon={<Icon.Bolt size={16} color="rgba(255,255,255,0.85)" />}
+          style={{ height: 54, borderRadius: 18 }}>
+          {t('welcome.fastfile')}
         </GlassButton>
         <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
           {[
@@ -365,6 +371,137 @@ function WelcomeScreen({ palette, onCreate, onJoin, onInfo,
         onSelect={(m) => { if (onChangeMode) onChangeMode(m); setShowModeSheet(false); }}
         onClose={() => setShowModeSheet(false)}
       />
+
+      {/* ── FastFile role picker ── */}
+      <FastFileScreen
+        open={showFastFile}
+        onClose={() => setShowFastFile(false)}
+      />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// FastFile — optical file transfer (screen → camera), powered by the decimen
+// standalone HTML builds in /fastfile/. This is a role-picker overlay: the
+// user picks Send (display the QR stream) or Receive (scan with the camera),
+// and we open the matching standalone page in a new tab. No Nee2P state is
+// involved — keep it fully local to WelcomeScreen.
+function FastFileScreen({ open, onClose }) {
+  const t = window.Nee2Pi18n.t;
+  if (!open) return null;
+
+  const openPage = (page) => {
+    try { window.open(page, '_blank', 'noopener,noreferrer'); } catch { /* ignore */ }
+  };
+
+  const roles = [
+    {
+      key: 'send',
+      icon: <Icon.Send size={22} color="rgba(255,255,255,0.9)" />,
+      label: t('fastfile.send'),
+      desc: t('fastfile.send.desc'),
+      onClick: () => openPage('fastfile/sender.html'),
+    },
+    {
+      key: 'receive',
+      icon: <Icon.Eye size={22} color="rgba(255,255,255,0.9)" />,
+      label: t('fastfile.receive'),
+      desc: t('fastfile.receive.desc'),
+      onClick: () => openPage('fastfile/receiver.html'),
+    },
+  ];
+
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, zIndex: 2000,
+      background: 'rgba(0,0,0,0.6)',
+      backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+      padding: '0 12px',
+      paddingBottom: 'max(20px, env(safe-area-inset-bottom, 0px))',
+      animation: 'fade-up 0.2s ease',
+    }}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        width: '100%', maxWidth: 440, background: '#0f0f15',
+        boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.1), 0 32px 80px rgba(0,0,0,0.7)',
+        borderRadius: 22,
+        padding: '20px 18px 22px',
+        maxHeight: '88vh', overflowY: 'auto',
+      }}>
+        {/* ── header ── */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Icon.Bolt size={15} color="rgba(255,255,255,0.7)" />
+            <span style={{ fontSize: 15, fontWeight: 600, color: 'rgba(255,255,255,0.9)',
+              letterSpacing: -0.3 }}>
+              {t('fastfile.title')}
+            </span>
+          </div>
+          <button onClick={onClose} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: 'rgba(255,255,255,0.3)', fontSize: 18, lineHeight: 1, padding: '2px 6px',
+          }}>✕</button>
+        </div>
+
+        {/* ── description ── */}
+        <p style={{ margin: '0 0 14px', fontSize: 12.5, fontWeight: 300,
+          color: 'rgba(255,255,255,0.45)', lineHeight: 1.55, letterSpacing: -0.05 }}>
+          {t('fastfile.desc')}
+        </p>
+
+        {/* ── role cards ── */}
+        {roles.map(({ key, icon, label, desc, onClick: onPick }) => (
+          <button key={key} onClick={onPick} style={{
+            width: '100%', display: 'flex', alignItems: 'center', gap: 13,
+            padding: '14px 14px', marginBottom: 8, cursor: 'pointer',
+            borderRadius: 14, border: 'none',
+            background: 'rgba(255,255,255,0.04)',
+            boxShadow: 'inset 0 0 0 0.5px rgba(255,255,255,0.09)',
+            textAlign: 'left', fontFamily: 'inherit',
+            transition: 'background 0.15s',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+          >
+            <div style={{
+              flexShrink: 0, width: 40, height: 40, borderRadius: 11,
+              background: 'rgba(255,255,255,0.06)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>{icon}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.9)',
+                marginBottom: 2, letterSpacing: -0.2 }}>{label}</div>
+              <div style={{ fontSize: 11.5, fontWeight: 300, color: 'rgba(255,255,255,0.4)',
+                lineHeight: 1.4 }}>{desc}</div>
+            </div>
+            <Icon.Arrow size={13} color="rgba(255,255,255,0.35)" />
+          </button>
+        ))}
+
+        {/* ── camera note ── */}
+        <div style={{
+          marginTop: 12, display: 'flex', gap: 8, alignItems: 'flex-start',
+          padding: '9px 11px', borderRadius: 10,
+          background: 'rgba(255,255,255,0.03)',
+        }}>
+          <span style={{ fontSize: 12, lineHeight: 1.4, flexShrink: 0 }}>📷</span>
+          <span style={{ fontSize: 11, fontWeight: 300, color: 'rgba(255,255,255,0.45)',
+            lineHeight: 1.5 }}>{t('fastfile.note')}</span>
+        </div>
+
+        {/* ── security warning (decimen carries no encryption) ── */}
+        <div style={{
+          marginTop: 8, display: 'flex', gap: 8, alignItems: 'flex-start',
+          padding: '9px 11px', borderRadius: 10,
+          background: 'rgba(232,180,90,0.08)',
+        }}>
+          <span style={{ fontSize: 12, lineHeight: 1.4, flexShrink: 0 }}>⚠️</span>
+          <span style={{ fontSize: 10.5, fontWeight: 400, color: 'rgba(232,200,150,0.8)',
+            lineHeight: 1.5, letterSpacing: -0.02 }}>{t('fastfile.warning')}</span>
+        </div>
+      </div>
     </div>
   );
 }

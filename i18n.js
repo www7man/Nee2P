@@ -31,6 +31,18 @@
       'welcome.join':      'Подключиться к сессии',
       'welcome.security':  'Безопасность',
       'welcome.updates':   'Что нового',
+      'welcome.fastfile':  'FastFile',
+
+      // ── FastFile (оптическая передача файлов экран→камера) ───────────────
+      'fastfile.title':        'Передача файлов',
+      'fastfile.desc':         'Передавайте файлы с экрана на камеру — без интернета и спаривания. Нужны два устройства рядом.',
+      'fastfile.send':         'Отправить файл',
+      'fastfile.send.desc':    'Показывает поток кодов на этом экране',
+      'fastfile.receive':      'Принять файл',
+      'fastfile.receive.desc': 'Считывает коды камерой этого устройства',
+      'fastfile.back':         'Назад',
+      'fastfile.note':         'На принимающем устройстве потребуется доступ к камере.',
+      'fastfile.warning':      'Без сети, но без шифрования: любой, кто снимет экран камерой, сможет прочитать данные.',
 
       // ── Created (3-step wizard) ──────────────────────────────────────────
       'created.title':           'Сессия создана',
@@ -472,6 +484,18 @@
       'welcome.join':      'Join a session',
       'welcome.security':  'Security',
       'welcome.updates':   "What's new",
+      'welcome.fastfile':  'FastFile',
+
+      // ── FastFile (optical file transfer screen→camera) ───────────────────
+      'fastfile.title':        'Fast file transfer',
+      'fastfile.desc':         'Send files screen-to-camera — no network, no pairing. Two devices side by side.',
+      'fastfile.send':         'Send a file',
+      'fastfile.send.desc':    'Displays a stream of codes on this screen',
+      'fastfile.receive':      'Receive a file',
+      'fastfile.receive.desc': "Reads the codes with this device's camera",
+      'fastfile.back':         'Back',
+      'fastfile.note':         'The receiving device will need camera access.',
+      'fastfile.warning':      'No network, but no encryption: anyone who films the screen with a camera can read the data.',
 
       // ── Created (3-step wizard) ──────────────────────────────────────────
       'created.title':           'Session created',
