@@ -40,11 +40,35 @@
 - Файлы переименованы из `decimen-v0.2.0-sender.html` /
   `decimen-v0.2.0-receiver.html` в короткие имена.
 
-Контрольные суммы (сверены с официальным `SHA256SUMS.txt` релиза):
+### Тема Nee2P
+
+Файлы **модифицированы** под дизайн-систему Nee2P (стальная `steel` палитра,
+glassmorphism, системный шрифт). Изменения косметические — только CSS:
+
+1. Значения CSS-переменных `:root` (цвета фона/текста/акцента/панелей)
+   переназначены на токены Nee2P. Имена переменных сохранены, поэтому
+   минифицированный JS-бандл и логика QR/камеры не затронуты.
+2. Добавлен второй `<style id="nee2p-ff-theme">` с glass-эффектом
+   (`backdrop-filter: blur(28px) saturate(180%)`) на панелях и стилем кнопок
+   как `GlassButton` (primary) Nee2P.
+3. `theme-color` → `#06060a` (как в основном Nee2P).
+
+Из-за этой правки **контрольные суммы больше не совпадают** с официальным
+`SHA256SUMS.txt` релиза decimen v0.2.0 — это ожидаемо.
+
+Контрольные суммы **оригинала** релиза decimen v0.2.0 (для сверки при
+обновлении — см. ниже):
 
 ```
-ebcef06f10964eabe9526482ece5c2d77636dfbd55df6c9d13c647601d47be20  sender.html
-05390f14bc470968feeca11e66b9604a05fc2058ac8d5f0c1a30cdf9992208b4  receiver.html
+ebcef06f10964eabe9526482ece5c2d77636dfbd55df6c9d13c647601d47be20  decimen-v0.2.0-sender.html
+05390f14bc470968feeca11e66b9604a05fc2058ac8d5f0c1a30cdf9992208b4  decimen-v0.2.0-receiver.html
+```
+
+Контрольные суммы **текущих (тематизированных) файлов**:
+
+```
+2ef95635e7e4ffbe020227268f23a64d870b96a6ee8289f3286a5aee20872acc  sender.html
+4f816f016eee35e88de26fc54889ab6c8adb62b23882ed20b7499a6cf77be5ac  receiver.html
 ```
 
 ## Модель безопасности (важно)
@@ -61,7 +85,11 @@ Decimen **не шифрует** данные. Как сказано в README а
    <https://github.com/bashalarmistalt/decimen-optical-transfer/releases> (ищи
    `decimen-<tag>-sender.html` и `decimen-<tag>-receiver.html`).
 2. Сверить SHA-256 с `SHA256SUMS.txt` из того же релиза.
-3. Положить поверх `sender.html` / `receiver.html` и обновить версию в этом
+3. **Заново применить тему Nee2P** (см. «Тема Nee2P» выше): переназначить
+   `:root` и добавить `<style id="nee2p-ff-theme">`. Проще всего — взять
+   тематизированную версию из git-истории (`git show main:fastfile/sender.html`)
+   и вручную перенести правки `:root` + блок темы в новый бандл.
+4. Положить поверх `sender.html` / `receiver.html`, обновить SHA-256 в этом
    README.
 
 ## Лицензия
