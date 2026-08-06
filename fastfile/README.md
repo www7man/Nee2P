@@ -67,8 +67,8 @@ ebcef06f10964eabe9526482ece5c2d77636dfbd55df6c9d13c647601d47be20  decimen-v0.2.0
 Контрольные суммы **текущих (тематизированных) файлов**:
 
 ```
-2ef95635e7e4ffbe020227268f23a64d870b96a6ee8289f3286a5aee20872acc  sender.html
-4f816f016eee35e88de26fc54889ab6c8adb62b23882ed20b7499a6cf77be5ac  receiver.html
+177688001e98b43d835a9dd731a0874916d361762421d5e7efb0b6555d375306  sender.html
+f3da1685806449b4179314393e5e1ab6ce4a1ed5eae3c81b62bd5eece9c31035  receiver.html
 ```
 
 ## Модель безопасности (важно)
