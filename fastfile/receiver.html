@@ -58,6 +58,58 @@ header,footer{color:var(--muted)}
 a{color:var(--accent-hi)}
 select{background:rgba(255,255,255,0.06);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:6px 10px}
 input[type=radio]{accent-color:#7a9adf}
+
+/* === Nee2P theme: refined secondary controls === */
+/* File/Text tabs — активный таб подсвечен стальным акцентом */
+.mode-picker{background:rgba(255,255,255,0.04);border:0;border-radius:14px;box-shadow:inset 0 0 0 0.5px rgba(255,255,255,0.08)}
+.mode-picker input:checked+span{
+  color:#fff;
+  background:linear-gradient(180deg,rgba(142,176,255,0.22) 0%,rgba(66,98,184,0.18) 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.25),0 0 0 0.5px rgba(142,176,255,0.45);
+}
+.mode-picker span{color:var(--muted)}
+/* Settings panel + demo-picker — glass как у file-picker */
+.settings,.demo-picker,.demo-buttons{
+  background:linear-gradient(135deg,rgba(255,255,255,0.05) 0%,rgba(255,255,255,0.02) 100%);
+  -webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);
+  border:0;border-radius:18px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.12),0 8px 32px rgba(0,0,0,0.30),0 0 0 0.5px rgba(255,255,255,0.08);
+}
+/* Select + range — glass */
+.settings select,details.settings input[type=range]{
+  background:rgba(255,255,255,0.05);
+  border:1px solid var(--line);border-radius:10px;
+  color:var(--text);
+}
+.settings select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(122,154,223,0.18)}
+/* Textarea (note composer) — glass */
+.note-composer textarea{
+  background:rgba(255,255,255,0.04);
+  border:1px solid var(--line);border-radius:14px;
+  -webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.note-composer textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(122,154,223,0.18)}
+/* Brand logo + eyebrow kicker — стальной акцент */
+.brand-logo,.eyebrow,.card-kicker{color:var(--accent-hi)}
+/* File-selector inner button — secondary glass, ровно как в Nee2P */
+input::file-selector-button{
+  background:rgba(255,255,255,0.06);
+  -webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);
+  color:#fff;border:0;border-radius:12px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.18),0 0 0 0.5px rgba(255,255,255,0.10);
+}
+input::file-selector-button:hover{color:var(--accent-hi)}
+/* Progress bar track — мягче */
+.progress{box-shadow:inset 0 0 0 0.5px rgba(255,255,255,0.08)}
+/* result / received image frame */
+img.received,#result{border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.40),0 0 0 0.5px rgba(255,255,255,0.08)}
+/* Footer hints muted, но мягче */
+.site-footer,.footer-hint,.footer-links{color:var(--muted-dim)}
+.footer-links a{color:var(--muted)}
+.footer-links a:hover{color:var(--accent-hi)}
+/* done/failed status text */
+.done{color:var(--green)}.failed{color:var(--red)}
 </style>
   </head>
   <body class="receiver-page">
