@@ -1999,6 +1999,15 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
   const p = usePalette(palette);
   const [input, setInput] = React.useState('');
   const inputRef = React.useRef(null);
+  // Auto-grow the composer textarea to fit its content (1..~5 lines). Runs on
+  // every input change AND after send() clears the state, so the field shrinks
+  // back. Capped at 120px so a pasted huge blob doesn't swallow the chat.
+  React.useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  }, [input]);
   const fileInputRef = React.useRef(null);
   const scrollRef = React.useRef(null);
   const typingTimerRef = React.useRef(null);
@@ -3305,8 +3314,9 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                 </span>
               </div>
             ) : (
-              <input
+              <textarea
                 ref={inputRef}
+                rows={1}
                 value={input}
                 onChange={(e) => {
                   const v = e.target.value;
@@ -3320,7 +3330,17 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                     sendTyping(false);
                   }
                 }}
-                onKeyDown={(e) => e.key === 'Enter' && send()}
+                onKeyDown={(e) => {
+                  // Enter sends; Shift+Enter inserts a real newline. The old
+                  // single-line <input> silently converted pasted newlines to
+                  // spaces at paste time (browser behavior for single-line
+                  // inputs), so multi-line pastes arrived flattened. A textarea
+                  // keeps them. isComposing guards IME (CJK) Enter-to-confirm.
+                  if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                    e.preventDefault();
+                    send();
+                  }
+                }}
                 onFocus={(e) => {
                   // Fallback for browsers without visualViewport (or where the
                   // viewport listener is no-op): nudge the input into view
@@ -3344,6 +3364,8 @@ function ChatScreen({ palette, perspective, groupMax = 2, participants = null,
                   flex: 1, background: 'transparent', border: 'none', outline: 'none',
                   color: '#fff', fontSize: 15, fontFamily: 'inherit',
                   padding: '10px 14px', letterSpacing: -0.1,
+                  resize: 'none', overflowY: 'auto',
+                  lineHeight: 1.35, maxHeight: 120,
                 }}
               />
             )}
