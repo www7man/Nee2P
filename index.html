@@ -315,7 +315,19 @@ window.addEventListener('error', function (e) {
       if (!hadController) return; // first install on this origin — no reload needed
       if (refreshing) return;
       refreshing = true;
-      location.reload();
+      // Defer the reload while a session create/join handshake is in flight
+      // (nee2p-app.jsx sets window.__NEE2P_SW_BUSY__ around the claim). A
+      // reload mid-handshake orphans the pairing attempt: the two sides never
+      // pair and users had to recreate the whole session. Wait (bounded at
+      // 30s) until the app reports idle, then reload to pick up fresh code.
+      var waited = 0;
+      var t = setInterval(function () {
+        if (!window.__NEE2P_SW_BUSY__ || waited >= 30000) {
+          clearInterval(t);
+          location.reload();
+        }
+        waited += 1500;
+      }, 1500);
     });
   }
 </script>

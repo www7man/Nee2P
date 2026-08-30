@@ -1763,6 +1763,10 @@ function App() {
 
   // open WS + claim. Returns the claim-result message.
   const connectAndClaim = React.useCallback(async (hash, pwd, opts = {}) => {
+    // Guard for the SW-update auto-reload (index.html): while the pairing
+    // handshake is in flight a reload would orphan the claim — the two sides
+    // never pair and users had to recreate the room. Cleared by done().
+    window.__NEE2P_SW_BUSY__ = true;
     if (wsRef.current) { try { wsRef.current.close(); } catch {} wsRef.current = null; }
     const derived = await Nee2PCrypto.deriveKey(hash);
     aesKeyRef.current = derived.key;
@@ -1812,6 +1816,30 @@ function App() {
 
     return await new Promise((resolve) => {
       let resolved = false;
+      // `done` wraps resolve: (a) single-shot guard (replaces the manual
+      // `if (!resolved)` checks at each settle site), (b) clears the 30s claim
+      // timeout below, (c) clears the SW-update reload guard so index.html
+      // knows the pairing handshake is no longer in flight.
+      const done = (v) => {
+        if (resolved) return;
+        resolved = true;
+        clearTimeout(claimTimer);
+        window.__NEE2P_SW_BUSY__ = false;
+        resolve(v);
+      };
+      // Claim timeout: if claim-result never arrives (lost response, transport
+      // hiccup mid-handshake) settle with an error so the create/join flow can
+      // show "try again" — instead of hanging on "creating…" forever, which
+      // users previously fixed by recreating the whole session. 30s covers a
+      // slow 3G handshake (deriveKey + claim round-trip usually < 2s).
+      const claimTimer = setTimeout(() => {
+        // Tear down the half-open transport too: the claim may still land
+        // late, but the flow already surfaced an error (user retries from
+        // the UI — same room restores cleanly). Leaving the socket open
+        // would leak a zombie connection sending events into a dead flow.
+        try { if (wsRef.current) { wsRef.current.close(); } } catch {}
+        done({ ok: false, reason: 'timeout' });
+      }, 30000);
       const claimRequest = { type: 'claim', passwordHash };
       if (opts.ttlMs)      claimRequest.ttlMs      = opts.ttlMs;
       if (opts.groupMax)   claimRequest.groupMax   = opts.groupMax;
@@ -1870,7 +1898,7 @@ function App() {
             if (epoch > currentEpochRef.current) currentEpochRef.current = epoch;
             enqueue(() => applyPeerPubKey(peerNum, m.peerPubKey, m.peerKemPubKey, epoch));
           }
-          if (!resolved) { resolved = true; resolve(m); }
+          if (!resolved) { done(m); }
         },
         onRoomState: (m) => {
           // informational only — we'll get claim-result after our claim
@@ -1981,9 +2009,8 @@ function App() {
           // modal so the user can retry / switch to relay / cancel. Relay
           // keeps its existing reconnection logic (driven by connStatus).
           if (!resolved) {
-            resolved = true;
             const reason = (info && info.reason) || 'closed';
-            resolve({ ok: false, reason });
+            done({ ok: false, reason });
             return;
           }
           const mode = (info && info.mode) || modeForThisOpen;
@@ -1995,7 +2022,7 @@ function App() {
           }
         },
         onError: () => {
-          if (!resolved) { resolved = true; resolve({ ok: false, reason: 'error' }); }
+          if (!resolved) { done({ ok: false, reason: 'error' }); }
         },
       };
 
@@ -2007,7 +2034,7 @@ function App() {
         lastConnectArgsRef.current = { hash, pwd, opts };
       }, (err) => {
         console.error('openTransportForMode failed:', err);
-        if (!resolved) { resolved = true; resolve({ ok: false, reason: 'open-failed' }); }
+        if (!resolved) { done({ ok: false, reason: 'open-failed' }); }
       });
     });
   }, [ingestMessage, ingestDelete, ingestReact, ingestSignal, resetAll,
