@@ -1763,10 +1763,6 @@ function App() {
 
   // open WS + claim. Returns the claim-result message.
   const connectAndClaim = React.useCallback(async (hash, pwd, opts = {}) => {
-    // Guard for the SW-update auto-reload (index.html): while the pairing
-    // handshake is in flight a reload would orphan the claim — the two sides
-    // never pair and users had to recreate the room. Cleared by done().
-    window.__NEE2P_SW_BUSY__ = true;
     if (wsRef.current) { try { wsRef.current.close(); } catch {} wsRef.current = null; }
     const derived = await Nee2PCrypto.deriveKey(hash);
     aesKeyRef.current = derived.key;
@@ -1816,15 +1812,14 @@ function App() {
 
     return await new Promise((resolve) => {
       let resolved = false;
-      // `done` wraps resolve: (a) single-shot guard (replaces the manual
-      // `if (!resolved)` checks at each settle site), (b) clears the 30s claim
-      // timeout below, (c) clears the SW-update reload guard so index.html
-      // knows the pairing handshake is no longer in flight.
+      // `done` wraps resolve: single-shot guard (replaces the manual
+      // `if (!resolved)` checks at each settle site) + clears the 30s claim
+      // timeout below. (The SW-update reload guard flag used to be cleared
+      // here too; index.html no longer auto-reloads mid-flow at all.)
       const done = (v) => {
         if (resolved) return;
         resolved = true;
         clearTimeout(claimTimer);
-        window.__NEE2P_SW_BUSY__ = false;
         resolve(v);
       };
       // Claim timeout: if claim-result never arrives (lost response, transport

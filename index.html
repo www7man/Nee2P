@@ -299,35 +299,43 @@ window.addEventListener('error', function (e) {
         try { console.warn('sw register failed', e); } catch (_) {}
       });
     });
-    // Auto-reload once a new SW takes control. Without this, after a deploy
-    // users on an old SW keep seeing stale code until they hard-reload. The
-    // `refreshing` guard prevents reload loops when several SWs claim in
-    // succession (Chrome fires controllerchange more than once on update).
-    //
-    // IMPORTANT: only reload when an *existing* SW was already in control
-    // (i.e. this is a SW *update*, not a first install). On a brand-new origin
-    // (e.g. a fresh tunnel URL like pinggy) there is no old SW, so the page
-    // already loaded fresh from the network — reloading would only interrupt
-    // any session the user is about to create and serves no purpose.
+    // Pick up deploys without EVER interrupting the user. When a new SW takes
+    // control we used to reload the page immediately (and later, after the
+    // handshake complaints, after a delay) — either way users saw the page
+    // "reload by itself", sometimes mid session-creation. Now:
+    //   • a small non-blocking "update available" pill appears (click = reload
+    //     now, at a moment the user picks);
+    //   • if the tab is HIDDEN we reload silently — the user never sees a
+    //     flicker, and the next time they switch to the tab it's already fresh.
+    //   • IMPORTANT: only react when an *existing* SW was in control (a SW
+    //     *update*, not a first install). On a brand-new origin the page loaded
+    //     fresh already — nothing to refresh.
     var hadController = !!navigator.serviceWorker.controller;
     var refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', function () {
-      if (!hadController) return; // first install on this origin — no reload needed
+      if (!hadController) return; // first install on this origin — nothing to do
       if (refreshing) return;
       refreshing = true;
-      // Defer the reload while a session create/join handshake is in flight
-      // (nee2p-app.jsx sets window.__NEE2P_SW_BUSY__ around the claim). A
-      // reload mid-handshake orphans the pairing attempt: the two sides never
-      // pair and users had to recreate the whole session. Wait (bounded at
-      // 30s) until the app reports idle, then reload to pick up fresh code.
-      var waited = 0;
-      var t = setInterval(function () {
-        if (!window.__NEE2P_SW_BUSY__ || waited >= 30000) {
-          clearInterval(t);
-          location.reload();
-        }
-        waited += 1500;
-      }, 1500);
+      // Silent reload while hidden — the user can't observe it.
+      document.addEventListener('visibilitychange', function onVis() {
+        if (!document.hidden) return;
+        document.removeEventListener('visibilitychange', onVis);
+        location.reload();
+      });
+      // Visible tab: non-blocking pill. Clicking reloads on the user's terms.
+      try {
+        var pill = document.createElement('div');
+        pill.textContent = '↻ Доступно обновление — перезагрузить?';
+        pill.setAttribute('role', 'button');
+        pill.setAttribute('tabindex', '0');
+        pill.onclick = function () { location.reload(); };
+        pill.style.cssText = 'position:fixed;bottom:max(16px,env(safe-area-inset-bottom,0px));'
+          + 'left:50%;transform:translateX(-50%);z-index:2147483647;cursor:pointer;'
+          + 'padding:9px 16px;border-radius:12px;background:rgba(20,20,30,0.92);'
+          + 'box-shadow:inset 0 0 0 0.5px rgba(255,255,255,0.16),0 8px 24px rgba(0,0,0,0.45);'
+          + 'color:#fff;font:600 12.5px/1 -apple-system,system-ui,sans-serif;letter-spacing:0.2px;';
+        document.body.appendChild(pill);
+      } catch (_) {}
     });
   }
 </script>
