@@ -40,6 +40,35 @@
       }
     }
 
+    // Blob transfers are the one API call that pushes/pulls large bodies over
+    // flaky mobile links. A single dropped packet mid-PUT used to fail the
+    // whole attachment ("upload starts but the file never arrives") because
+    // there was no retry: one network hiccup → TypeError/502 → give up.
+    // Retry ONLY transient failures: network errors (fetch rejects / abort on
+    // timeout) and 502/503/504 from the proxy layer. NEVER retry logical
+    // rejections (413 too-large, 401 bad-token, 400) — those fail deterministically.
+    // Body must be re-usable across attempts, so callers pass a Uint8Array
+    // (fetch doesn't consume it) rather than a stream.
+    async function fetchBlobWithRetry(url, opts, timeoutMs, attempts = 3) {
+      let lastErr = null;
+      for (let i = 0; i < attempts; i++) {
+        try {
+          const r = await fetchWithTimeout(url, opts, timeoutMs);
+          if (r.status === 502 || r.status === 503 || r.status === 504) {
+            lastErr = new Error('http-' + r.status);
+            if (i < attempts - 1) { await new Promise(res => setTimeout(res, 1000 * (i + 1))); continue; }
+            return r; // last attempt: let the caller surface the error
+          }
+          return r;
+        } catch (e) {
+          lastErr = e; // TypeError (network) or AbortError (timeout) — transient
+          if (i < attempts - 1) { await new Promise(res => setTimeout(res, 1000 * (i + 1))); continue; }
+          throw e;
+        }
+      }
+      throw lastErr || new Error('retry-exhausted');
+    }
+
     async function post(path, body) {
       try {
         const r = await fetchWithTimeout(origin + basePath + 'r/' + path, {
@@ -296,7 +325,7 @@
         + '?token=' + encodeURIComponent(token)
         + '&mime='  + encodeURIComponent(mime || 'application/octet-stream')
         + '&size='  + String(body.length);
-      const r = await fetchWithTimeout(u, {
+      const r = await fetchBlobWithRetry(u, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/octet-stream',
@@ -318,7 +347,7 @@
       if (!token) throw new Error('not-claimed');
       const u = origin + basePath + 'r/blob/' + encodeURIComponent(blobId)
         + '?token=' + encodeURIComponent(token);
-      const r = await fetchWithTimeout(u, {
+      const r = await fetchBlobWithRetry(u, {
         method: 'GET',
         headers: { 'Authorization': 'Bearer ' + token },
         credentials: 'same-origin',
