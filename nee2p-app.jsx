@@ -1924,6 +1924,21 @@ function App() {
             next.set(slotNum, !!m.online);
             return next;
           });
+          if (m.online) {
+            // KEY-RESHIP on presence: if the peer's stream dropped while our
+            // sender-key event was in flight, they buffer every subsequent
+            // message as "pending key" — silently. Online-status events are
+            // NOT encrypted, which is why the peer still sees us online and
+            // even typing, while encrypted msgs never render. A peer-online
+            // means their stream is (re)established: reset the idempotency
+            // guard and re-ship the key. On arrival their buffered messages
+            // replay (applySenderKey → replayPendingFor).
+            const peer = peerKeysRef.current.get(slotNum);
+            if (peer && peer.pairwiseKey) {
+              peer.sentSenderKey = -1; // bypass the per-epoch dedupe once
+              shipSenderKeyToPeer(slotNum, currentEpochRef.current).catch(() => {});
+            }
+          }
           if (!m.online) {
             setPeerTyping(prev => {
               if (!prev.get(slotNum)) return prev;
