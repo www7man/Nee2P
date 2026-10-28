@@ -1996,6 +1996,26 @@ function App() {
             next.set(slotNum, !!m.on);
             return next;
           });
+          // KEY-RESHIP on typing: typing events are UNencrypted, so they keep
+          // arriving even when our sender-key was lost to a stream hiccup —
+          // the exact "I see them typing but no messages arrive" deadlock.
+          // The peer typing means a message is coming: opportunistically
+          // re-ship our key (throttled to once per 20s per peer) so their
+          // buffered messages can decrypt. applySenderKey accepts same-epoch
+          // retransmits and replays the pending buffer, so this heals both
+          // sides without recreating the room. Complements the peer-online
+          // trigger (which never fires when both sides stayed online).
+          if (m.on) {
+            const now = Date.now();
+            const peer = peerKeysRef.current.get(slotNum);
+            if (peer && peer.pairwiseKey) {
+              if (!peer._lastKeyReshipAt || now - peer._lastKeyReshipAt > 20000) {
+                peer._lastKeyReshipAt = now;
+                peer.sentSenderKey = -1; // bypass per-epoch dedupe once
+                shipSenderKeyToPeer(slotNum, currentEpochRef.current).catch(() => {});
+              }
+            }
+          }
         },
         onMsgDelete: (m) => { ingestDelete(m.id); },
         onRead: (m) => {
