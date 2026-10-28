@@ -970,26 +970,12 @@ async function handlePeek(req, res) {
 
   let r = rooms.get(room) || null;
   if (r && r.expiresAt <= Date.now()) { destroyRoom(room); r = null; }
-  if (!r) return sendJSON(res, 200, { ok: true, exists: false });
-
-  let claimed = 0;
-  let online  = 0;
-  for (let i = 0; i < r.slots.length; i++) {
-    if (r.slots[i]) {
-      claimed += 1;
-      if (r.isSlotOnline(i)) online += 1;
-    }
-  }
-  sendJSON(res, 200, {
-    ok: true,
-    exists: true,
-    groupMax: r.groupMax,
-    claimed,
-    online,
-    paired: r.isPaired(),
-    createdAt: r.createdAt,
-    expiresAt: r.expiresAt,
-  });
+  // PRIVACY (audit fix, user-approved): peek answers ONLY whether the room
+  // exists. The old response leaked groupMax / claimed / online / paired /
+  // createdAt / expiresAt to ANYONE who guessed or enumerated a room id —
+  // enough to monitor a session's activity without knowing the phrase key.
+  // The join UI no longer needs the counters: it just confirms the room.
+  sendJSON(res, 200, { ok: true, exists: !!r });
 }
 
 async function handleSend(req, res) {
@@ -1451,9 +1437,32 @@ function handleStream(req, res, url) {
 }
 
 // ─── Web Push endpoints ──────────────────────────────────────
+// FAIL-CLOSED admin auth (audit fix): the relay used to fall back to the
+// public string literal 'nee2p-admin-local' when ADMIN_KEY was unset — anyone
+// who read the source had full remote admin (stats, delete-room, tunnel).
+// Now: no ADMIN_KEY ⇒ every /r/admin/* answers 403 admin-disabled. Operators
+// who want auto-generated keys can set ADMIN_KEY_AUTOGEN=1 (a random key is
+// minted at boot and logged once).
+function resolveAdminKey() {
+  if (process.env.ADMIN_KEY) return process.env.ADMIN_KEY;
+  if (process.env.ADMIN_KEY_AUTOGEN === '1') {
+    if (!resolveAdminKey._gen) {
+      resolveAdminKey._gen = crypto.randomBytes(24).toString('hex');
+      console.log('[info] ADMIN_KEY_AUTOGEN=1 — generated ephemeral admin key: ' + resolveAdminKey._gen);
+    }
+    return resolveAdminKey._gen;
+  }
+  return null;
+}
+function adminAuthOk(req) {
+  const k = resolveAdminKey();
+  if (!k) return false;
+  return req.headers['x-admin-key'] === k;
+}
+
 function handleAdminStats(req, res) {
-  const adminKey = process.env.ADMIN_KEY || 'nee2p-admin-local';
-  if (req.headers['x-admin-key'] !== adminKey) {
+  const adminKey = resolveAdminKey();
+  if (!adminKey || req.headers['x-admin-key'] !== adminKey) {
     res.writeHead(403, {
       'Content-Type': 'application/json; charset=utf-8',
       'Access-Control-Allow-Origin': '*',
@@ -1526,12 +1535,12 @@ function handleAdminCors(req, res) {
 }
 
 function handleAdminDeleteRoom(req, res, p) {
-  const adminKey = process.env.ADMIN_KEY || 'nee2p-admin-local';
+  const adminKey = resolveAdminKey();   // fail-closed — see resolveAdminKey
   const headers = {
     'Content-Type': 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': '*',
   };
-  if (req.headers['x-admin-key'] !== adminKey) {
+  if (!adminKey || req.headers['x-admin-key'] !== adminKey) {
     res.writeHead(403, headers);
     return res.end(JSON.stringify({ ok: false, error: 'forbidden' }));
   }
@@ -1548,7 +1557,8 @@ function handleAdminDeleteRoom(req, res, p) {
 
 // ── Admin tunnel ──────────────────────────────────────────────────────────────
 const ADMIN_JSON = { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' };
-function adminAuthOk(req) { return req.headers['x-admin-key'] === (process.env.ADMIN_KEY || 'nee2p-admin-local'); }
+// adminAuthOk is defined near handleAdminStats (fail-closed resolveAdminKey) —
+// this duplicate with the default-key fallback was the audit blocker.
 
 function handleAdminTunnelStatus(req, res) {
   if (!adminAuthOk(req)) { res.writeHead(403, ADMIN_JSON); return res.end(JSON.stringify({ ok: false, error: 'forbidden' })); }
@@ -2040,7 +2050,7 @@ setInterval(() => {
 server.listen(PORT, HOST, () => {
   console.log(`Nee2P. running at http://${HOST}:${PORT}`);
   if (!process.env.ADMIN_KEY) {
-    console.warn('[warn] ADMIN_KEY env not set — /r/admin/* is protected by ' +
-      'the default local key. Set ADMIN_KEY in production.');
+    console.warn('[warn] ADMIN_KEY env not set — /r/admin/* is DISABLED (fail-closed). ' +
+      'Set ADMIN_KEY to enable it, or ADMIN_KEY_AUTOGEN=1 for a random boot-time key.');
   }
 });

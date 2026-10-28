@@ -1225,13 +1225,11 @@ function JoinStep2({ palette, value, password, setPassword,
   );
 
   // ── exists ──
-  const now = Date.now();
-  const ttlLeft   = Math.max(0, (peek.expiresAt || 0) - now);
-  const ageSince  = peek.createdAt ? now - peek.createdAt : 0;
-  const lowTime   = ttlLeft < 3_600_000;
-  const full      = peek.claimed >= peek.groupMax;
-  const freeSlots = peek.groupMax - peek.claimed;
-
+  // PRIVACY (audit fix): peek now answers only {ok, exists} — the server no
+  // longer leaks slot counters / online status / timestamps to anyone holding
+  // the room hash. The join flow therefore just confirms the room exists and
+  // asks for the password; the chat header shows the real participant state
+  // once you are inside.
   return (
     <div className="no-scrollbar" style={{ height: '100%', display: 'flex', flexDirection: 'column',
       padding: '24px 18px', overflowY: 'auto' }}>
@@ -1244,151 +1242,57 @@ function JoinStep2({ palette, value, password, setPassword,
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{
             width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
-            background: full ? 'rgba(255,100,100,0.12)' : 'rgba(80,180,140,0.14)',
-            border: `0.5px solid ${full ? 'rgba(255,120,120,0.3)' : 'rgba(123,224,177,0.3)'}`,
+            background: 'rgba(80,180,140,0.14)',
+            border: '0.5px solid rgba(123,224,177,0.3)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <Icon.Check size={17} color={full ? '#ff9a9a' : '#7be0b1'} />
+            <Icon.Check size={17} color="#7be0b1" />
           </div>
           <div>
             <div style={{ fontSize: 17, fontWeight: 600, color: '#fff', letterSpacing: -0.3 }}>
               {t('join.found')}
             </div>
             <div style={{ fontSize: 11, color: 'var(--tx-60)', marginTop: 2 }}>
-              {peek.paired
-                ? t('join.all_in')
-                : full
-                  ? t('join.all_slots_taken')
-                  : t('join.waiting_for_users')}
+              {t('join.enter_your_pwd')}
             </div>
           </div>
         </div>
 
-        {/* Info card */}
-        <Glass radius={18} padding="0">
-          {[
-            {
-              label: t('join.label_slots'),
-              value: (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ display: 'flex', gap: 5 }}>
-                    {Array.from({ length: peek.groupMax }).map((_, i) => {
-                      const claimed = i < peek.claimed;
-                      const online  = i < peek.online;
-                      return (
-                        <div key={i} style={{
-                          width: 10, height: 10, borderRadius: '50%',
-                          background: online
-                            ? p.a
-                            : claimed ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.10)',
-                          boxShadow: online ? `0 0 7px ${p.a}` : 'none',
-                        }} />
-                      );
-                    })}
-                  </div>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#fff' }}>
-                    {peek.claimed} / {peek.groupMax}
-                  </span>
-                </div>
-              ),
-            },
-            {
-              label: t('join.label_online'),
-              value: (
-                <span style={{ fontSize: 12, fontWeight: 600,
-                  color: peek.online > 0 ? '#3dff9a' : 'var(--tx-60)' }}>
-                  {peek.online > 0 ? `${peek.online} ${t('join.online_of')} ${peek.groupMax}` : t('join.nobody')}
-                </span>
-              ),
-            },
-            !full && {
-              label: t('join.label_free'),
-              value: (
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#fff' }}>
-                  {freeSlots}
-                </span>
-              ),
-            },
-            ageSince > 0 && {
-              label: t('join.label_created'),
-              value: (
-                <span style={{ fontSize: 12, color: 'var(--tx-80)' }}>
-                  {fmtAgo(ageSince)}
-                </span>
-              ),
-            },
-            {
-              label: t('join.label_expires'),
-              value: (
-                <span style={{ fontSize: 12, fontWeight: lowTime ? 600 : 400,
-                  color: lowTime ? '#ff8a8a' : 'var(--tx-80)' }}>
-                  {fmtLeft(ttlLeft)}{lowTime ? ' ⚠' : ''}
-                </span>
-              ),
-            },
-          ].filter(Boolean).map((row, idx, arr) => (
-            <div key={idx} style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '11px 16px',
-              borderBottom: idx < arr.length - 1 ? '0.5px solid rgba(255,255,255,0.06)' : 'none',
+        {/* Password */}
+        <Glass radius={18} padding="12px 14px" strong>
+          <div style={{ fontSize: 10, color: 'var(--tx-40)', letterSpacing: 1.4,
+            textTransform: 'uppercase', marginBottom: 6, fontFamily: 'var(--ff-mono)' }}>
+            {t('created.step3.pwd_label')}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Icon.Lock size={16} color="rgba(255,255,255,0.7)" />
+            <input
+              type={showPwd ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && valid && onContinue()}
+              placeholder={t('join.pwd_placeholder')}
+              enterKeyHint="go"
+              autoComplete="current-password"
+              autoCapitalize="none" autoCorrect="off" spellCheck={false}
+              style={{
+                flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                color: '#fff', fontSize: 18, fontWeight: 600,
+                fontFamily: showPwd ? 'var(--ff-mono)' : 'inherit',
+                letterSpacing: showPwd ? 0.5 : 4, padding: '4px 0',
+              }}
+            />
+            <button onClick={() => setShowPwd(v => !v)} style={{
+              background: 'none', border: 'none', cursor: 'pointer', padding: 8, flexShrink: 0,
             }}>
-              <span style={{ fontSize: 12, color: 'var(--tx-60)' }}>{row.label}</span>
-              {row.value}
-            </div>
-          ))}
+              <Icon.Eye closed={!showPwd} size={16} color="rgba(255,255,255,0.7)" />
+            </button>
+          </div>
         </Glass>
 
-        {/* Full warning */}
-        {full && (
-          <div style={{
-            padding: '10px 14px', borderRadius: 12,
-            background: 'rgba(255,90,90,0.07)', border: '0.5px solid rgba(255,100,100,0.18)',
-            fontSize: 12, color: '#ff9a9a', textAlign: 'center', lineHeight: 1.55,
-          }}>
-            {t('join.full_msg')}<br/>
-            <span style={{ opacity: 0.7 }}>{t('join.full_hint')}</span>
-          </div>
-        )}
-
-        {/* Password — only when there's room */}
-        {!full && (
-          <Glass radius={18} padding="12px 14px" strong>
-            <div style={{ fontSize: 10, color: 'var(--tx-40)', letterSpacing: 1.4,
-              textTransform: 'uppercase', marginBottom: 6, fontFamily: 'var(--ff-mono)' }}>
-              {t('created.step3.pwd_label')}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Icon.Lock size={16} color="rgba(255,255,255,0.7)" />
-              <input
-                type={showPwd ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && valid && onContinue()}
-                placeholder={t('join.pwd_placeholder')}
-                enterKeyHint="go"
-                autoComplete="current-password"
-                autoCapitalize="none" autoCorrect="off" spellCheck={false}
-                style={{
-                  flex: 1, background: 'transparent', border: 'none', outline: 'none',
-                  color: '#fff', fontSize: 18, fontWeight: 600,
-                  fontFamily: showPwd ? 'var(--ff-mono)' : 'inherit',
-                  letterSpacing: showPwd ? 0.5 : 4, padding: '4px 0',
-                }}
-              />
-              <button onClick={() => setShowPwd(v => !v)} style={{
-                background: 'none', border: 'none', cursor: 'pointer', padding: 8, flexShrink: 0,
-              }}>
-                <Icon.Eye closed={!showPwd} size={16} color="rgba(255,255,255,0.7)" />
-              </button>
-            </div>
-          </Glass>
-        )}
-
-        {!full && (
-          <RememberMeToggle palette={palette}
-            checked={!!rememberMe}
-            onChange={(v) => setRememberMe && setRememberMe(v)} />
-        )}
+        <RememberMeToggle palette={palette}
+          checked={!!rememberMe}
+          onChange={(v) => setRememberMe && setRememberMe(v)} />
 
         {error && (
           <Glass radius={14} padding="10px 14px">
@@ -1396,17 +1300,13 @@ function JoinStep2({ palette, value, password, setPassword,
           </Glass>
         )}
 
-        {full ? (
-          <GlassButton palette={palette} onClick={onBack}>← {t('join.change_phrase')}</GlassButton>
-        ) : (
-          <GlassButton primary={valid} palette={palette} disabled={!valid}
-            icon={valid
-              ? <Icon.Arrow size={16} color={p.text} />
-              : <Icon.Lock size={14} color="var(--tx-40)" />}
-            onClick={onContinue}>
-            {busy ? t('join.connecting') : valid ? t('join.connect') : t('join.need_pwd')}
-          </GlassButton>
-        )}
+        <GlassButton primary={valid} palette={palette} disabled={!valid}
+          icon={valid
+            ? <Icon.Arrow size={16} color={p.text} />
+            : <Icon.Lock size={14} color="var(--tx-40)" />}
+          onClick={onContinue}>
+          {busy ? t('join.connecting') : valid ? t('join.connect') : t('join.need_pwd')}
+        </GlassButton>
       </div>
     </div>
   );
