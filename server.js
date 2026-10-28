@@ -1009,7 +1009,7 @@ async function handleSend(req, res) {
   }
 
   const t = body.type;
-  if (t === 'msg' || t === 'typing' || t === 'delete' || t === 'read' ||
+  if (t === 'msg' || t === 'typing' || t === 'key-req' || t === 'delete' || t === 'read' ||
       t === 'kem-ct' || t === 'react' || t === 'sender-key' || t === 'signal') {
     const r = handleOne(sess, room, body);
     // CRIT-2: surface validation failures to the client instead of returning
@@ -1116,6 +1116,18 @@ function handleOne(sess, room, item) {
 
   if (item.type === 'typing') {
     broadcastToOthers(room, mySlotNum, { type: 'typing', from: mySlotId, on: !!item.on });
+    return null;
+  }
+
+  if (item.type === 'key-req') {
+    // KEY REQUEST (heals lost sender-keys): the receiver buffers incoming
+    // encrypted messages as "pending key" when the sender's sender-key event
+    // was lost to a stream hiccup — typing still flows (unencrypted) but no
+    // message renders. This relay-only, unencrypted, payload-free event lets
+    // the RECEIVER ask the sender to re-ship: the recipient of this broadcast
+    // simply re-sends their current sender-key (already wrapped for each
+    // peer). Like 'typing': ephemeral, never stored in history, no secrets.
+    broadcastToOthers(room, mySlotNum, { type: 'key-req', from: mySlotId });
     return null;
   }
 

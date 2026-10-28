@@ -160,6 +160,7 @@ function dispatchWireToHandlers(msg, handlers) {
     case 'read':        return handlers.onRead?.(msg);
     case 'react':       return handlers.onReact?.(msg);
     case 'typing':      return handlers.onTyping?.(msg);
+    case 'key-req':     return handlers.onKeyReq?.(msg);
     case 'signal':      return handlers.onSignal?.(msg);
     case 'peer-state':  return handlers.onPeerState?.(msg);
     case 'room-state':  return handlers.onRoomState?.(msg);
@@ -1114,8 +1115,18 @@ function App() {
       if (fromNum === null) return;
       const list = pendingDecryptRef.current.get(fromNum) || [];
       if (!list.some(x => x.id === item.id)) {
+        const wasEmpty = list.length === 0;
         list.push(item);
         pendingDecryptRef.current.set(fromNum, list);
+        // ASK for the key (v0.9.31): this is the receiving side of the
+        // "typing visible, messages never render" deadlock — we hold messages
+        // we cannot decrypt while typing (unencrypted) keeps flowing. Ask the
+        // sender to re-ship via the unencrypted key-req event (throttled by
+        // the sender's onKeyReq). Only fire when the buffer was empty so a
+        // backlog burst sends one request, not N.
+        if (wasEmpty && wsRef.current) {
+          try { wsRef.current.send({ type: 'key-req' }); } catch {}
+        }
       }
       return;
     }
@@ -1462,6 +1473,54 @@ function App() {
   const distributeSenderKeyToAll = React.useCallback(async (epoch) => {
     const slots = Array.from(peerKeysRef.current.keys());
     for (const s of slots) await shipSenderKeyToPeer(s, epoch);
+  }, [shipSenderKeyToPeer]);
+
+  // REKEY VISIBILITY (v0.9.31): when messages are buffered pending-key, tell
+  // the user instead of showing silence ("they're typing but nothing
+  // arrives"). A quiet poll (3s) flips the chat banner on/off. It only takes
+  // the banner slot when it is free or already ours, so it never fights the
+  // partner-offline / pending-join notices.
+  const rekeyBannerRef = React.useRef(false);
+  React.useEffect(() => {
+    const iv = setInterval(() => {
+      let pending = 0;
+      for (const list of pendingDecryptRef.current.values()) pending += list ? list.length : 0;
+      const shouldShow = pending > 0;
+      if (shouldShow === rekeyBannerRef.current) return;
+      rekeyBannerRef.current = shouldShow;
+      setChatBanner(prev => {
+        if (shouldShow) {
+          if (prev === null || prev === REKEY_BANNER_SENTINEL) return REKEY_BANNER_SENTINEL;
+          return prev; // someone else owns the banner — leave it
+        }
+        return prev === REKEY_BANNER_SENTINEL ? null : prev;
+      });
+    }, 3000);
+    return () => clearInterval(iv);
+  }, []);
+  const REKEY_BANNER_SENTINEL = '__rekeying__';
+  const rekeyBannerText = ((window.Nee2Pi18n && window.Nee2Pi18n.t('chat.rekeying')) || 'Восстанавливаем шифрование — сообщения придут сразу после…');
+
+  // KEY HEARTBEAT (v0.9.31): re-ship our sender-key to every peer we hold a
+  // pairwise key with, once per 45s while the chat screen is up. Belt-and-
+  // suspenders for every "lost key" variant (stream hiccup at ship time,
+  // missed online/typing triggers, both-sides-continuous-online deadlock):
+  // applySenderKey accepts same-epoch retransmits and replays pending
+  // buffers, so a periodic cheap re-ship heals silently. Tiny traffic cost.
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const iv = setInterval(() => {
+      if (!wsRef.current) return;
+      for (const [slotNum, peer] of peerKeysRef.current.entries()) {
+        if (!peer || !peer.pairwiseKey) continue;
+        const now = Date.now();
+        if (peer._lastHeartbeatReshipAt && now - peer._lastHeartbeatReshipAt < 45000) continue;
+        peer._lastHeartbeatReshipAt = now;
+        peer.sentSenderKey = -1; // bypass per-epoch dedupe once
+        shipSenderKeyToPeer(slotNum, currentEpochRef.current).catch(() => {});
+      }
+    }, 45000);
+    return () => clearInterval(iv);
   }, [shipSenderKeyToPeer]);
 
   // Recompute the safety-numbers fingerprints shown in the chat header modal.
@@ -1983,6 +2042,24 @@ function App() {
           enqueue(async () => {
             for (const it of m.items) await ingestMessage(it);
           });
+        },
+        onKeyReq: (m) => {
+          // A peer is buffering our messages pending-key — re-ship our
+          // sender-key right now (throttled 15s). The peer's own reship
+          // triggers (typing/online) can't help when THEY lost OUR key: only
+          // we can resend it. This closes the loop both ways.
+          let slotNum = coerceSlot(m.from);
+          if (slotNum === null && groupMaxRef.current === 2 && mySlotRef.current !== null) {
+            slotNum = mySlotRef.current === 0 ? 1 : 0;
+          }
+          if (slotNum === null || slotNum === mySlotRef.current) return;
+          const peer = peerKeysRef.current.get(slotNum);
+          if (!peer || !peer.pairwiseKey) return;
+          const now = Date.now();
+          if (peer._lastKeyReqReshipAt && now - peer._lastKeyReqReshipAt < 15000) return;
+          peer._lastKeyReqReshipAt = now;
+          peer.sentSenderKey = -1; // bypass per-epoch dedupe once
+          shipSenderKeyToPeer(slotNum, currentEpochRef.current).catch(() => {});
         },
         onTyping: (m) => {
           // Legacy 2-party: no `from` field. Map to peerSlot for that case.
@@ -3006,7 +3083,7 @@ function App() {
           if (!confirm(tr('confirm.leave_chat'))) return;
           cleanupConnection();
           setScreen('welcome');
-        }} banner={chatBanner} blobError={blobError} />;
+        }} banner={chatBanner === REKEY_BANNER_SENTINEL ? rekeyBannerText : chatBanner} blobError={blobError} />;
       break;
     case 'locked':
       body = <LockedScreen palette={PALETTE} onBack={backToWelcome} />;
