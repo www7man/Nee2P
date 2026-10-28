@@ -618,6 +618,8 @@ function App() {
             setPaired(!!r.paired);
             persistedRoomIdRef.current = target.roomId;
             setScreen('chat');
+            // Name the restored room's slot count — see restoreSavedRoom.
+            setChatBanner(((window.Nee2Pi18n && window.Nee2Pi18n.t('chat.restored_banner_prefix')) || 'Сессия восстановлена · слотов:') + ' ' + gm);
             // Refresh the snapshot so the latest expiresAt + sessionKey land.
             await persistSessionSnapshot(rec.phrase, rec.password, rec.ttlMs);
           })();
@@ -2118,6 +2120,11 @@ function App() {
     setPaired(!!r.paired);
     persistedRoomIdRef.current = roomId;
     setScreen('chat');
+    // Surface WHICH room (and how many slots) the user landed in: a silent
+    // auto-restore used to drop users into a stale 2-slot room while they
+    // believed they had just created a 4-slot one — joiners then saw "2/2
+    // taken" and nobody understood why. The banner names the room size.
+    setChatBanner(((window.Nee2Pi18n && window.Nee2Pi18n.t('chat.restored_banner_prefix')) || 'Сессия восстановлена · слотов:') + ' ' + gm);
     await persistSessionSnapshot(rec.phrase, rec.password, rec.ttlMs);
   }, [busy, connectAndClaim, persistSessionSnapshot]);
 
@@ -2157,6 +2164,10 @@ function App() {
     if (r.expiresAt) setExpiresAt(r.expiresAt);
     setPaired(!!r.paired);
     setScreen('chat');
+    // Confirm the room size right after creation — the number the SERVER
+    // actually accepted (r.groupMax), not the wizard selection, so a stale
+    // same-phrase room can never silently masquerade as the new size.
+    setChatBanner(((window.Nee2Pi18n && window.Nee2Pi18n.t('chat.created_banner_prefix')) || 'Сессия создана · слотов:') + ' ' + gm);
     // Persistence: opt-in. If the user ticked "remember me", enable() the
     // device (idempotent — first call generates the deviceKey) then save the
     // session snapshot. Subsequent epoch bumps refresh the sessionKey via

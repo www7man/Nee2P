@@ -413,6 +413,8 @@
       // ── Chat banners ─────────────────────────────────────────────────────
       'chat.partner_not_logged_in':
         'Партнёр ещё не вошёл по своему паролю. Сообщения сохранятся и придут ему при входе.',
+      'chat.restored_banner_prefix': 'Сессия восстановлена · слотов:',
+      'chat.created_banner_prefix':  'Сессия создана · слотов:',
 
       // ── Cross-tab warning ────────────────────────────────────────────────
       'tabs.already_open': 'Nee2P. уже открыт в другой вкладке. Закройте одну для нормальной работы.',
@@ -861,6 +863,8 @@
       // ── Chat banners ─────────────────────────────────────────────────────
       'chat.partner_not_logged_in':
         "Partner hasn't entered their password yet. Messages will be saved and delivered when they sign in.",
+      'chat.restored_banner_prefix': 'Session restored · slots:',
+      'chat.created_banner_prefix':  'Session created · slots:',
 
       // ── Cross-tab warning ────────────────────────────────────────────────
       'tabs.already_open': 'Nee2P. is already open in another tab. Close one for normal operation.',
