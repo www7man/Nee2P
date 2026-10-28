@@ -10,7 +10,7 @@
 //
 // Bump CACHE_VERSION to invalidate the precache after deploys.
 
-const CACHE_VERSION = 'nee2p-v40-0.9.27';
+const CACHE_VERSION = 'nee2p-v41-0.9.28';
 
 // All paths are relative to the SW scope (which is /2Pee/ in production).
 const PRECACHE_URLS = [
