@@ -135,6 +135,11 @@
         claimSent = true;
         const payload = { room, passwordHash: obj.passwordHash };
         if (obj.ttlMs)     payload.ttlMs     = obj.ttlMs;
+        // groupMax MUST ride along: the server defaults missing groupMax to 2,
+        // so dropping it here silently turned every "4/6/8-slot" creation into
+        // a 2-slot room (joiners then saw "2/2 all slots taken"). ttlMs was
+        // whitelisted but groupMax was forgotten when this payload was built.
+        if (obj.groupMax)  payload.groupMax  = obj.groupMax;
         if (obj.pubKey)    payload.pubKey    = obj.pubKey;
         if (obj.kemPubKey) payload.kemPubKey = obj.kemPubKey;
         const out = await post('claim', payload);
